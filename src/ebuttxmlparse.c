@@ -3,21 +3,21 @@
  *
  * 1. return a string that is a g_string_free (The buffer grows automatically)
  *
- * 2. Use pointer to state to set properties of the ParseState struct. To be used to 
+ * 2. Use pointer to state to set properties of the ParseState struct. To be used to
  * set  the buffer attributes.
  *
  * Looks like this.
- * 
+ *
 * typedef struct {
               int      state;
               GString *buf;
               guint64  start_time;
               guint64  duration;
-              guint64  max_duration; 
+              guint64  max_duration;
               GstSegment *segment;
               gpointer user_data;
-              gboolean have_internal_fps; 
-              gint fps_n, fps_d;     
+              gboolean have_internal_fps;
+              gint fps_n, fps_d;
             } ParserState;
 
  */
@@ -31,7 +31,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-void
+static void
 _print_style (StyleProp * style)
 {
   g_print ("Style %p:\n", style);
@@ -52,6 +52,23 @@ _print_style (StyleProp * style)
   g_print ("\tid: %s\n", style->id);
   g_print ("\tinherited_styles: %s\n", style->inherited_styles);
 }
+
+
+static void
+_print_region (RegionProp * region)
+{
+  g_print ("Region %p:\n", region);
+  g_print ("\tid: %s\n", region->id);
+  g_print ("\torigin: %s\n", region->origin);
+  g_print ("\textent: %s\n", region->extent);
+  g_print ("\tstyle: %s\n", region->style);
+  g_print ("\tdisplay_align: %s\n", region->display_align);
+  g_print ("\tpadding: %s\n", region->padding);
+  g_print ("\twriting_mode: %s\n", region->writing_mode);
+  g_print ("\tshow_background: %s\n", region->show_background);
+  g_print ("\toverflow: %s\n", region->overflow);
+}
+
 
 
 gchar *
@@ -272,7 +289,7 @@ _add_pango_style (StyleProp * style, gchar * opening_tag)
 
   /* Need to transtate into pango friendly font size.
    * style->fontSize is in % of cell height.
-   * pango needs it in 100ths of a point. so will need to find it in pixels 
+   * pango needs it in 100ths of a point. so will need to find it in pixels
    * before converting to pts
    * shall create font_size attribute in textoverlay where the cell height is
    * known in pixels
@@ -309,7 +326,8 @@ add_document_metadata_markup (DocMetadata * doc_meta, gchar * opening_tag)
 
 
 void
-add_style_markup (gchar ** text, StyleProp * style, DocMetadata * doc_meta)
+add_style_markup (gchar ** text, StyleProp * style, gchar * region,
+    DocMetadata * doc_meta)
 {
 
   gchar *ret;
@@ -317,9 +335,9 @@ add_style_markup (gchar ** text, StyleProp * style, DocMetadata * doc_meta)
 
   gchar *close_brac = ">";
   gchar *close_tag = "</span>";
+
+  g_print ("add_style_markup: region is %s\n", region);
   strcpy (opening_tag, "<span \0");     /* add to heap in case there are no styles */
-
-
 
   /* append styles and their values to the opening tag */
   opening_tag = _add_pango_style (style, opening_tag);
@@ -329,6 +347,8 @@ add_style_markup (gchar ** text, StyleProp * style, DocMetadata * doc_meta)
     doc_meta->sent_document_metadata = TRUE;
   }
 
+  /* XXX: Replace this with call to function that will add region attributes to span tag. */
+  /*opening_tag = _add_or_update_style (opening_tag, "region=\"", region);*/
 
   /* append the opening and close tags */
   ret = g_strconcat (opening_tag, close_brac, *text, close_tag, NULL);  /* todo: free this */
@@ -358,10 +378,9 @@ get_xml_property (const xmlNode * node, const char *name)
 }
 
 StyleProp *
-add_new_style (gchar * style_id, xmlNodePtr child)
+add_new_style (const gchar * style_id, xmlNodePtr child)
 {
-
-  StyleProp *style = g_new (StyleProp, 1);
+  StyleProp *style = g_new0 (StyleProp, 1);
 
   style->direction = get_xml_property (child, "direction");
   style->fontFamily = get_xml_property (child, "fontFamily");
@@ -379,15 +398,38 @@ add_new_style (gchar * style_id, xmlNodePtr child)
   style->linePadding = get_xml_property (child, "linePadding");
   style->inherited_styles = get_xml_property (child, "style");
 
-  style->id = style_id;         /* populate properties */
+  style->id = g_strdup (style_id);         /* populate properties */
   return style;
 }
 
-void
+
+RegionProp *
+add_new_region (const gchar * region_id, xmlNodePtr child)
+{
+  RegionProp *region = g_new0 (RegionProp, 1);
+  g_print ("add_new_region\n");
+
+  region->origin = get_xml_property (child, "origin");
+  region->extent = get_xml_property (child, "extent");
+  region->style = get_xml_property (child, "style");
+  region->display_align = get_xml_property (child, "displayAlign");
+  region->padding = get_xml_property (child, "padding");
+  region->writing_mode = get_xml_property (child, "writingMode");
+  region->show_background = get_xml_property (child, "showBackground");
+  region->overflow = get_xml_property (child, "overflow");
+
+  region->id = g_strdup (region_id);
+  g_print ("Region added:\n");
+  _print_region (region);
+  return region;
+}
+
+
+static void
 delete_style (StyleProp * style)
 {
-  g_print ("Deleting style %p...\n", style);
   g_return_if_fail (style != NULL);
+  g_print ("Deleting style %p...\n", style);
 
   g_free (style->direction);
   g_free (style->fontFamily);
@@ -406,12 +448,31 @@ delete_style (StyleProp * style)
   g_free (style->inherited_styles);
 }
 
+
+static void
+delete_region (RegionProp * region)
+{
+  g_return_if_fail (region != NULL);
+  g_print ("Deleting region %p...\n", region);
+
+  g_free (region->id);
+  g_free (region->origin);
+  g_free (region->extent);
+  g_free (region->style);
+  g_free (region->display_align);
+  g_free (region->padding);
+  g_free (region->writing_mode);
+  g_free (region->show_background);
+  g_free (region->overflow);
+}
+
+
 gchar *
 extract_style_frm_p (const gchar * para_text)
 {
   /*
-   * passed the p segment of the text, extracts span and span class 
-   * which correspond to a style. 
+   * passed the p segment of the text, extracts span and span class
+   * which correspond to a style.
    */
 
   gchar *style;
@@ -684,7 +745,6 @@ markup_style_add_if_null (StyleProp * markup_style, StyleProp * style_props)
 }
 
 
-
 void
 inherit_styles_iterator (gpointer g_style,
     DataForStyleIterator * data_for_iterator)
@@ -704,26 +764,142 @@ inherit_styles_iterator (gpointer g_style,
 }
 
 
+static void
+_append_region_description (const gchar * region_name, RegionProp * properties,
+    gchar ** string)
+{
+  gchar str_store[512] = { '\0' };
+  gchar *s = str_store;
+
+  /*g_return_if_fail (region_name != NULL);*/
+  g_return_if_fail (properties != NULL);
+  g_return_if_fail (properties->id != NULL);
+
+  /*g_print ("_append_region_description; string = %p\n", string);*/
+  /* Create initial string, `<region ` */
+  s = g_stpcpy (s, "<region ");
+
+  /* If a property is present, add it to string. */
+  if (properties->origin) {
+    s = g_stpcpy (s, "origin=\"");
+    s = g_stpcpy (s, properties->origin);
+    s = g_stpcpy (s, "\" ");
+  }
+  if (properties->extent) {
+    s = g_stpcpy (s, "extent=\"");
+    s = g_stpcpy (s, properties->extent);
+    s = g_stpcpy (s, "\" ");
+  }
+  if (properties->style) {
+    s = g_stpcpy (s, "style=\"");
+    s = g_stpcpy (s, properties->style);
+    s = g_stpcpy (s, "\" ");
+  }
+  if (properties->display_align) {
+    s = g_stpcpy (s, "display_align=\"");
+    s = g_stpcpy (s, properties->display_align);
+    s = g_stpcpy (s, "\" ");
+  }
+  if (properties->padding) {
+    s = g_stpcpy (s, "padding=\"");
+    s = g_stpcpy (s, properties->padding);
+    s = g_stpcpy (s, "\" ");
+  }
+  if (properties->writing_mode) {
+    s = g_stpcpy (s, "writing_mode=\"");
+    s = g_stpcpy (s, properties->writing_mode);
+    s = g_stpcpy (s, "\" ");
+  }
+  if (properties->show_background) {
+    s = g_stpcpy (s, "show_background=\"");
+    s = g_stpcpy (s, properties->show_background);
+    s = g_stpcpy (s, "\" ");
+  }
+  if (properties->overflow) {
+    s = g_stpcpy (s, "overflow=\"");
+    s = g_stpcpy (s, properties->overflow);
+    s = g_stpcpy (s, "\" ");
+  }
+
+  /* Terminate string, `>` */
+  s = g_stpcpy (s, ">");
+  s = g_strdup (str_store);
+
+  /* Replace input string with the created string. */
+  g_free (*string);
+  *string = s;
+}
+
+
+static void
+add_region_description (gchar ** string, RegionProp * region)
+{
+  gchar *combined_string = NULL;
+  gchar *region_string = g_strdup ("");
+
+  g_return_if_fail (string != NULL);
+  g_return_if_fail (*string != NULL);
+  g_return_if_fail (region != NULL);
+
+  _append_region_description (NULL, region, &region_string);
+
+  g_print ("Region string: %s\n", region_string);
+
+  /* Add region string to start of marked-up subtitle string. */
+  combined_string = g_strconcat (region_string, "\n", *string, NULL);
+  g_print ("Combined string: %s\n", combined_string);
+  g_free (region_string);
+  g_free (*string);
+  *string = combined_string;
+}
+
+
+static void
+add_region_descriptions (gchar ** string, GHashTable * region_hash)
+{
+  gchar *combined_string = NULL;
+  gchar *region_string = g_strdup ("");
+
+  g_return_if_fail (string != NULL);
+  g_return_if_fail (*string != NULL);
+  g_return_if_fail (region_hash != NULL);
+
+  g_hash_table_foreach (region_hash, (GHFunc) _append_region_description,
+      (gpointer) &region_string);
+
+  g_print ("Region string: %s\n", region_string);
+
+  /* Add region string to start of marked-up subtitle string. */
+  combined_string = g_strconcat (region_string, "\n", *string, NULL);
+  g_print ("Combined string: %s\n", combined_string);
+  g_free (region_string);
+  g_free (*string);
+  *string = combined_string;
+}
+
+
 gchar *
 sub_subtitle_concat_markup (SubSubtitle * sub_subtitle,
-    GHashTable * style_hash,
-    GHashTable * region_hash, DocMetadata * document_metadata)
+    GHashTable * style_hash, GHashTable * region_hash,
+    DocMetadata * document_metadata)
 {
   /**
    * for each sub_subitle:
    *   apply all style and region info, go up the inheritance hierarchy
    *   only add new styles. Concatenate.
    */
-  gchar *ret = NULL;
+  gchar *ret = g_strdup ("");
+  gchar *tmp = NULL;
   SubSubtitle *sub_sub;         /* a single sub_subtitle iterable the list */
   DataForStyleIterator *data_for_iterator = g_new (DataForStyleIterator, 1);
   data_for_iterator->style_hash = style_hash;
+  gchar *region;
 
   for (sub_sub = sub_subtitle; sub_sub != NULL; sub_sub = sub_sub->next) {
     /**
      * flatten styles:
-     *   If inherited length of inherited styles is > 1 
-     *   only add style property to 
+     *   If inherited length of inherited styles is > 1
+     *   only add style property to
      *   add style property tuple if not already on the list
      */
     StyleProp *markup_style;    /* the styles to be applied as markup */
@@ -733,25 +909,26 @@ sub_subtitle_concat_markup (SubSubtitle * sub_subtitle,
     markup_style = g_new0 (StyleProp, 1);
     data_for_iterator->markup_style = markup_style;     /*update on each it. */
 
-    /* takes each style id from inherited styles and creates a 
+    /* takes each style id from inherited styles and creates a
        markup list of styles free markup_style */
     g_list_foreach (inherited_styles,
         (GFunc) inherit_styles_iterator, data_for_iterator);
 
+    /* XXX: Assumes a single region(?) */
+    region = g_list_first (sub_sub->regions)->data;
+
     /* now add styles to this sub_sub text */
-    add_style_markup (&(sub_sub->text), markup_style, document_metadata);
+    add_style_markup (&(sub_sub->text), markup_style, region,
+        document_metadata);
 
-    /* concatenate to what we have so far */
-    if (ret) {
-      gchar *old_ret = ret;
-      ret = g_strconcat (ret, sub_sub->text, NULL);
-      g_free (sub_sub->text);
-      g_free (old_ret);
-    } else
-      ret = sub_sub->text;
-
+    tmp = ret;
+    ret = g_strconcat (ret, sub_sub->text, NULL);
+    g_free (tmp);
     g_free (markup_style);      /* TODO deeper free to free pointers too */
   }
+
+  /* Add region information here... */
+  /*add_region_descriptions (&ret, region_hash);*/
 
   return ret;
 }
@@ -822,8 +999,8 @@ extract_prepend_style_region (xmlNodePtr cur,
     g_free (regions_str);
 }
 
-/* 
-FIXME: Make this work for <span>First Line <br></span> 
+/*
+FIXME: Make this work for <span>First Line <br></span>
 *  At present it only works for <span><br>Second Line </span>
 **/
 int
@@ -836,7 +1013,7 @@ handle_line_break (xmlNodePtr node, SubSubtitle * sub_subtitle)
       "Checking for line breaks. Passed node: %s", node->name);
 
   if (xmlStrcmp (node->name, (const xmlChar *) "br") == 0) {
-    /* if there is a line break element add to previous sub_sub 
+    /* if there is a line break element add to previous sub_sub
      * TODO: else statement to create a new sub_sub to hold the br tag
      */
     if (sub_subtitle) {
@@ -867,7 +1044,7 @@ void
 xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
     GHashTable * region_hash)
 {
-  xmlNodePtr head_child, styling_child; /* pointers to different levels */
+  xmlNodePtr head_child, node_ptr; /* pointers to different levels */
 
   /* 1. extract styles
    *  2. create  Style struct if doesn't already exist
@@ -876,28 +1053,49 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
   head_child = head_cur->children;
   while (head_child != NULL) {
     if (xmlStrcmp (head_child->name, (const xmlChar *) "styling") == 0) {
-      styling_child = head_child->children;
-      while (styling_child != NULL) {
-        if (xmlStrcmp (styling_child->name, (const xmlChar *) "style") == 0) {
+      node_ptr = head_child->children;
+      while (node_ptr != NULL) {
+        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "style") == 0) {
           /* use style id as key, create style properties object for value */
           gchar *key;
           StyleProp *style_properties;
-          key = (gchar *) (xmlGetProp (styling_child, (xmlChar *)"id"));
-          style_properties = add_new_style (key, styling_child);
+          key = (gchar *) (xmlGetProp (node_ptr, (xmlChar *)"id"));
+          style_properties = add_new_style (key, node_ptr);
 
           g_hash_table_insert (style_hash,
               (gpointer) key, (gpointer) style_properties);
 
           GST_CAT_DEBUG (ebuttd_parse_debug, "added style %s to %s",
               key, "style_hash");
-
         }
-        styling_child = styling_child->next;
+        node_ptr = node_ptr->next;
       }
     }
+#if 1
+    if (xmlStrcmp (head_child->name, (const xmlChar *) "layout") == 0) {
+      g_print ("parsing layout element...\n");
+      node_ptr = head_child->children;
+      while (node_ptr != NULL) {
+        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "region") == 0) {
+          /* use region id as key, create style properties object for value */
+          gchar *key;
+          RegionProp *region_properties;
+          key = (gchar *) (xmlGetProp (node_ptr, (xmlChar *)"id"));
+          g_print ("parsing region element...\n");
+          region_properties = add_new_region (key, node_ptr);
+
+          g_hash_table_insert (region_hash,
+              (gpointer) key, (gpointer) region_properties);
+
+          GST_CAT_DEBUG (ebuttd_parse_debug, "added region %s to %s",
+              key, "region_hash");
+        }
+        node_ptr = node_ptr->next;
+      }
+    }
+#endif
     head_child = head_child->next;
   }
-
 }
 
 DocMetadata *
@@ -906,7 +1104,7 @@ extract_tt_tag_properties (xmlNodePtr ttnode, DocMetadata * document_metadata)
   gchar *prop;
   const xmlChar *node_name;
   /*xmlNodePtr prop_node, xmlns_node;*/
-  xmlAttrPtr prop_node; 
+  xmlAttrPtr prop_node;
 
   if (!document_metadata)
     document_metadata = g_new0 (DocMetadata, 1);
@@ -961,29 +1159,29 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
 
   /** ebutt_xml_parse
   *
-  * Aim: to take an XML document, in the form of a string, and parse it, 
+  * Aim: to take an XML document, in the form of a string, and parse it,
   * creating a textbuffer for each ISD.
   *
   * Functionality tool set:
   *
   * 1. Create element tree
   * 2. fetch <p> tags
-  * 3. check siblings, children 
+  * 3. check siblings, children
   * 4. go up layers in the element tree
   * 5. create new gstbuffers
   * 6. Save and resolve style and region information
   * 7. create objects for region information, and for document wide information
   * 8. push global information through events chain. create an event handler for this.
-  * 9. markup pango and non pango information 
+  * 9. markup pango and non pango information
   *
   * Good opportunity to get rid of the warnings!!
   *
   * Rational:
-  * Want a linked list so that we can flexibly store as many styles as are required 
-  * Could be more efficient if you read it in the first time and then create a list of 
-  * structs of know length. 
-  * this way removes the need for that step 
-  * StyleLinkedList is a type so that I can verify things being passed to functions 
+  * Want a linked list so that we can flexibly store as many styles as are required
+  * Could be more efficient if you read it in the first time and then create a list of
+  * structs of know length.
+  * this way removes the need for that step
+  * StyleLinkedList is a type so that I can verify things being passed to functions
   **/
 
 
@@ -1001,10 +1199,11 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
 
   GHashTable *style_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_style);
-  GHashTable *region_hash = g_hash_table_new (g_str_hash, g_str_equal);
+  GHashTable *region_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) delete_region);
   DocMetadata *document_metadata = NULL;
 
-  /*  
+  /*
    * if you use g_hash_table_new_full then need two functions..
    *(GDestroyNotify)key_destroyed,
    (GDestroyNotify)key_destroyed);
@@ -1027,7 +1226,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
      *
      * For the other properties, go:
      * cur->properties->children->content for xml:lang
-     * and use next to get to cellResolution etc. 
+     * and use next to get to cellResolution etc.
      *
      */
     document_metadata = extract_tt_tag_properties (cur, document_metadata);
@@ -1036,12 +1235,12 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   /* handle <tt tag namespace elements */
   if (xmlStrcmp (cur->name, (const xmlChar *) "tt") == 0) {
     /**
-     * Go cur->ns->href for the url of xmlns 
+     * Go cur->ns->href for the url of xmlns
      * and cur->ns->next->href etc for the xmlns properties
      *
      * For the other properties, go:
      * cur->properties->children->content for xml:lang
-     * and use next to get to cellResolution etc. 
+     * and use next to get to cellResolution etc.
      *
      */
     document_metadata = extract_tt_tag_properties (cur, document_metadata);
@@ -1056,7 +1255,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
     }
     /* Process Body of xml doc */
     else if (xmlStrcmp (cur->name, (const xmlChar *) "body") == 0) {
-      /** 
+      /**
        * Extract the styles and regions inherited from this level
        * TODO: extract things like tts:textAlign="center" from body tag
       */
@@ -1072,7 +1271,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       body_child = cur->children;
       while (body_child != NULL) {
         if (xmlStrcmp (body_child->name, (const xmlChar *) "div") == 0) {
-          /** 
+          /**
            * all div region and styles will apply to the following <p>s
            * Todo: note down styles and regions
            * use StyleTree to keep track
@@ -1090,11 +1289,12 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
           div_child = body_child->children;     /* div children are p tags */
           while (div_child != NULL) {
             if (xmlStrcmp (div_child->name, (const xmlChar *) "p") == 0) {
-              /** 
+              /**
                * p may or may not contain span tags
                * if p does not contain timing information then child must
                */
               xmlChar *begin = NULL, *end = NULL;
+              xmlChar *region = NULL;
               guint64 begin_timestamp, end_timestamp;
               gchar *ret = NULL;
               xmlNodePtr p_tag = div_child;
@@ -1111,12 +1311,16 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
                     div_child->name, begin, end);
               }
 
+              region = xmlGetProp (p_tag, (xmlChar *)"region");
+              g_print ("Paragraph to be displayed in region %s\n",
+                  (gchar *)region);
+
               /* add style and region ids to inheritance lists */
               extract_prepend_style_region (p_tag,
                   &inherited_styles,
                   &inherited_regions, &p_styles_count, &p_regions_count);
 
-              p_child = div_child->children;    /* these could be text 
+              p_child = div_child->children;    /* these could be text
                                                    or spans with children text */
 
               /* Create an empty list of sub subtitles list */
@@ -1173,18 +1377,22 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
                 }
                 p_child = p_child->next;
               }
-              /* 
-               * Finished collecting subsubtitles from p tag  
+              /*
+               * Finished collecting subsubtitles from p tag
                */
               if (begin && end) {
                 SubStateObj *new_sub_n_state;
                 ParserState *new_state;
+                RegionProp *r;
 
                 begin_timestamp = extract_timestamp (begin);
                 end_timestamp = extract_timestamp (end);
 
                 ret = sub_subtitle_concat_markup (sub_subtitle,
                     style_hash, region_hash, document_metadata);
+
+                r = g_hash_table_lookup (region_hash, region);
+                add_region_description (&ret, r);
 
                 /* free subsub after use */
                 new_state = g_new (ParserState, 1);
@@ -1193,6 +1401,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
                 new_state->max_duration = end_timestamp - begin_timestamp;
 
                 new_sub_n_state = g_new (SubStateObj, 1);
+                g_print ("Adding following text to state: \n%s\n", ret);
                 new_sub_n_state->text = ret;
                 new_sub_n_state->state = new_state;
 

@@ -39,7 +39,7 @@ G_BEGIN_DECLS
 
 } SubtitleObj;
 /**
- * the possible styles a SubtitleObj could use to fill the 
+ * the possible styles a SubtitleObj could use to fill the
  * styles_to_inherit GList
  */
 typedef struct
@@ -54,7 +54,7 @@ typedef GList InheritanceList;
 
 /**
  * A linked list.
- * if a subtitle is broken into chunks with different styles, 
+ * if a subtitle is broken into chunks with different styles,
  * use SubSubtitle to hold lists of which styles and regions.
  * concatenate for full sub.
  */
@@ -78,8 +78,8 @@ typedef struct
 
 
 /* struct to hold metadata before the head metadata
-* TODO: Rename Namespaces or something more descriptive 
-* TODO: This only records the namespaces if the recommend names 
+* TODO: Rename Namespaces or something more descriptive
+* TODO: This only records the namespaces if the recommend names
 * are used. These prefixes are not required by the ebuttd
 */
 typedef struct
@@ -152,9 +152,37 @@ struct single_style_properties
 };
 typedef struct single_style_properties StyleProp;
 
+#if 0
+struct _region_properties
+{
+  gdouble origin_x;
+  gdouble origin_y;
+  gdouble extent_w;
+  gdouble extent_h;
+  gchar *padding;
+  gchar *writing_mode;
+  gboolean show_background;
+  gboolean overflow;
+};
+#endif
+
+struct _region_properties
+{
+  gchar *id;
+  gchar *origin;
+  gchar *extent;
+  gchar *style;
+  gchar *display_align;
+  gchar *padding;
+  gchar *writing_mode;
+  gchar *show_background;
+  gchar *overflow;
+};
+typedef struct _region_properties RegionProp;
+
 
 /**
- * for passing around a style property structure and a look up table for 
+ * for passing around a style property structure and a look up table for
  * such structures.
  */
 typedef struct
@@ -171,7 +199,7 @@ gchar *fetch_child (const gchar * parent_text);
  * and returns the contence in the following " " pair.
  *
  * Note: some overlap with fetch_child which fetches the contence.
- * 
+ *
  * @param  element_name eg "id"
  * @param  parent_text  eg <style id="s1">
  * @return eg "s1" . Returns NULL if not found.
@@ -180,10 +208,10 @@ gchar *fetch_element (gchar * element_name, const gchar * parent_text);
 
 /**
  * fetch the name of an element with matching prefix and suffix
- * @param  prefix      
- * @param  suffix      
- * @param  parent_text 
- * @return             
+ * @param  prefix
+ * @param  suffix
+ * @param  parent_text
+ * @return
  */
 gchar *fetch_element_name (const gchar * prefix, const gchar * suffix,
     const gchar * parent_text);
@@ -202,17 +230,17 @@ int is_style_cached (gchar * style_id, StyleList * head_style);
 
 /**
  * pass list of styles and style_id. Returns matching style.
- * @param  style_id   
- * @param  head_style 
- * @return            
+ * @param  style_id
+ * @param  head_style
+ * @return
  */
 StyleList *retrieve_style (gchar * style_id, StyleList * head_style);
 
 /**
  * appends pango style markup to the opening tag. TODO: SHOULD THIS NOT GO IN THE HEADER?
- * @param  style       
- * @param  opening_tag 
- * @return             
+ * @param  style
+ * @param  opening_tag
+ * @return
  */
 gchar *_add_pango_style (StyleProp * style, gchar * opening_tag);
 /**
@@ -221,7 +249,9 @@ gchar *_add_pango_style (StyleProp * style, gchar * opening_tag);
  * @param head_style
  * @param line
  */
-StyleProp *add_new_style (gchar * style_id, xmlNodePtr parent);
+StyleProp * add_new_style (const gchar * style_id, xmlNodePtr parent);
+
+RegionProp * add_new_region (const gchar * region_id, xmlNodePtr child);
 
 /**
  * concatonates return text (ret) with markup tags for all of the supported pango formattings.
@@ -235,11 +265,11 @@ gchar *add_style_markup_depreciated (SubtitleObj * sub_meta,
 
 /**
  * simplified version of add_style_markup_depreciated
- * @param  text  
- * @param  style 
- * @return       
+ * @param  text
+ * @param  style
+ * @return
  */
-void add_style_markup (gchar ** text, StyleProp * style,
+void add_style_markup (gchar ** text, StyleProp * style, gchar * region,
     DocMetadata * doc_meta);
 
 gchar *add_document_metadata_markup (DocMetadata * doc_meta,
@@ -267,10 +297,10 @@ gint create_element_tree (const gchar * xml_file_buffer,
     xmlDocPtr * doc, xmlNodePtr * cur);
 
 /**
- * Create a new subsubtitle from child of and element 		
+ * Create a new subsubtitle from child of and element
  * @param sub_subtitle_head current head of linked lists
  * @param sub_subtitle_new  New item for linked list
- * @param child_node            
+ * @param child_node
  * @param inherited_styles  list of style ids to inherit
  * @param inherited_regions list of region ids to inherit
  */
@@ -291,10 +321,10 @@ gchar *sub_subtitle_concat_markup (SubSubtitle * sub_subtitle,
     GHashTable * region_hash, DocMetadata * document_metadata);
 
 /**
- * takes a markup_style property struct and adds styles 
+ * takes a markup_style property struct and adds styles
  * `that do not already exist
  * @param markup_style single instance of StylePro
- * @param StyleProp style_props potential candidates to add  
+ * @param StyleProp style_props potential candidates to add
  */
 void markup_style_add_if_null (StyleProp * markup_style,
     StyleProp * style_props);
@@ -327,7 +357,7 @@ void extract_prepend_style_region (xmlNodePtr cur,
 */
 SubSubtitle *sub_subtitle_list_last (SubSubtitle * list);
 /**
- * checks node name for br and appends a <br/> to the previous sub_sub 
+ * checks node name for br and appends a <br/> to the previous sub_sub
  * if one exists
  * @param  node              the node to check
  * @param  sub_subtitle_head the sub_sub list
@@ -336,7 +366,7 @@ SubSubtitle *sub_subtitle_list_last (SubSubtitle * list);
 int handle_line_break (xmlNodePtr node, SubSubtitle * sub_subtitle_head);
 
 /**
- * pass head cursor and will do all the processing of the head portion 
+ * pass head cursor and will do all the processing of the head portion
  * of the xml doc
  * @param cur         xmlNodePtr for the head element
  * @param style_hash  hash table containing the head data
