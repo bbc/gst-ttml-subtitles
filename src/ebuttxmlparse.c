@@ -303,7 +303,7 @@ _add_pango_style (StyleProp * style, gchar * opening_tag)
     }
 
     opening_tag =
-        g_strconcat (opening_tag, "fontSize=\"", style->fontSize, "\" ", NULL);
+        g_strconcat (opening_tag, "font_size=\"", style->fontSize, "\" ", NULL);
   }
 
   return (opening_tag);
@@ -315,11 +315,13 @@ add_document_metadata_markup (DocMetadata * doc_meta, gchar * opening_tag)
   /* based on add_style_markup_depreciated */
 
   /* append stlyes and their values to the opening tag */
-  opening_tag = _add_or_update_style (opening_tag, "cell_resolution_x=\"",
-      doc_meta->cell_resolution_x);
+  if (doc_meta->cell_resolution_x)
+    opening_tag = _add_or_update_style (opening_tag, "cell_resolution_x=\"",
+        doc_meta->cell_resolution_x);
 
-  opening_tag = _add_or_update_style (opening_tag, "cell_resolution_y=\"",
-      doc_meta->cell_resolution_y);
+  if (doc_meta->cell_resolution_y)
+    opening_tag = _add_or_update_style (opening_tag, "cell_resolution_y=\"",
+        doc_meta->cell_resolution_y);
 
   return opening_tag;
 }
@@ -342,10 +344,10 @@ add_style_markup (gchar ** text, StyleProp * style, gchar * region,
   /* append styles and their values to the opening tag */
   opening_tag = _add_pango_style (style, opening_tag);
 
-  if (!(doc_meta->sent_document_metadata)) {
+  /*if (!(doc_meta->sent_document_metadata)) {*/
     opening_tag = add_document_metadata_markup (doc_meta, opening_tag);
-    doc_meta->sent_document_metadata = TRUE;
-  }
+    /*doc_meta->sent_document_metadata = TRUE;*/
+  /*}*/
 
   /* XXX: Replace this with call to function that will add region attributes to span tag. */
   /*opening_tag = _add_or_update_style (opening_tag, "region=\"", region);*/
@@ -1203,6 +1205,8 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       NULL, (GDestroyNotify) delete_region);
   DocMetadata *document_metadata = NULL;
 
+  g_print ("Input file:\n%s\n", xml_file_buffer);
+
   /*
    * if you use g_hash_table_new_full then need two functions..
    *(GDestroyNotify)key_destroyed,
@@ -1280,11 +1284,14 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
 
           gint div_styles_count = 0;
           gint div_regions_count = 0;
+          xmlChar *region = NULL;
 
           /* add style and region ids to inheritance lists */
           extract_prepend_style_region (body_child,
               &inherited_styles,
               &inherited_regions, &div_styles_count, &div_regions_count);
+
+          region = xmlGetProp (body_child, (xmlChar *)"region");
 
           div_child = body_child->children;     /* div children are p tags */
           while (div_child != NULL) {
@@ -1294,7 +1301,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
                * if p does not contain timing information then child must
                */
               xmlChar *begin = NULL, *end = NULL;
-              xmlChar *region = NULL;
+              xmlChar *r = NULL;
               guint64 begin_timestamp, end_timestamp;
               gchar *ret = NULL;
               xmlNodePtr p_tag = div_child;
@@ -1311,7 +1318,11 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
                     div_child->name, begin, end);
               }
 
-              region = xmlGetProp (p_tag, (xmlChar *)"region");
+              r = xmlGetProp (p_tag, (xmlChar *)"region");
+              if (r) {
+                xmlFree (region);
+                region = r;
+              }
               g_print ("Paragraph to be displayed in region %s\n",
                   (gchar *)region);
 
@@ -1391,8 +1402,10 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
                 ret = sub_subtitle_concat_markup (sub_subtitle,
                     style_hash, region_hash, document_metadata);
 
-                r = g_hash_table_lookup (region_hash, region);
-                add_region_description (&ret, r);
+                if (region) {
+                  r = g_hash_table_lookup (region_hash, region);
+                  add_region_description (&ret, r);
+                }
 
                 /* free subsub after use */
                 new_state = g_new (ParserState, 1);
@@ -1426,6 +1439,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
           inheritance_list_remove_first (inherited_regions, div_regions_count);
           div_styles_count = 0;
           div_regions_count = 0;
+          if (region) xmlFree (region);
         }
         body_child = body_child->next;
       }
