@@ -47,6 +47,7 @@ G_BEGIN_DECLS
 typedef struct _GstBaseEbuttdOverlay      GstBaseEbuttdOverlay;
 typedef struct _GstBaseEbuttdOverlayClass GstBaseEbuttdOverlayClass;
 typedef struct _GstBaseEbuttdOverlayRegion GstBaseEbuttdOverlayRegion;
+typedef struct _GstBaseEbuttdOverlayStyle GstBaseEbuttdOverlayStyle;
 
 /**
  * GstBaseEbuttdOverlayVAlign:
@@ -186,6 +187,67 @@ struct _GstBaseEbuttdOverlayRegion {
     GstVideoOverlayRectangle *bg_rectangle;
     GstVideoOverlayComposition *composition;
 };
+
+
+typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_LTR,
+  GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_RTL
+} GstBaseEbuttdOverlayTextDirection;
+
+typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT,
+  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER,
+  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT,
+  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START,
+  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END
+} GstBaseEbuttdOverlayTextAlign;
+
+typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_FONT_STYLE_NORMAL,
+  GST_BASE_EBUTTD_OVERLAY_FONT_STYLE_ITALIC
+} GstBaseEbuttdOverlayFontStyle;
+
+typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_FONT_WEIGHT_NORMAL,
+  GST_BASE_EBUTTD_OVERLAY_FONT_WEIGHT_BOLD,
+} GstBaseEbuttdOverlayFontWeight;
+
+typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_TEXT_DECORATION_NONE,
+  GST_BASE_EBUTTD_OVERLAY_TEXT_DECORATION_UNDERLINE
+} GstBaseEbuttdOverlayTextDecoration;
+
+typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_NORMAL,
+  GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_EMBED,
+  GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_OVERRIDE
+} GstBaseEbuttdOverlayUnicodeBidi;
+
+typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_AUTO,
+  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START,
+  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER,
+  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END,
+} GstBaseEbuttdOverlayMultiRowAlign;
+
+struct _GstBaseEbuttdOverlayStyle {
+  GstBaseEbuttdOverlayTextDirection text_direction;
+  const gchar *font_family;
+  gdouble font_size;
+  gdouble line_height;
+  GstBaseEbuttdOverlayTextAlign text_align;
+  const gchar *color;
+  const gchar *bg_color;
+  GstBaseEbuttdOverlayFontStyle font_style;
+  GstBaseEbuttdOverlayFontWeight font_weight;
+  GstBaseEbuttdOverlayTextDirection text_decoration;
+  GstBaseEbuttdOverlayUnicodeBidi unicode_bidi;
+  gboolean wrap;
+  GstBaseEbuttdOverlayMultiRowAlign mult_row_align;
+  gdouble line_padding;
+  guint cellres_x, cellres_y;
+};
+
 
 /**
  * GstBaseEbuttdOverlay:

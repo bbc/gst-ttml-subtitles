@@ -2097,7 +2097,8 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
 
 static void
 gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
-    const gchar * string, gint textlen, GstBaseEbuttdOverlayRegion * region)
+    const gchar * string, gint textlen, GstBaseEbuttdOverlayRegion * region,
+    GstBaseEbuttdOverlayStyle * style)
 {
   gint width, height, width_bk, height_bk;
   PangoRectangle ink_rect, logical_rect;
@@ -2109,8 +2110,11 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   guint a, r, g, b;
   PangoAttrList *attr_list;
   PangoAttribute *bgcolor;
+  PangoAttribute *fsize;
   const gchar *background_color = "#000000";
   PangoColor pango_color;
+  guint cell_pixel_height;
+  guint text_height;
 
   g_return_val_if_fail (textlen < 256, NULL);
 
@@ -2122,6 +2126,16 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
         GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context);
   pango_layout_set_width (region->layout, -1);
   pango_layout_set_markup (region->layout, string, textlen);
+
+  cell_pixel_height = overlay->height / style->cellres_y;
+  text_height = (guint) (style->font_size * cell_pixel_height) / 100.0;
+  g_print ("overlay->height: %u  cellres_y: %u  cell_pixel_height: %u   Text height: %u\n", overlay->height, style->cellres_y, cell_pixel_height, text_height);
+
+  attr_list = pango_layout_get_attributes (region->layout);
+  fsize = pango_attr_size_new (text_height * PANGO_SCALE);
+  pango_attr_list_change (attr_list, fsize);
+  pango_layout_set_attributes (region->layout, attr_list);
+
   pango_layout_get_pixel_extents (region->layout, &ink_rect, &logical_rect);
   /*pango_layout_set_spacing (region->layout, PANGO_SCALE * 20);*/
 
@@ -2443,7 +2457,8 @@ gst_base_ebuttd_overlay_render_text (GstBaseEbuttdOverlay * overlay,
 
 static void
 gst_base_ebuttd_overlay_render_text2 (GstBaseEbuttdOverlay * overlay,
-    const gchar * text, gint textlen, GstBaseEbuttdOverlayRegion * region)
+    const gchar * text, gint textlen, GstBaseEbuttdOverlayRegion * region,
+    GstBaseEbuttdOverlayStyle * style)
 {
   gchar *string;
 
@@ -2468,7 +2483,8 @@ gst_base_ebuttd_overlay_render_text2 (GstBaseEbuttdOverlay * overlay,
   /* FIXME: should we check for UTF-8 here? */
 
   GST_DEBUG ("Rendering '%s'", string);
-  gst_base_ebuttd_overlay_render_pangocairo2 (overlay, string, textlen, region);
+  gst_base_ebuttd_overlay_render_pangocairo2 (overlay, string, textlen, region,
+      style);
 
   g_free (string);
 
@@ -3020,7 +3036,7 @@ convert_from_ebutt_to_pango (gchar ** text, GstBaseEbuttdOverlay * overlay)
   gboolean found_non_pango;
 
   do {
-    font_size_style = extract_style_then_remove ("fontSize", text);
+    font_size_style = extract_style_then_remove ("font_size", text);
     if (font_size_style) {
       guint height_in_px;
       gdouble factor;
@@ -3077,7 +3093,6 @@ set_non_pango_markup (gchar ** text, GstBaseEbuttdOverlay * overlay)
   gboolean found_non_pango;
 
   do {
-    extract_style_then_remove ("region", text);
     multi_row_align_style = extract_style_then_remove ("multi_row_align", text);
     text_align_style = extract_style_then_remove ("text_align", text);
 
@@ -3247,12 +3262,12 @@ create_new_region (const gchar * description)
   }
 
   if ((value = extract_attribute_value (description, "displayAlign"))) {
-    if (g_strcmp0 (value, "before") == 0)
-      r->display_align = GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE;
     if (g_strcmp0 (value, "center") == 0)
       r->display_align = GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_CENTER;
-    if (g_strcmp0 (value, "after") == 0)
+    else if (g_strcmp0 (value, "after") == 0)
       r->display_align = GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER;
+    else
+      r->display_align = GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE;
     /*g_print ("display_align: %d\n", r->display_align);*/
     g_free (value);
   }
@@ -3305,14 +3320,14 @@ create_new_region (const gchar * description)
   }
 
   if ((value = extract_attribute_value (description, "writingMode"))) {
-    if (g_str_has_prefix (value, "lr"))
-      r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_LRTB;
     if (g_str_has_prefix (value, "rl"))
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_RLTB;
-    if ((g_strcmp0 (value, "tbrl") == 0) || (g_strcmp0 (value, "tb") == 0))
+    else if ((g_strcmp0 (value, "tbrl") == 0) || (g_strcmp0 (value, "tb") == 0))
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBRL;
-    if (g_strcmp0 (value, "tblr") == 0)
+    else if (g_strcmp0 (value, "tblr") == 0)
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBLR;
+    else
+      r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_LRTB;
     /*g_print ("writing_mode: %d\n", r->display_align);*/
     g_free (value);
   }
@@ -3332,6 +3347,141 @@ create_new_region (const gchar * description)
   }
 
   return r;
+}
+
+static GstBaseEbuttdOverlayStyle *
+create_new_style (const gchar * description)
+{
+  GstBaseEbuttdOverlayStyle *s = g_new0 (GstBaseEbuttdOverlayStyle, 1);
+  gchar *value = NULL;
+
+  if ((value = extract_attribute_value (description, "direction"))) {
+    if (g_strcmp0 (value, "rtl") == 0)
+      s->text_direction = GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_RTL;
+    else
+      s->text_direction = GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_LTR;
+    g_print ("direction: %d\n", s->text_direction);
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "font_family"))) {
+    s->font_family = g_strdup (value);
+    g_print ("s->font_family: %s\n", s->font_family);
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "font_size"))) {
+    s->font_size = g_ascii_strtod (value, NULL);
+    g_print ("s->font_size: %g\n", s->font_size);
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "line_height"))) {
+    if (g_strcmp0 (value, "normal") == 0)
+      s->line_height = 0;
+    else
+      s->line_height = g_ascii_strtod (value, NULL);
+    g_free (value);
+    g_print ("s->line_height:  %g\n",s->line_height);
+  }
+
+  if ((value = extract_attribute_value (description, "text_align"))) {
+    if (g_strcmp0 (value, "center") == 0)
+      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER;
+    else if (g_strcmp0 (value, "right") == 0)
+      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT;
+    else if (g_strcmp0 (value, "start") == 0)
+      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START;
+    else if (g_strcmp0 (value, "end") == 0)
+      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END;
+    else
+      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT;
+    g_free (value);
+    g_print ("s->text_align:  %d\n",s->text_align);
+  }
+
+  if ((value = extract_attribute_value (description, "foreground"))) {
+    s->color = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "background"))) {
+    s->bg_color = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "font_style"))) {
+    if (g_strcmp0 (value, "italic") == 0)
+      s->font_style = GST_BASE_EBUTTD_OVERLAY_FONT_STYLE_ITALIC;
+    else
+      s->font_style = GST_BASE_EBUTTD_OVERLAY_FONT_STYLE_NORMAL;
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "font_weight"))) {
+    if (g_strcmp0 (value, "bold") == 0)
+      s->font_weight = GST_BASE_EBUTTD_OVERLAY_FONT_WEIGHT_BOLD;
+    else
+      s->font_weight = GST_BASE_EBUTTD_OVERLAY_FONT_WEIGHT_NORMAL;
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "underline"))) {
+    if (g_strcmp0 (value, "underline") == 0)
+      s->text_decoration = GST_BASE_EBUTTD_OVERLAY_TEXT_DECORATION_UNDERLINE;
+    else
+      s->text_decoration = GST_BASE_EBUTTD_OVERLAY_TEXT_DECORATION_NONE;
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "unicode_bidi"))) {
+    if (g_strcmp0 (value, "embed") == 0)
+      s->unicode_bidi = GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_EMBED;
+    else if (g_strcmp0 (value, "bidiOverride") == 0)
+      s->unicode_bidi = GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_OVERRIDE;
+    else
+      s->unicode_bidi = GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_NORMAL;
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "wrap_option"))) {
+    if (g_strcmp0 (value, "wrap") == 0)
+      s->wrap = TRUE;
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "multi_row_align"))) {
+    if (g_strcmp0 (value, "start") == 0)
+      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START;
+    else if (g_strcmp0 (value, "center") == 0)
+      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER;
+    else if (g_strcmp0 (value, "end") == 0)
+      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END;
+    else
+      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_AUTO;
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "line_padding"))) {
+    s->line_padding = g_ascii_strtod (value, NULL);
+    g_free (value);
+  }
+
+  if ((value = extract_attribute_value (description, "cell_resolution_x"))) {
+    s->cellres_x = (guint) g_ascii_strtoull (value, NULL, 10);
+    g_free (value);
+  } else {
+    s->cellres_x = 32U;
+  }
+
+  if ((value = extract_attribute_value (description, "cell_resolution_y"))) {
+    s->cellres_y = (guint) g_ascii_strtoull (value, NULL, 10);
+    g_free (value);
+  } else {
+    s->cellres_y = 15U;
+  }
+
+  return s;
 }
 
 
@@ -3573,6 +3723,7 @@ wait_for_text_buf:
         if (in_size > 0) {
           guint n_regions = 0U;
           GstBaseEbuttdOverlayRegion *region;
+          GstBaseEbuttdOverlayStyle *style;
           /* g_markup_escape_text() absolutely requires valid UTF8 input, it
            * might crash otherwise. We don't fall back on GST_SUBTITLE_ENCODING
            * here on purpose, this is something that needs fixing upstream */
@@ -3596,6 +3747,7 @@ wait_for_text_buf:
           /* Extract region descriptions from text. */
           /*n_regions = extract_region_info (&text, overlay);*/
           region = extract_region (&text);
+          style = create_new_style (text);
 
           /* extract non pango styles. Remove markup when done. */
           set_non_pango_markup (&text, overlay);
@@ -3611,7 +3763,9 @@ wait_for_text_buf:
             }
             GST_DEBUG_OBJECT (overlay, "Rendering text '%*s'", text_len, text);
             gst_base_ebuttd_overlay_render_text2 (overlay, text, text_len,
-                region);
+                region, style);
+            g_free (region);
+            g_free (style);
           } else {
             GST_DEBUG_OBJECT (overlay, "No text to render (empty buffer)");
             gst_base_ebuttd_overlay_render_text (overlay, " ", 1);
