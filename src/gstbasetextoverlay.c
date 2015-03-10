@@ -1736,19 +1736,24 @@ gst_base_ebuttd_overlay_set_composition2 (GstBaseEbuttdOverlay * overlay,
 {
   gint xpos, ypos;
   gint xpos_bk, ypos_bk;
+  gint xpos_rg, ypos_rg;
   GstVideoOverlayRectangle *text_rectangle = NULL;
-  GstVideoOverlayRectangle *bg_rectangle= NULL;
+  GstVideoOverlayRectangle *bg_rectangle = NULL;
+  GstVideoOverlayRectangle *region_rectangle = NULL;
 
   g_return_if_fail (overlay != NULL);
   g_return_if_fail (region != NULL);
   g_return_if_fail (region->text_image != NULL);
 
   g_print ("width: %d   height: %d\n", overlay->width, overlay->height);
-  xpos = (guint) ((region->origin_x * overlay->width) / 100.0);
-  ypos = (guint) ((region->origin_y * overlay->height) / 100.0);
-  g_print ("xpos: %d   ypos: %d\n", xpos, ypos);
-  xpos_bk = xpos - overlay->line_padding;
-  ypos_bk = ypos - DEFAULT_PROP_BACKGROUND_YPAD;
+  xpos_rg = (guint) ((region->origin_x * overlay->width) / 100.0);
+  ypos_rg = (guint) ((region->origin_y * overlay->height) / 100.0);
+  g_print ("xpos_bk: %d   ypos_bk: %d\n", xpos_bk, ypos_bk);
+  xpos_bk = xpos_rg + region->padding_start;
+  ypos_bk = ypos_rg + region->padding_before;
+
+  xpos = xpos_bk + overlay->line_padding;
+  ypos = ypos_bk;
 
   g_print ("Adding text image...\n");
   g_print ("x: %d  y: %d  w: %u  h: %u, buffer-size: %u\n",
@@ -2095,6 +2100,88 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
 }
 
 
+static guint8
+hex_pair_to_byte (const gchar * hex_pair)
+{
+  gint hi_digit, lo_digit;
+
+  g_return_val_if_fail (hex_pair != NULL, 0U);
+  g_return_val_if_fail (strlen (hex_pair) >= 2, 0U);
+
+  hi_digit = g_ascii_xdigit_value (*hex_pair);
+  lo_digit = g_ascii_xdigit_value (*(hex_pair + 1));
+  return (hi_digit << 4) + lo_digit;
+}
+
+
+static GstBaseEbuttdColor
+parse_ebuttd_colorstring (const gchar * color)
+{
+  guint length;
+  const gchar *c = NULL;
+  GstBaseEbuttdColor ret = { 0, 0, 0, 0 };
+
+  g_return_val_if_fail (color != NULL, ret);
+
+  /* Color strings in EBU-TT-D can have the form "#RRBBGG" or "#RRBBGGAA". */
+  length = strlen (color);
+  if (((length == 7) || (length == 9)) && *color == '#') {
+    c = color + 1;
+
+    ret.r = hex_pair_to_byte (c) / 255.0;
+    ret.g = hex_pair_to_byte (c + 2) / 255.0;
+    ret.b = hex_pair_to_byte (c + 4) / 255.0;
+
+    if (length == 7)
+      ret.a = 1.0;
+    else
+      ret.a = hex_pair_to_byte (c + 6) / 255.0;
+
+    g_print ("Returning color - r:%g  b:%g  g:%g  a:%g\n",
+        ret.r, ret.b, ret.g, ret.a);
+  } else {
+    g_print ("Invalid color string.\n");
+  }
+
+  return ret;
+}
+
+
+static GstBuffer *
+draw_rectangle (guint width, guint height, GstBaseEbuttdColor color)
+{
+  GstMapInfo map;
+  gdouble r, g, b, a;
+  cairo_surface_t *surface;
+  cairo_t *cairo_state;
+  GstBuffer *buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
+
+  if (buffer) {
+    gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
+    surface = cairo_image_surface_create_for_data (map.data,
+        CAIRO_FORMAT_ARGB32, width, height, width * 4);
+    cairo_state = cairo_create (surface);
+
+    /* clear surface */
+    cairo_set_operator (cairo_state, CAIRO_OPERATOR_CLEAR);
+    cairo_paint (cairo_state);
+    cairo_set_operator (cairo_state, CAIRO_OPERATOR_OVER);
+
+    cairo_save (cairo_state);
+    cairo_set_source_rgba (cairo_state, color.r, color.g, color.b, color.a);
+    cairo_paint (cairo_state);
+    cairo_restore (cairo_state);
+    cairo_destroy (cairo_state);
+    cairo_surface_destroy (surface);
+    gst_buffer_unmap (buffer, &map);
+  } else {
+    g_print ("Couldn't allocate memory to store rectangle.\n");
+  }
+
+  return buffer;
+}
+
+
 static void
 gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
     const gchar * string, gint textlen, GstBaseEbuttdOverlayRegion * region,
@@ -2106,12 +2193,11 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   cairo_surface_t *surface, *surface_bk;
   GstMapInfo map, map_bk;
   guint32 outline_color = 0x77777777;
-  guint32 text_color = 0xffffffff;
+  GstBaseEbuttdColor text_color;
   guint a, r, g, b;
   PangoAttrList *attr_list;
   PangoAttribute *bgcolor;
   PangoAttribute *fsize;
-  const gchar *background_color = "#000000";
   PangoColor pango_color;
   guint cell_pixel_height;
   guint text_height;
@@ -2154,38 +2240,14 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   /* clear surface */
   cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
   cairo_paint (cr);
-
   cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
-
-  a = (outline_color >> 24) & 0xff;
-  r = (outline_color >> 16) & 0xff;
-  g = (outline_color >> 8) & 0xff;
-  b = (outline_color >> 0) & 0xff;
-
-  /* draw outline text */
-#if 0
-  cairo_save (cr);
-  cairo_set_source_rgba (cr, r / 255.0, g / 255.0, b / 255.0, a / 255.0);
-  cairo_set_line_width (cr, 4.0);
-  pango_cairo_layout_path (cr, region->layout);
-  cairo_stroke (cr);
-  cairo_restore (cr);
-#endif
-
-  a = (text_color >> 24) & 0xff;
-  r = (text_color >> 16) & 0xff;
-  g = (text_color >> 8) & 0xff;
-  b = (text_color >> 0) & 0xff;
-
-  /*attr_list = pango_layout_get_attributes (region->layout);
-  bgcolor = pango_attr_background_new (0, 0xffff, 0);
-  pango_attr_list_change (attr_list, bgcolor);
-  pango_layout_set_attributes (region->layout, attr_list);*/
 
   /* draw text */
   cairo_save (cr);
   g_print ("Layout text is: %s\n", pango_layout_get_text (region->layout));
-  /*cairo_set_source_rgba (cr, r / 255.0, g / 255.0, b / 255.0, a / 255.0);*/
+  text_color = parse_ebuttd_colorstring (style->color);
+  cairo_set_source_rgba (cr, text_color.r, text_color.b, text_color.g,
+      text_color.a);
   pango_cairo_show_layout (cr, region->layout);
   cairo_restore (cr);
 
@@ -2194,60 +2256,12 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   gst_buffer_unmap (region->text_image, &map);
   g_assert (gst_buffer_is_writable (region->text_image));
 
-  /************* Render background *************/
+  /************* Render text background *************/
   region->width_bk = width + 2 * overlay->line_padding;
   region->height_bk = height + 2 * DEFAULT_PROP_BACKGROUND_YPAD;
 
-  region->bg_image = gst_buffer_new_allocate (NULL, 4 * region->width_bk * region->height_bk, NULL);
-  g_assert (gst_buffer_is_writable (region->bg_image));
-
-  gst_buffer_map (region->bg_image, &map_bk, GST_MAP_READWRITE);
-  surface_bk = cairo_image_surface_create_for_data (map_bk.data,
-      CAIRO_FORMAT_ARGB32, region->width_bk, region->height_bk, region->width_bk * 4);
-  cr_bk = cairo_create (surface_bk);
-
-  /* clear surface */
-  cairo_set_operator (cr_bk, CAIRO_OPERATOR_CLEAR);
-  cairo_paint (cr_bk);
-
-  cairo_set_operator (cr_bk, CAIRO_OPERATOR_OVER);
-
-  /*
-     If not in hex format. Assume no a and parse using pango.
-     */
-  /*if (background_color[0] != '#') {*/
-    /* convert from CSS format. */
-    /* convert to Pango rgb values */
-    pango_color_parse (&pango_color, background_color);
-
-    a = 255U;
-    r = pango_color.red;
-    g = pango_color.green;
-    b = pango_color.blue;
-
-    g_print ("r:%u g:%u b:%u\n", r, g, b);
-
-  /*} else {
-    guint hex_color;
-
-    hex_color = DEFAULT_PROP_OUTLINE_COLOR;*/
-
-    /* In hex form */
-    /*a = (hex_color >> 24) & 0xff;
-    r = (hex_color >> 16) & 0xff;
-    g = (hex_color >> 8) & 0xff;
-    b = (hex_color >> 0) & 0xff;
-  }*/
-
-  /* draw background */
-  cairo_save (cr_bk);
-  /* Components in pango_color seem to be alpha pre-multiplied. */
-  cairo_set_source_rgba (cr_bk, r / (a * 255.0), g / (a * 255.0), b / (a * 255.0), a / 255.0);
-  cairo_paint (cr_bk);
-  cairo_restore (cr_bk);
-  cairo_destroy (cr_bk);
-  cairo_surface_destroy (surface_bk);
-  gst_buffer_unmap (region->bg_image, &map_bk);
+  region->bg_image = draw_rectangle (region->width_bk, region->height_bk,
+      parse_ebuttd_colorstring (style->bg_color));
   g_assert (gst_buffer_is_writable (region->bg_image));
 
   gst_base_ebuttd_overlay_set_composition2 (overlay, region);
@@ -3093,6 +3107,7 @@ set_non_pango_markup (gchar ** text, GstBaseEbuttdOverlay * overlay)
   gboolean found_non_pango;
 
   do {
+    extract_style_then_remove ("foreground", text);
     multi_row_align_style = extract_style_then_remove ("multi_row_align", text);
     text_align_style = extract_style_then_remove ("text_align", text);
 

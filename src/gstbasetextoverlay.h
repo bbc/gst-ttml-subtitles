@@ -48,6 +48,7 @@ typedef struct _GstBaseEbuttdOverlay      GstBaseEbuttdOverlay;
 typedef struct _GstBaseEbuttdOverlayClass GstBaseEbuttdOverlayClass;
 typedef struct _GstBaseEbuttdOverlayRegion GstBaseEbuttdOverlayRegion;
 typedef struct _GstBaseEbuttdOverlayStyle GstBaseEbuttdOverlayStyle;
+typedef struct _GstBaseEbuttdColor GstBaseEbuttdColor;
 
 /**
  * GstBaseEbuttdOverlayVAlign:
@@ -183,8 +184,7 @@ struct _GstBaseEbuttdOverlayRegion {
                               rendered.*/
     GstBuffer *bg_image;   /* Destination buffer into which background
                               rectangle will be rendered. */
-    GstVideoOverlayRectangle *text_rectangle;
-    GstVideoOverlayRectangle *bg_rectangle;
+    GstBuffer *region_bg_image;
     GstVideoOverlayComposition *composition;
 };
 
@@ -246,6 +246,13 @@ struct _GstBaseEbuttdOverlayStyle {
   GstBaseEbuttdOverlayMultiRowAlign mult_row_align;
   gdouble line_padding;
   guint cellres_x, cellres_y;
+};
+
+struct _GstBaseEbuttdColor {
+  gdouble r;
+  gdouble g;
+  gdouble b;
+  gdouble a;
 };
 
 
