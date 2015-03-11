@@ -48,7 +48,8 @@ typedef struct _GstBaseEbuttdOverlay      GstBaseEbuttdOverlay;
 typedef struct _GstBaseEbuttdOverlayClass GstBaseEbuttdOverlayClass;
 typedef struct _GstBaseEbuttdOverlayRegion GstBaseEbuttdOverlayRegion;
 typedef struct _GstBaseEbuttdOverlayStyle GstBaseEbuttdOverlayStyle;
-typedef struct _GstBaseEbuttdColor GstBaseEbuttdColor;
+typedef struct _GstBaseEbuttdOverlayColor GstBaseEbuttdOverlayColor;
+typedef struct _GstBaseEbuttdOverlayLayer GstBaseEbuttdOverlayLayer;
 
 /**
  * GstBaseEbuttdOverlayVAlign:
@@ -248,13 +249,22 @@ struct _GstBaseEbuttdOverlayStyle {
   guint cellres_x, cellres_y;
 };
 
-struct _GstBaseEbuttdColor {
+struct _GstBaseEbuttdOverlayColor {
   gdouble r;
   gdouble g;
   gdouble b;
   gdouble a;
 };
 
+
+struct _GstBaseEbuttdOverlayLayer {
+  GstBuffer *image;
+  guint xpos;
+  guint ypos;
+  guint width;
+  guint height;
+  GstVideoOverlayRectangle *rectangle;
+};
 
 /**
  * GstBaseEbuttdOverlay:
@@ -336,7 +346,7 @@ struct _GstBaseEbuttdOverlay {
     gint                     background_ypad;
     gchar                   *background_color; /* for overwriting pangos background */
 
-    GSList *regions;
+    GSList *layers;
 };
 
 struct _GstBaseEbuttdOverlayClass {
