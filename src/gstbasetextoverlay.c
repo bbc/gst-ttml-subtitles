@@ -3564,16 +3564,16 @@ create_new_style (const gchar * description)
   }
 
   if ((value = extract_attribute_value (description, "text_align"))) {
-    if (g_strcmp0 (value, "center") == 0)
+    if (g_strcmp0 (value, "left") == 0)
+      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT;
+    else if (g_strcmp0 (value, "center") == 0)
       s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER;
     else if (g_strcmp0 (value, "right") == 0)
       s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT;
-    else if (g_strcmp0 (value, "start") == 0)
-      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START;
     else if (g_strcmp0 (value, "end") == 0)
       s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END;
     else
-      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT;
+      s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START;
     g_free (value);
     /*g_print ("s->text_align:  %d\n",s->text_align);*/
   }
