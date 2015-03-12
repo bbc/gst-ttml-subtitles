@@ -143,6 +143,16 @@ typedef enum {
     GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER
 } GstBaseEbuttdOverlayDisplayAlign;
 
+typedef enum {
+    GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_ALWAYS,
+    GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_WHEN_ACTIVE,
+} GstBaseEbuttdOverlayBackgroundMode;
+
+typedef enum {
+    GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_HIDDEN,
+    GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_VISIBLE,
+} GstBaseEbuttdOverlayOverflowMode;
+
 struct _GstBaseEbuttdOverlayRegion {
     /*
      * Properties of region from EBU-TT-D spec:
@@ -176,8 +186,8 @@ struct _GstBaseEbuttdOverlayRegion {
     GstBaseEbuttdOverlayDisplayAlign display_align;
     gdouble padding_start, padding_end, padding_before, padding_after;
     GstBaseEbuttdOverlayWritingMode writing_mode;
-    gboolean always_show_background;
-    gboolean clip_contents;
+    GstBaseEbuttdOverlayBackgroundMode show_background;
+    GstBaseEbuttdOverlayOverflowMode overflow;
 
     /* Data objects needed to render a region of subtitles. */
     PangoLayout *layout;   /* Pango layout that will handle text rendering. */
@@ -225,6 +235,11 @@ typedef enum {
 } GstBaseEbuttdOverlayUnicodeBidi;
 
 typedef enum {
+  GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON,
+  GST_BASE_EBUTTD_OVERLAY_WRAPPING_OFF,
+} GstBaseEbuttdOverlayWrapping;
+
+typedef enum {
   GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_AUTO,
   GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START,
   GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER,
@@ -243,7 +258,7 @@ struct _GstBaseEbuttdOverlayStyle {
   GstBaseEbuttdOverlayFontWeight font_weight;
   GstBaseEbuttdOverlayTextDirection text_decoration;
   GstBaseEbuttdOverlayUnicodeBidi unicode_bidi;
-  gboolean wrap;
+  GstBaseEbuttdOverlayWrapping wrap_option;
   GstBaseEbuttdOverlayMultiRowAlign mult_row_align;
   gdouble line_padding;
   guint cellres_x, cellres_y;

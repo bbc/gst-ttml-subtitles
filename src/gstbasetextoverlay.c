@@ -3511,16 +3511,20 @@ create_new_region (const gchar * description)
   }
 
   if ((value = extract_attribute_value (description, "show_background"))) {
-    if (g_strcmp0 (value, "always") == 0)
-      r->always_show_background = TRUE;
-    /*g_print ("always_show_background: %d\n", r->always_show_background);*/
+    if (g_strcmp0 (value, "whenActive") == 0)
+      r->show_background = GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_WHEN_ACTIVE;
+    else
+      r->show_background = GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_ALWAYS;
+    /*g_print ("show_background: %d\n", r->show_background);*/
     g_free (value);
   }
 
   if ((value = extract_attribute_value (description, "overflow"))) {
-    if (g_strcmp0 (value, "hidden") == 0)
-      r->clip_contents = TRUE;
-    /*g_print ("clip_contents: %d\n", r->clip_contents);*/
+    if (g_strcmp0 (value, "visible") == 0)
+      r->overflow = GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_VISIBLE;
+    else
+      r->overflow = GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_HIDDEN;
+    /*g_print ("overflow: %d\n", r->overflow);*/
     g_free (value);
   }
 
@@ -3623,8 +3627,10 @@ create_new_style (const gchar * description)
   }
 
   if ((value = extract_attribute_value (description, "wrap_option"))) {
-    if (g_strcmp0 (value, "wrap") == 0)
-      s->wrap = TRUE;
+    if (g_strcmp0 (value, "noWrap") == 0)
+      s->wrap_option = GST_BASE_EBUTTD_OVERLAY_WRAPPING_OFF;
+    else
+      s->wrap_option = GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON;
     g_free (value);
   }
 
