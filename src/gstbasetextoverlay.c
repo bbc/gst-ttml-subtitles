@@ -2187,6 +2187,8 @@ parse_ebuttd_colorstring (const gchar * color)
 
     g_print ("Returning color - r:%g  b:%g  g:%g  a:%g\n",
         ret.r, ret.b, ret.g, ret.a);
+  } else if (g_strcmp0 (color, "yellow") == 0) { /* XXX:Hack for test stream. */
+    ret = parse_ebuttd_colorstring ("#ffff00");
   } else {
     g_print ("Invalid color string.\n");
   }
@@ -2232,8 +2234,8 @@ draw_rectangle (guint width, guint height, GstBaseEbuttdOverlayColor color)
 
 static GstBuffer *
 draw_text (const gchar * text, guint text_height,
-    GstBaseEbuttdOverlayColor color, PangoContext *context, guint * width,
-    guint * height)
+    GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
+    guint height, guint * ink_width, guint * ink_height)
 {
   GstMapInfo map;
   gdouble r, g, b, a;
@@ -2244,10 +2246,10 @@ draw_text (const gchar * text, guint text_height,
   PangoAttrList *attr_list;
   PangoAttribute *fsize;
   PangoRectangle ink_rect, logical_rect;
-  gint w, h;
 
   layout = pango_layout_new (context);
-  pango_layout_set_width (layout, -1);
+  pango_layout_set_width (layout, width * PANGO_SCALE);
+  pango_layout_set_height (layout, height * PANGO_SCALE);
   pango_layout_set_markup (layout, text, strlen (text));
 
   attr_list = pango_layout_get_attributes (layout);
@@ -2258,13 +2260,11 @@ draw_text (const gchar * text, guint text_height,
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
   /*pango_layout_set_spacing (layout, PANGO_SCALE * 20);*/
 
-  w = logical_rect.width;
-  h = logical_rect.height;
-  buffer = gst_buffer_new_allocate (NULL, 4 * w * h, NULL);
+  buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
 
   gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
   surface = cairo_image_surface_create_for_data (map.data,
-      CAIRO_FORMAT_ARGB32, w, h, w * 4);
+      CAIRO_FORMAT_ARGB32, width, height, width * 4);
   cairo_state = cairo_create (surface);
 
   /* clear surface */
@@ -2283,8 +2283,8 @@ draw_text (const gchar * text, guint text_height,
   cairo_surface_destroy (surface);
   gst_buffer_unmap (buffer, &map);
 
-  if (width) *width = w;
-  if (height) *height = h;
+  if (ink_width) *ink_width = logical_rect.width;
+  if (ink_height) *ink_height = logical_rect.height;
   return buffer;
 }
 
@@ -2335,6 +2335,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   GstBuffer *text_image = NULL;
   guint text_x, text_y;
   guint text_w, text_h;
+  guint ink_w, ink_h;
   GstBaseEbuttdOverlayLayer *text_layer;
   GstBuffer *bg_image = NULL;
   guint bg_x, bg_y, bg_w, bg_h;
@@ -2361,37 +2362,63 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
 
   region_x = (guint) ((region->origin_x * overlay->width) / 100.0);
   region_y = (guint) ((region->origin_y * overlay->height) / 100.0);
+  region_w = (guint) ((region->extent_w * overlay->width) / 100.0);
+  region_h = (guint) ((region->extent_h * overlay->height) / 100.0);
 
   /************* Render text *************/
   text_height = (guint) (style->font_size * cell_pixel_height) / 100.0;
   text_color = parse_ebuttd_colorstring (style->color);
+  text_w = region_w - padding_start_px - padding_end_px - (2 * line_padding_px);
+  text_h = region_h - padding_before_px - padding_after_px;
+  g_print ("text_w: %u   text_h: %u\n", text_w, text_h);
   text_image = draw_text (string, text_height, text_color,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
-      &text_w, &text_h);
+      text_w, text_h, &ink_w, &ink_h);
 
-  text_x = region_x + padding_start_px + line_padding_px;
-  text_y = region_y + padding_before_px;
+  switch (style->text_align) {
+    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START):
+    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT):
+      text_x = region_x + padding_start_px + line_padding_px;
+      break;
+    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER):
+      text_x = region_x + (region_w - ink_w)/2;
+      break;
+    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END):
+    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT):
+      text_x =
+        (region_x + region_w) - (padding_end_px + line_padding_px + ink_w);
+      break;
+  }
+
+  switch (region->display_align) {
+    case (GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE):
+      text_y = region_y + padding_before_px;
+      break;
+    case (GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_CENTER):
+      text_y = region_y + (region_h - ink_h)/2;
+      break;
+    case (GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER):
+      text_y = (region_y + region_h) - (padding_after_px + ink_h);
+      break;
+  }
 
   text_layer = create_new_layer (text_image, text_x, text_y, text_w, text_h);
   overlay->layers = g_slist_append (overlay->layers, text_layer);
 
   /************* Render text background *************/
-  bg_w = text_w + (2 * line_padding_px);
-  bg_h = text_h;
+  bg_w = ink_w + (2 * line_padding_px);
+  bg_h = ink_h;
 
   bg_image = draw_rectangle (bg_w, bg_h,
       parse_ebuttd_colorstring (style->bg_color));
 
-  bg_x = region_x + padding_start_px;
-  bg_y = region_y + padding_before_px;
+  bg_x = text_x - line_padding_px;
+  bg_y = text_y;
 
   bg_layer = create_new_layer (bg_image, bg_x, bg_y, bg_w, bg_h);
   overlay->layers = g_slist_prepend (overlay->layers, bg_layer);
 
   /************* Render region background *************/
-  region_w = (guint) ((region->extent_w * overlay->width) / 100.0);
-  region_h = (guint) ((region->extent_h * overlay->height) / 100.0);
-
   region_image = draw_rectangle (region_w, region_h,
       parse_ebuttd_colorstring ("#ff000077"));
 
@@ -3413,7 +3440,7 @@ create_new_region (const gchar * description)
     g_free (value);
   }
 
-  if ((value = extract_attribute_value (description, "displayAlign"))) {
+  if ((value = extract_attribute_value (description, "display_align"))) {
     if (g_strcmp0 (value, "center") == 0)
       r->display_align = GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_CENTER;
     else if (g_strcmp0 (value, "after") == 0)
@@ -3470,7 +3497,7 @@ create_new_region (const gchar * description)
     g_free (value);
   }
 
-  if ((value = extract_attribute_value (description, "writingMode"))) {
+  if ((value = extract_attribute_value (description, "writing_mode"))) {
     if (g_str_has_prefix (value, "rl"))
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_RLTB;
     else if ((g_strcmp0 (value, "tbrl") == 0) || (g_strcmp0 (value, "tb") == 0))
@@ -3479,11 +3506,11 @@ create_new_region (const gchar * description)
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBLR;
     else
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_LRTB;
-    /*g_print ("writing_mode: %d\n", r->display_align);*/
+    /*g_print ("writing_mode: %d\n", r->writing_mode);*/
     g_free (value);
   }
 
-  if ((value = extract_attribute_value (description, "showBackground"))) {
+  if ((value = extract_attribute_value (description, "show_background"))) {
     if (g_strcmp0 (value, "always") == 0)
       r->always_show_background = TRUE;
     /*g_print ("always_show_background: %d\n", r->always_show_background);*/
