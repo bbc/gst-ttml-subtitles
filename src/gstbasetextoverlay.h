@@ -259,7 +259,7 @@ struct _GstBaseEbuttdOverlayStyle {
   GstBaseEbuttdOverlayTextDirection text_decoration;
   GstBaseEbuttdOverlayUnicodeBidi unicode_bidi;
   GstBaseEbuttdOverlayWrapping wrap_option;
-  GstBaseEbuttdOverlayMultiRowAlign mult_row_align;
+  GstBaseEbuttdOverlayMultiRowAlign multi_row_align;
   gdouble line_padding;
   guint cellres_x, cellres_y;
 };

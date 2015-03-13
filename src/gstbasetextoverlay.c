@@ -2201,7 +2201,6 @@ static GstBuffer *
 draw_rectangle (guint width, guint height, GstBaseEbuttdOverlayColor color)
 {
   GstMapInfo map;
-  gdouble r, g, b, a;
   cairo_surface_t *surface;
   cairo_t *cairo_state;
   GstBuffer *buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
@@ -2235,12 +2234,11 @@ draw_rectangle (guint width, guint height, GstBaseEbuttdOverlayColor color)
 static GstBuffer *
 draw_text (const gchar * text, guint text_height,
     GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
-    guint height, guint * ink_width, guint * ink_height)
+    guint height, guint * ink_width, guint * ink_height, PangoAlignment align)
 {
   GstMapInfo map;
-  gdouble r, g, b, a;
-  cairo_surface_t *surface;
-  cairo_t *cairo_state;
+  cairo_surface_t *surface, *clipped_surface;
+  cairo_t *cairo_state, *clipped_state;
   GstBuffer *buffer = NULL;
   PangoLayout *layout = NULL;
   PangoAttrList *attr_list;
@@ -2257,14 +2255,14 @@ draw_text (const gchar * text, guint text_height,
   pango_attr_list_change (attr_list, fsize);
   pango_layout_set_attributes (layout, attr_list);
 
+  pango_layout_set_alignment (layout, align);
+
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
   /*pango_layout_set_spacing (layout, PANGO_SCALE * 20);*/
 
-  buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
 
   gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
-  surface = cairo_image_surface_create_for_data (map.data,
-      CAIRO_FORMAT_ARGB32, width, height, width * 4);
+  surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
   cairo_state = cairo_create (surface);
 
   /* clear surface */
@@ -2279,8 +2277,19 @@ draw_text (const gchar * text, guint text_height,
   pango_cairo_show_layout (cairo_state, layout);
   cairo_restore (cairo_state);
 
+  buffer = gst_buffer_new_allocate (NULL,
+      4 * logical_rect.width * logical_rect.height, NULL);
+  clipped_surface = cairo_image_surface_create_for_data (map.data,
+      CAIRO_FORMAT_ARGB32, logical_rect.width, logical_rect.height,
+      logical_rect.width * 4);
+  clipped_state = cairo_create (clipped_surface);
+  cairo_set_source_surface (clipped_state, surface, logical_rect.x, logical_rect.y);
+  cairo_fill (clipped_state);
+
   cairo_destroy (cairo_state);
   cairo_surface_destroy (surface);
+  cairo_destroy (clipped_state);
+  cairo_surface_destroy (clipped_surface);
   gst_buffer_unmap (buffer, &map);
 
   if (ink_width) *ink_width = logical_rect.width;
@@ -2336,6 +2345,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   guint text_x, text_y;
   guint text_w, text_h;
   guint ink_w, ink_h;
+  PangoAlignment align;
   GstBaseEbuttdOverlayLayer *text_layer;
   GstBuffer *bg_image = NULL;
   guint bg_x, bg_y, bg_w, bg_h;
@@ -2371,33 +2381,60 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   text_w = region_w - padding_start_px - padding_end_px - (2 * line_padding_px);
   text_h = region_h - padding_before_px - padding_after_px;
   g_print ("text_w: %u   text_h: %u\n", text_w, text_h);
+
+  switch (style->multi_row_align) {
+      case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START:
+        align = PANGO_ALIGN_LEFT;
+        break;
+      case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER:
+        align = PANGO_ALIGN_CENTER;
+        break;
+      case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END:
+        align = PANGO_ALIGN_RIGHT;
+      default:
+        switch (style->text_align) {
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT:
+            align = PANGO_ALIGN_LEFT;
+            break;
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER:
+            align = PANGO_ALIGN_CENTER;
+            break;
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END:
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT:
+            align = PANGO_ALIGN_RIGHT;
+            break;
+        }
+        break;
+  }
+
   text_image = draw_text (string, text_height, text_color,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
-      text_w, text_h, &ink_w, &ink_h);
+      text_w, text_h, &ink_w, &ink_h, align);
 
   switch (style->text_align) {
-    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START):
-    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT):
+    case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
+    case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT:
       text_x = region_x + padding_start_px + line_padding_px;
       break;
-    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER):
+    case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER:
       text_x = region_x + (region_w - ink_w)/2;
       break;
-    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END):
-    case (GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT):
+    case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END:
+    case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT:
       text_x =
         (region_x + region_w) - (padding_end_px + line_padding_px + ink_w);
       break;
   }
 
   switch (region->display_align) {
-    case (GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE):
+    case GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE:
       text_y = region_y + padding_before_px;
       break;
-    case (GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_CENTER):
+    case GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_CENTER:
       text_y = region_y + (region_h - ink_h)/2;
       break;
-    case (GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER):
+    case GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER:
       text_y = (region_y + region_h) - (padding_after_px + ink_h);
       break;
   }
@@ -3636,13 +3673,13 @@ create_new_style (const gchar * description)
 
   if ((value = extract_attribute_value (description, "multi_row_align"))) {
     if (g_strcmp0 (value, "start") == 0)
-      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START;
+      s->multi_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START;
     else if (g_strcmp0 (value, "center") == 0)
-      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER;
+      s->multi_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER;
     else if (g_strcmp0 (value, "end") == 0)
-      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END;
+      s->multi_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END;
     else
-      s->mult_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_AUTO;
+      s->multi_row_align = GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_AUTO;
     g_free (value);
   }
 
