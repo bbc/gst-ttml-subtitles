@@ -2234,7 +2234,8 @@ draw_rectangle (guint width, guint height, GstBaseEbuttdOverlayColor color)
 static GstBuffer *
 draw_text (const gchar * text, guint text_height,
     GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
-    guint height, guint * ink_width, guint * ink_height, PangoAlignment align)
+    guint height, guint * ink_width, guint * ink_height, PangoAlignment align,
+    gint line_height)
 {
   GstMapInfo map;
   cairo_surface_t *surface, *clipped_surface;
@@ -2244,6 +2245,9 @@ draw_text (const gchar * text, guint text_height,
   PangoAttrList *attr_list;
   PangoAttribute *fsize;
   PangoRectangle ink_rect, logical_rect;
+  guint cur_height;
+  gint spacing = 0U;
+  guint buf_width, buf_height;
 
   layout = pango_layout_new (context);
   pango_layout_set_width (layout, width * PANGO_SCALE);
@@ -2256,9 +2260,22 @@ draw_text (const gchar * text, guint text_height,
   pango_layout_set_attributes (layout, attr_list);
 
   pango_layout_set_alignment (layout, align);
+  pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
+
+  cur_height = logical_rect.height / pango_layout_get_line_count (layout);
+  if (line_height == -1) {
+    spacing = (gint) (cur_height * 0.25);
+  } else {
+    spacing = line_height - cur_height;
+  }
+  g_print ("Current line height is %u; changing to %d...\n",
+      cur_height, cur_height + spacing);
+  pango_layout_set_spacing (layout, PANGO_SCALE * spacing);
+  g_print ("Current spacing is now %d\n", pango_layout_get_spacing (layout));
 
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
-  /*pango_layout_set_spacing (layout, PANGO_SCALE * 20);*/
+  g_print ("logical_rect.width: %d  logical_rect.height: %d\n",
+      logical_rect.width, logical_rect.height);
 
   surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
   cairo_state = cairo_create (surface);
@@ -2275,14 +2292,19 @@ draw_text (const gchar * text, guint text_height,
   pango_cairo_show_layout (cairo_state, layout);
   cairo_restore (cairo_state);
 
-  buffer = gst_buffer_new_allocate (NULL,
-      4 * logical_rect.width * logical_rect.height, NULL);
-  gst_buffer_memset (buffer, 0, 0U,
-      4 * logical_rect.width * logical_rect.height);
+  /* XXX: Taking into account that pango doesn't place spacing before first
+   * line or after last line by adding this space ourselves. */
+  spacing = MAX (spacing, 0);
+  buf_width = logical_rect.width;
+  buf_height = logical_rect.height + (2 * spacing);
+  g_print ("buf_width: %u  buf_height: %u\n", buf_width, buf_height);
+  buffer = gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
+  gst_buffer_memset (buffer, 0, 0U, 4 * buf_width * buf_height);
   gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
-  clipped_surface = cairo_image_surface_create_for_data (map.data,
-      CAIRO_FORMAT_ARGB32, logical_rect.width, logical_rect.height,
-      logical_rect.width * 4);
+  clipped_surface =
+    cairo_image_surface_create_for_data (map.data + (spacing * buf_width * 4),
+        CAIRO_FORMAT_ARGB32, logical_rect.width, logical_rect.height,
+        logical_rect.width * 4);
   clipped_state = cairo_create (clipped_surface);
   cairo_set_source_surface (clipped_state, surface, -logical_rect.x,
       -logical_rect.y);
@@ -2296,8 +2318,9 @@ draw_text (const gchar * text, guint text_height,
   cairo_surface_destroy (clipped_surface);
   gst_buffer_unmap (buffer, &map);
 
-  if (ink_width) *ink_width = logical_rect.width;
-  if (ink_height) *ink_height = logical_rect.height;
+  if (ink_width) *ink_width = buf_width;
+  if (ink_height) *ink_height = buf_height;
+  g_object_unref (layout);
   return buffer;
 }
 
@@ -2350,6 +2373,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   guint text_w, text_h;
   guint ink_w, ink_h;
   PangoAlignment align;
+  gint line_height_px;
   GstBaseEbuttdOverlayLayer *text_layer;
   GstBuffer *bg_image = NULL;
   guint bg_x, bg_y, bg_w, bg_h;
@@ -2386,6 +2410,14 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   text_h = region_h - padding_before_px - padding_after_px;
   g_print ("text_w: %u   text_h: %u\n", text_w, text_h);
 
+  if (style->line_height < 0) {
+    line_height_px = -1;
+  } else {
+    line_height_px = (guint) ((style->line_height * overlay->height) / 100.0);
+  }
+  g_print ("line_height: %g  line_height_px: %d\n", style->line_height,
+      line_height_px);
+
   switch (style->multi_row_align) {
       case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START:
         align = PANGO_ALIGN_LEFT;
@@ -2415,7 +2447,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
 
   text_image = draw_text (string, text_height, text_color,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
-      text_w, text_h, &ink_w, &ink_h, align);
+      text_w, text_h, &ink_w, &ink_h, align, line_height_px);
 
   switch (style->text_align) {
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
@@ -3312,6 +3344,7 @@ set_non_pango_markup (gchar ** text, GstBaseEbuttdOverlay * overlay)
 
   do {
     extract_style_then_remove ("foreground", text);
+    extract_style_then_remove ("line_height", text);
     multi_row_align_style = extract_style_then_remove ("multi_row_align", text);
     text_align_style = extract_style_then_remove ("text_align", text);
 
@@ -3602,11 +3635,13 @@ create_new_style (const gchar * description)
 
   if ((value = extract_attribute_value (description, "line_height"))) {
     if (g_strcmp0 (value, "normal") == 0)
-      s->line_height = 0;
+      s->line_height = -1.0;
     else
       s->line_height = g_ascii_strtod (value, NULL);
     g_free (value);
     /*g_print ("s->line_height:  %g\n",s->line_height);*/
+  } else {
+      s->line_height = -1.0;
   }
 
   if ((value = extract_attribute_value (description, "text_align"))) {
