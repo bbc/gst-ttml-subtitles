@@ -2260,8 +2260,6 @@ draw_text (const gchar * text, guint text_height,
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
   /*pango_layout_set_spacing (layout, PANGO_SCALE * 20);*/
 
-
-  gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
   surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
   cairo_state = cairo_create (surface);
 
@@ -2279,11 +2277,17 @@ draw_text (const gchar * text, guint text_height,
 
   buffer = gst_buffer_new_allocate (NULL,
       4 * logical_rect.width * logical_rect.height, NULL);
+  gst_buffer_memset (buffer, 0, 0U,
+      4 * logical_rect.width * logical_rect.height);
+  gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
   clipped_surface = cairo_image_surface_create_for_data (map.data,
       CAIRO_FORMAT_ARGB32, logical_rect.width, logical_rect.height,
       logical_rect.width * 4);
   clipped_state = cairo_create (clipped_surface);
-  cairo_set_source_surface (clipped_state, surface, logical_rect.x, logical_rect.y);
+  cairo_set_source_surface (clipped_state, surface, -logical_rect.x,
+      -logical_rect.y);
+  cairo_rectangle (clipped_state, 0, 0, logical_rect.width,
+      logical_rect.height);
   cairo_fill (clipped_state);
 
   cairo_destroy (cairo_state);
@@ -2391,6 +2395,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
         break;
       case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END:
         align = PANGO_ALIGN_RIGHT;
+        break;
       default:
         switch (style->text_align) {
           case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
@@ -2439,7 +2444,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
       break;
   }
 
-  text_layer = create_new_layer (text_image, text_x, text_y, text_w, text_h);
+  text_layer = create_new_layer (text_image, text_x, text_y, ink_w, ink_h);
   overlay->layers = g_slist_append (overlay->layers, text_layer);
 
   /************* Render text background *************/
