@@ -2235,7 +2235,7 @@ static GstBuffer *
 draw_text (const gchar * text, guint text_height,
     GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
     guint height, guint * ink_width, guint * ink_height, PangoAlignment align,
-    gint line_height)
+    gdouble line_height)
 {
   GstMapInfo map;
   cairo_surface_t *surface, *clipped_surface;
@@ -2263,11 +2263,8 @@ draw_text (const gchar * text, guint text_height,
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
 
   cur_height = logical_rect.height / pango_layout_get_line_count (layout);
-  if (line_height == -1) {
-    spacing = (gint) (cur_height * 0.25);
-  } else {
-    spacing = line_height - cur_height;
-  }
+  spacing = (gint) (cur_height * (line_height - 100.0)/100.0);
+
   g_print ("Current line height is %u; changing to %d...\n",
       cur_height, cur_height + spacing);
   pango_layout_set_spacing (layout, PANGO_SCALE * spacing);
@@ -2404,19 +2401,11 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   region_h = (guint) ((region->extent_h * overlay->height) / 100.0);
 
   /************* Render text *************/
-  text_height = (guint) (style->font_size * cell_pixel_height) / 100.0;
+  text_height = (guint) ((style->font_size * cell_pixel_height) / 100.0);
   text_color = parse_ebuttd_colorstring (style->color);
   text_w = region_w - padding_start_px - padding_end_px - (2 * line_padding_px);
   text_h = region_h - padding_before_px - padding_after_px;
   g_print ("text_w: %u   text_h: %u\n", text_w, text_h);
-
-  if (style->line_height < 0) {
-    line_height_px = -1;
-  } else {
-    line_height_px = (guint) ((style->line_height * overlay->height) / 100.0);
-  }
-  g_print ("line_height: %g  line_height_px: %d\n", style->line_height,
-      line_height_px);
 
   switch (style->multi_row_align) {
       case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START:
@@ -2447,7 +2436,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
 
   text_image = draw_text (string, text_height, text_color,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
-      text_w, text_h, &ink_w, &ink_h, align, line_height_px);
+      text_w, text_h, &ink_w, &ink_h, align, style->line_height);
 
   switch (style->text_align) {
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
@@ -3635,13 +3624,13 @@ create_new_style (const gchar * description)
 
   if ((value = extract_attribute_value (description, "line_height"))) {
     if (g_strcmp0 (value, "normal") == 0)
-      s->line_height = -1.0;
+      s->line_height = 125.0;
     else
       s->line_height = g_ascii_strtod (value, NULL);
     g_free (value);
     /*g_print ("s->line_height:  %g\n",s->line_height);*/
   } else {
-      s->line_height = -1.0;
+      s->line_height = 125.0;
   }
 
   if ((value = extract_attribute_value (description, "text_align"))) {
