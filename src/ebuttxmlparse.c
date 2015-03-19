@@ -41,7 +41,7 @@ _print_style (StyleProp * style)
   g_print ("\tlineHeight;: %s\n", style->lineHeight);
   g_print ("\ttextAlign: %s\n", style->textAlign);
   g_print ("\tcolor: %s\n", style->color);
-  g_print ("\tbackgroundColor;: %s\n", style->backgroundColor);
+  g_print ("\tbackgroundColor: %s\n", style->backgroundColor);
   g_print ("\tfontStyle: %s\n", style->fontStyle);
   g_print ("\tfontWeight: %s\n", style->fontWeight);
   g_print ("\ttextDecoration: %s\n", style->textDecoration);
@@ -284,6 +284,14 @@ _add_pango_style (StyleProp * style, gchar * opening_tag)
   if (style->textAlign) {
     opening_tag = _add_or_update_style (opening_tag, "text_align=\"",
         style->textAlign);
+  }
+  if (style->lineHeight) {
+    opening_tag = _add_or_update_style (opening_tag, "line_height=\"",
+        style->lineHeight);
+  }
+  if (style->wrapOption) {
+    opening_tag = _add_or_update_style (opening_tag, "wrap_option=\"",
+        style->wrapOption);
   }
 
 
@@ -1450,6 +1458,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   xmlFreeDoc (doc);
   g_hash_table_destroy (style_hash);
   g_hash_table_destroy (region_hash);
+  if (document_metadata) g_free (document_metadata);
   /** to free:
   * style hash table
   * free inheritance lists including span copies
