@@ -2235,7 +2235,7 @@ static GstBuffer *
 draw_text (const gchar * text, guint text_height,
     GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
     guint height, guint * ink_width, guint * ink_height, PangoAlignment align,
-    gdouble line_height)
+    gdouble line_height, gboolean wrap)
 {
   GstMapInfo map;
   cairo_surface_t *surface, *clipped_surface;
@@ -2250,7 +2250,12 @@ draw_text (const gchar * text, guint text_height,
   guint buf_width, buf_height;
 
   layout = pango_layout_new (context);
-  pango_layout_set_width (layout, width * PANGO_SCALE);
+  if (wrap) {
+    pango_layout_set_width (layout, width * PANGO_SCALE);
+    pango_layout_set_wrap (layout, PANGO_WRAP_WORD_CHAR);
+  } else {
+    pango_layout_set_width (layout, -1);
+  }
   pango_layout_set_height (layout, height * PANGO_SCALE);
   pango_layout_set_markup (layout, text, strlen (text));
 
@@ -2274,7 +2279,11 @@ draw_text (const gchar * text, guint text_height,
   g_print ("logical_rect.width: %d  logical_rect.height: %d\n",
       logical_rect.width, logical_rect.height);
 
-  surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
+  if (wrap)
+    surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
+  else
+    surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32,
+        logical_rect.width, logical_rect.height);
   cairo_state = cairo_create (surface);
 
   /* clear surface */
@@ -2366,14 +2375,15 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   GstBaseEbuttdOverlayLayer *region_layer;
   guint line_padding_px;
   GstBuffer *text_image = NULL;
-  guint text_x, text_y;
+  gint text_x, text_y;
   guint text_w, text_h;
   guint ink_w, ink_h;
   PangoAlignment align;
   gint line_height_px;
   GstBaseEbuttdOverlayLayer *text_layer;
   GstBuffer *bg_image = NULL;
-  guint bg_x, bg_y, bg_w, bg_h;
+  gint bg_x, bg_y;
+  guint bg_w, bg_h;
   GstBaseEbuttdOverlayLayer *bg_layer;
 
   g_return_val_if_fail (textlen < 256, NULL);
@@ -2403,8 +2413,9 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   /************* Render text *************/
   text_height = (guint) ((style->font_size * cell_pixel_height) / 100.0);
   text_color = parse_ebuttd_colorstring (style->color);
-  text_w = region_w - padding_start_px - padding_end_px - (2 * line_padding_px);
-  text_h = region_h - padding_before_px - padding_after_px;
+  text_w =
+    region_w - (padding_start_px + padding_end_px + (2 * line_padding_px));
+  text_h = region_h - (padding_before_px + padding_after_px);
   g_print ("text_w: %u   text_h: %u\n", text_w, text_h);
 
   switch (style->multi_row_align) {
@@ -2436,7 +2447,8 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
 
   text_image = draw_text (string, text_height, text_color,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
-      text_w, text_h, &ink_w, &ink_h, align, style->line_height);
+      text_w, text_h, &ink_w, &ink_h, align, style->line_height,
+      (style->wrap_option == GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON));
 
   switch (style->text_align) {
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
@@ -2444,7 +2456,8 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
       text_x = region_x + padding_start_px + line_padding_px;
       break;
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER:
-      text_x = region_x + (region_w - ink_w)/2;
+      text_x = MAX ((region_x + padding_start_px + line_padding_px),
+          (region_x + ((gint)region_w - (gint)ink_w)/2));
       break;
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END:
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT:
@@ -3334,6 +3347,7 @@ set_non_pango_markup (gchar ** text, GstBaseEbuttdOverlay * overlay)
   do {
     extract_style_then_remove ("foreground", text);
     extract_style_then_remove ("line_height", text);
+    extract_style_then_remove ("wrap_option", text);
     multi_row_align_style = extract_style_then_remove ("multi_row_align", text);
     text_align_style = extract_style_then_remove ("text_align", text);
 
