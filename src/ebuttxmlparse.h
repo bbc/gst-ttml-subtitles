@@ -26,6 +26,186 @@
 
 
 G_BEGIN_DECLS
+
+typedef struct _GstEbuttdRegion GstEbuttdRegion;
+typedef struct _GstEbuttdStyle GstEbuttdStyle;
+typedef struct _GstEbuttdColor GstEbuttdColor;
+typedef struct _GstEbuttdMediaTime GstEbuttdMediaTime;
+typedef struct _GstEbuttdElement GstEbuttdElement;
+typedef struct _GstEbuttdTree GstEbuttdTree;
+
+/**
+ * GstEbuttdWritingMode:
+ * @GST_EBUTTD_WRITING_MODE_LRTB: text is written left-to-right, top-to-bottom.
+ * @GST_EBUTTD_WRITING_MODE_RLTB: text is written right-to-left, top-to-bottom.
+ * @GST_EBUTTD_WRITING_MODE_TBRL: text is written top-to-bottom, right-to-left.
+ * @GST_EBUTTD_WRITING_MODE_TBLR: text is written top-to-bottom, left-to-right.
+ *
+ * Writing mode of text content.
+ */
+typedef enum {
+    GST_EBUTTD_WRITING_MODE_LRTB,
+    GST_EBUTTD_WRITING_MODE_RLTB,
+    GST_EBUTTD_WRITING_MODE_TBRL,
+    GST_EBUTTD_WRITING_MODE_TBLR
+} GstEbuttdWritingMode; /* Or GstEbuttdTextProgression? */
+
+typedef enum {
+    GST_EBUTTD_DISPLAY_ALIGN_BEFORE,
+    GST_EBUTTD_DISPLAY_ALIGN_CENTER,
+    GST_EBUTTD_DISPLAY_ALIGN_AFTER
+} GstEbuttdDisplayAlign;
+
+typedef enum {
+    GST_EBUTTD_BACKGROUND_MODE_ALWAYS,
+    GST_EBUTTD_BACKGROUND_MODE_WHEN_ACTIVE,
+} GstEbuttdBackgroundMode;
+
+typedef enum {
+    GST_EBUTTD_OVERFLOW_MODE_HIDDEN,
+    GST_EBUTTD_OVERFLOW_MODE_VISIBLE,
+} GstEbuttdOverflowMode;
+
+struct _GstEbuttdRegion {
+    /*
+     * Properties of region from EBU-TT-D spec:
+     *
+     *   origin - coordinates of region origin in % of width & height of root
+     *   container.
+     *
+     *   extent - size of region, again %age of width and height of root
+     *   container.
+     *
+     *   displayAlign - not quite sure I understand this one, but this seems to
+     *   be some kind of vertical aligment,
+     *
+     *   padding - padding to be applied on all sides of the region area.
+     *
+     *   writingMode - specifies the direction in which text progresses, both
+     *   horizontally and vertically.
+     *
+     *   showBackground - controls whether the background colour of the region
+     *   is always shown, or shown only when there is some text that is
+     *   rendered in the region.
+     *
+     *   overflow - determines whether or not content that overflows the region
+     *   area is clipped.
+     */
+    const gchar *id;
+    gdouble origin_x, origin_y;
+    gdouble extent_w, extent_h;
+    GstEbuttdDisplayAlign display_align;
+    gdouble padding_start, padding_end, padding_before, padding_after;
+    GstEbuttdWritingMode writing_mode;
+    GstEbuttdBackgroundMode show_background;
+    GstEbuttdOverflowMode overflow;
+};
+
+
+typedef enum {
+  GST_EBUTTD_TEXT_DIRECTION_LTR,
+  GST_EBUTTD_TEXT_DIRECTION_RTL
+} GstEbuttdTextDirection;
+
+typedef enum {
+  GST_EBUTTD_TEXT_ALIGN_START,
+  GST_EBUTTD_TEXT_ALIGN_LEFT,
+  GST_EBUTTD_TEXT_ALIGN_CENTER,
+  GST_EBUTTD_TEXT_ALIGN_RIGHT,
+  GST_EBUTTD_TEXT_ALIGN_END
+} GstEbuttdTextAlign;
+
+typedef enum {
+  GST_EBUTTD_FONT_STYLE_NORMAL,
+  GST_EBUTTD_FONT_STYLE_ITALIC
+} GstEbuttdFontStyle;
+
+typedef enum {
+  GST_EBUTTD_FONT_WEIGHT_NORMAL,
+  GST_EBUTTD_FONT_WEIGHT_BOLD,
+} GstEbuttdFontWeight;
+
+typedef enum {
+  GST_EBUTTD_TEXT_DECORATION_NONE,
+  GST_EBUTTD_TEXT_DECORATION_UNDERLINE
+} GstEbuttdTextDecoration;
+
+typedef enum {
+  GST_EBUTTD_UNICODE_BIDI_NORMAL,
+  GST_EBUTTD_UNICODE_BIDI_EMBED,
+  GST_EBUTTD_UNICODE_BIDI_OVERRIDE
+} GstEbuttdUnicodeBidi;
+
+typedef enum {
+  GST_EBUTTD_WRAPPING_ON,
+  GST_EBUTTD_WRAPPING_OFF,
+} GstEbuttdWrapping;
+
+typedef enum {
+  GST_EBUTTD_MULTI_ROW_ALIGN_AUTO,
+  GST_EBUTTD_MULTI_ROW_ALIGN_START,
+  GST_EBUTTD_MULTI_ROW_ALIGN_CENTER,
+  GST_EBUTTD_MULTI_ROW_ALIGN_END,
+} GstEbuttdMultiRowAlign;
+
+struct _GstEbuttdStyle {
+  const gchar *id;
+  GstEbuttdTextDirection text_direction;
+  const gchar *font_family;
+  gdouble font_size;
+  gdouble line_height;
+  GstEbuttdTextAlign text_align;
+  const gchar *color;
+  const gchar *bg_color;
+  GstEbuttdFontStyle font_style;
+  GstEbuttdFontWeight font_weight;
+  GstEbuttdTextDirection text_decoration;
+  GstEbuttdUnicodeBidi unicode_bidi;
+  GstEbuttdWrapping wrap_option;
+  GstEbuttdMultiRowAlign multi_row_align;
+  gdouble line_padding;
+  /*guint cellres_x, cellres_y;*/
+};
+
+
+struct _GstEbuttdColor {
+  gdouble r;
+  gdouble g;
+  gdouble b;
+  gdouble a;
+};
+
+
+typedef enum {
+  GST_EBUTTD_ELEMENT_TYPE_BODY,
+  GST_EBUTTD_ELEMENT_TYPE_DIV,
+  GST_EBUTTD_ELEMENT_TYPE_P,
+  GST_EBUTTD_ELEMENT_TYPE_SPAN,
+  GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN,
+} GstEbuttdElementType;
+
+struct _GstEbuttdMediaTime {
+  guint hours;
+  guint minutes;
+  guint seconds;
+  guint milliseconds;
+};
+
+struct _GstEbuttdElement {
+  GstEbuttdElementType type;
+  gchar **styles;
+  gchar *region;
+  GstEbuttdMediaTime begin;
+  GstEbuttdMediaTime end;
+  GstEbuttdStyle *resolved_style;
+  gchar *text;
+};
+
+
+struct _GstEbuttdTree {
+  GNode *root;
+};
+
 /* struct to hold text and formatting of the subtitle */
     typedef struct
 {
