@@ -29,6 +29,7 @@ G_BEGIN_DECLS
 
 typedef struct _GstEbuttdRegion GstEbuttdRegion;
 typedef struct _GstEbuttdStyle GstEbuttdStyle;
+typedef struct _GstEbuttdStyleDescriptor GstEbuttdStyleDescriptor;
 typedef struct _GstEbuttdColor GstEbuttdColor;
 typedef struct _GstEbuttdMediaTime GstEbuttdMediaTime;
 typedef struct _GstEbuttdElement GstEbuttdElement;
@@ -149,7 +150,6 @@ typedef enum {
 } GstEbuttdMultiRowAlign;
 
 struct _GstEbuttdStyle {
-  const gchar *id;
   GstEbuttdTextDirection text_direction;
   const gchar *font_family;
   gdouble font_size;
@@ -168,6 +168,25 @@ struct _GstEbuttdStyle {
 };
 
 
+struct _GstEbuttdStyleDescriptor {
+  const gchar *id;
+  const gchar *text_direction;
+  const gchar *font_family;
+  const gchar *font_size;
+  const gchar *line_height;
+  const gchar *text_align;
+  const gchar *color;
+  const gchar *bg_color;
+  const gchar *font_style;
+  const gchar *font_weight;
+  const gchar *text_decoration;
+  const gchar *unicode_bidi;
+  const gchar *wrap_option;
+  const gchar *multi_row_align;
+  const gchar *line_padding;
+};
+
+
 struct _GstEbuttdColor {
   gdouble r;
   gdouble g;
@@ -182,6 +201,7 @@ typedef enum {
   GST_EBUTTD_ELEMENT_TYPE_P,
   GST_EBUTTD_ELEMENT_TYPE_SPAN,
   GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN,
+  GST_EBUTTD_ELEMENT_TYPE_BR,
 } GstEbuttdElementType;
 
 struct _GstEbuttdMediaTime {
@@ -197,7 +217,8 @@ struct _GstEbuttdElement {
   gchar *region;
   GstEbuttdMediaTime begin;
   GstEbuttdMediaTime end;
-  GstEbuttdStyle *resolved_style;
+  GstEbuttdStyleDescriptor *resolved_style;
+  GstEbuttdStyle *style;
   gchar *text;
 };
 
