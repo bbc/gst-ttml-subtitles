@@ -12,6 +12,63 @@ GST_DEBUG_CATEGORY_STATIC (ebuttdparse);
 
 gchar * get_xml_property (const xmlNode * node, const char * name);
 
+
+static gboolean
+media_time_is_valid (GstEbuttdMediaTime time)
+{
+  return (time.hours != G_MAXUINT);
+}
+
+
+static guint8
+hex_pair_to_byte (const gchar * hex_pair)
+{
+  gint hi_digit, lo_digit;
+
+  g_return_val_if_fail (hex_pair != NULL, 0U);
+  g_return_val_if_fail (strlen (hex_pair) >= 2, 0U);
+
+  hi_digit = g_ascii_xdigit_value (*hex_pair);
+  lo_digit = g_ascii_xdigit_value (*(hex_pair + 1));
+  return (hi_digit << 4) + lo_digit;
+}
+
+
+static GstEbuttdColor
+parse_ebuttd_colorstring (const gchar * color)
+{
+  guint length;
+  const gchar *c = NULL;
+  GstEbuttdColor ret = { 0, 0, 0, 0 };
+
+  g_return_val_if_fail (color != NULL, ret);
+
+  /* Color strings in EBU-TT-D can have the form "#RRBBGG" or "#RRBBGGAA". */
+  length = strlen (color);
+  if (((length == 7) || (length == 9)) && *color == '#') {
+    c = color + 1;
+
+    ret.r = hex_pair_to_byte (c) / 255.0;
+    ret.g = hex_pair_to_byte (c + 2) / 255.0;
+    ret.b = hex_pair_to_byte (c + 4) / 255.0;
+
+    if (length == 7)
+      ret.a = 1.0;
+    else
+      ret.a = hex_pair_to_byte (c + 6) / 255.0;
+
+    GST_CAT_LOG (ebuttdparse, "Returning color - r:%g  b:%g  g:%g  a:%g",
+        ret.r, ret.b, ret.g, ret.a);
+  } else if (g_strcmp0 (color, "yellow") == 0) { /* XXX:Hack for test stream. */
+    ret = parse_ebuttd_colorstring ("#ffff00");
+  } else {
+    GST_CAT_ERROR (ebuttdparse, "Invalid color string.");
+  }
+
+  return ret;
+}
+
+
 #if 1
 static void
 _print_style (GstEbuttdStyle * style)
@@ -19,64 +76,66 @@ _print_style (GstEbuttdStyle * style)
   g_return_if_fail (style != NULL);
 
   GST_CAT_LOG (ebuttdparse, "Style %p:", style);
-  GST_CAT_LOG (ebuttdparse, "\ttextDirection: %d", style->text_direction);
+  GST_CAT_LOG (ebuttdparse, "\t\ttextDirection: %d", style->text_direction);
   if (style->font_family)
-    GST_CAT_LOG (ebuttdparse, "\tfontFamily: %s", style->font_family);
-  GST_CAT_LOG (ebuttdparse, "\tfontSize: %g", style->font_size);
-  GST_CAT_LOG (ebuttdparse, "\tlineHeight: %g", style->line_height);
-  GST_CAT_LOG (ebuttdparse, "\ttextAlign: %d", style->text_align);
-  if (style->color)
-    GST_CAT_LOG (ebuttdparse, "\tcolor: %s", style->color);
-  if (style->bg_color)
-    GST_CAT_LOG (ebuttdparse, "\tbackgroundColor: %s", style->bg_color);
-  GST_CAT_LOG (ebuttdparse, "\tfontStyle: %d", style->font_style);
-  GST_CAT_LOG (ebuttdparse, "\tfontWeight: %d", style->font_weight);
-  GST_CAT_LOG (ebuttdparse, "\ttextDecoration: %d", style->text_decoration);
-  GST_CAT_LOG (ebuttdparse, "\tunicodeBidi: %d", style->unicode_bidi);
-  GST_CAT_LOG (ebuttdparse, "\twrapOption: %d", style->wrap_option);
-  GST_CAT_LOG (ebuttdparse, "\tmultiRowAlign: %d", style->multi_row_align);
-  GST_CAT_LOG (ebuttdparse, "\tlinePadding: %g", style->line_padding);
+    GST_CAT_LOG (ebuttdparse, "\t\tfontFamily: %s", style->font_family);
+  GST_CAT_LOG (ebuttdparse, "\t\tfontSize: %g", style->font_size);
+  GST_CAT_LOG (ebuttdparse, "\t\tlineHeight: %g", style->line_height);
+  GST_CAT_LOG (ebuttdparse, "\t\ttextAlign: %d", style->text_align);
+  GST_CAT_LOG (ebuttdparse, "\t\tcolor: r:%g g:%g b:%g a: %g",
+      style->color.r, style->color.g, style->color.b, style->color.a);
+  GST_CAT_LOG (ebuttdparse, "\t\tbg_color: r:%g g:%g b:%g a: %g",
+      style->bg_color.r, style->bg_color.g, style->bg_color.b,
+      style->bg_color.a);
+  GST_CAT_LOG (ebuttdparse, "\t\tfontStyle: %d", style->font_style);
+  GST_CAT_LOG (ebuttdparse, "\t\tfontWeight: %d", style->font_weight);
+  GST_CAT_LOG (ebuttdparse, "\t\ttextDecoration: %d", style->text_decoration);
+  GST_CAT_LOG (ebuttdparse, "\t\tunicodeBidi: %d", style->unicode_bidi);
+  GST_CAT_LOG (ebuttdparse, "\t\twrapOption: %d", style->wrap_option);
+  GST_CAT_LOG (ebuttdparse, "\t\tmultiRowAlign: %d", style->multi_row_align);
+  GST_CAT_LOG (ebuttdparse, "\t\tlinePadding: %g", style->line_padding);
 }
 #endif
 
 
 static void
-_print_style_desc (GstEbuttdStyleDescriptor * style)
+_print_style_desc (GstEbuttdStyleDescriptor * desc)
 {
-  g_return_if_fail (style != NULL);
+  g_return_if_fail (desc != NULL);
 
-  if (style->id)
-    GST_CAT_LOG (ebuttdparse, "\tid: %s", style->id);
-  if (style->text_direction)
-    GST_CAT_LOG (ebuttdparse, "\ttext_direction: %s", style->text_direction);
-  if (style->font_family)
-    GST_CAT_LOG (ebuttdparse, "\tfont_family: %s", style->font_family);
-  if (style->font_size)
-    GST_CAT_LOG (ebuttdparse, "\tfont_size: %s", style->font_size);
-  if (style->line_height)
-    GST_CAT_LOG (ebuttdparse, "\tline_height: %s", style->line_height);
-  if (style->text_align)
-    GST_CAT_LOG (ebuttdparse, "\ttext_align: %s", style->text_align);
-  if (style->color)
-    GST_CAT_LOG (ebuttdparse, "\tcolor: %s", style->color);
-  if (style->bg_color)
-    GST_CAT_LOG (ebuttdparse, "\tbg_color: %s", style->bg_color);
-  if (style->font_style)
-    GST_CAT_LOG (ebuttdparse, "\tfont_style: %s", style->font_style);
-  if (style->font_weight)
-    GST_CAT_LOG (ebuttdparse, "\tfont_weight: %s", style->font_weight);
-  if (style->text_decoration)
-    GST_CAT_LOG (ebuttdparse, "\ttext_decoration: %s",
-        style->text_decoration);
-  if (style->unicode_bidi)
-    GST_CAT_LOG (ebuttdparse, "\tunicode_bidi: %s", style->unicode_bidi);
-  if (style->wrap_option)
-    GST_CAT_LOG (ebuttdparse, "\twrap_option: %s", style->wrap_option);
-  if (style->multi_row_align)
-    GST_CAT_LOG (ebuttdparse, "\tmulti_row_align: %s",
-        style->multi_row_align);
-  if (style->line_padding)
-    GST_CAT_LOG (ebuttdparse, "\tline_padding: %s", style->line_padding);
+  GST_CAT_LOG (ebuttdparse, "Style description %p:", desc);
+  if (desc->id)
+    GST_CAT_LOG (ebuttdparse, "\t\tid: %s", desc->id);
+  if (desc->text_direction)
+    GST_CAT_LOG (ebuttdparse, "\t\ttext_direction: %s", desc->text_direction);
+  if (desc->font_family)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_family: %s", desc->font_family);
+  if (desc->font_size)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_size: %s", desc->font_size);
+  if (desc->line_height)
+    GST_CAT_LOG (ebuttdparse, "\t\tline_height: %s", desc->line_height);
+  if (desc->text_align)
+    GST_CAT_LOG (ebuttdparse, "\t\ttext_align: %s", desc->text_align);
+  if (desc->color)
+    GST_CAT_LOG (ebuttdparse, "\t\tcolor: %s", desc->color);
+  if (desc->bg_color)
+    GST_CAT_LOG (ebuttdparse, "\t\tbg_color: %s", desc->bg_color);
+  if (desc->font_style)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_style: %s", desc->font_style);
+  if (desc->font_weight)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_weight: %s", desc->font_weight);
+  if (desc->text_decoration)
+    GST_CAT_LOG (ebuttdparse, "\t\ttext_decoration: %s",
+        desc->text_decoration);
+  if (desc->unicode_bidi)
+    GST_CAT_LOG (ebuttdparse, "\t\tunicode_bidi: %s", desc->unicode_bidi);
+  if (desc->wrap_option)
+    GST_CAT_LOG (ebuttdparse, "\t\twrap_option: %s", desc->wrap_option);
+  if (desc->multi_row_align)
+    GST_CAT_LOG (ebuttdparse, "\t\tmulti_row_align: %s",
+        desc->multi_row_align);
+  if (desc->line_padding)
+    GST_CAT_LOG (ebuttdparse, "\t\tline_padding: %s", desc->line_padding);
 }
 
 
@@ -84,21 +143,19 @@ static void
 _print_region (GstEbuttdRegion * region)
 {
   GST_CAT_LOG (ebuttdparse, "Region %p:", region);
-  if (region->id)
-    GST_CAT_LOG (ebuttdparse, "\tid: %s", region->id);
-  GST_CAT_LOG (ebuttdparse, "\toriginX: %g", region->origin_x);
-  GST_CAT_LOG (ebuttdparse, "\toriginY: %g", region->origin_y);
-  GST_CAT_LOG (ebuttdparse, "\textentW: %g", region->extent_w);
-  GST_CAT_LOG (ebuttdparse, "\textentH: %g", region->extent_h);
-  /*GST_CAT_LOG (ebuttdparse, "\tstyle: %s", region->style);*/
-  GST_CAT_LOG (ebuttdparse, "\tdisplay_align: %d", region->display_align);
-  GST_CAT_LOG (ebuttdparse, "\tpadding_start: %g", region->padding_start);
-  GST_CAT_LOG (ebuttdparse, "\tpadding_end: %g", region->padding_end);
-  GST_CAT_LOG (ebuttdparse, "\tpadding_before: %g", region->padding_before);
-  GST_CAT_LOG (ebuttdparse, "\tpadding_after: %g", region->padding_after);
-  GST_CAT_LOG (ebuttdparse, "\twriting_mode: %d", region->writing_mode);
-  GST_CAT_LOG (ebuttdparse, "\tshow_background: %d", region->show_background);
-  GST_CAT_LOG (ebuttdparse, "\toverflow: %d", region->overflow);
+  GST_CAT_LOG (ebuttdparse, "\t\toriginX: %g", region->origin_x);
+  GST_CAT_LOG (ebuttdparse, "\t\toriginY: %g", region->origin_y);
+  GST_CAT_LOG (ebuttdparse, "\t\textentW: %g", region->extent_w);
+  GST_CAT_LOG (ebuttdparse, "\t\textentH: %g", region->extent_h);
+  /*GST_CAT_LOG (ebuttdparse, "\t\tstyle: %s", region->style);*/
+  GST_CAT_LOG (ebuttdparse, "\t\tdisplay_align: %d", region->display_align);
+  GST_CAT_LOG (ebuttdparse, "\t\tpadding_start: %g", region->padding_start);
+  GST_CAT_LOG (ebuttdparse, "\t\tpadding_end: %g", region->padding_end);
+  GST_CAT_LOG (ebuttdparse, "\t\tpadding_before: %g", region->padding_before);
+  GST_CAT_LOG (ebuttdparse, "\t\tpadding_after: %g", region->padding_after);
+  GST_CAT_LOG (ebuttdparse, "\t\twriting_mode: %d", region->writing_mode);
+  GST_CAT_LOG (ebuttdparse, "\t\tshow_background: %d", region->show_background);
+  GST_CAT_LOG (ebuttdparse, "\t\toverflow: %d", region->overflow);
 }
 
 
@@ -228,7 +285,10 @@ create_new_style (GstEbuttdStyleDescriptor * desc)
   }
 
   if (desc->font_family) {
-    s->font_family = g_strdup (desc->font_family);
+    gsize length = g_strlcpy (s->font_family, desc->font_family,
+        MAX_FONT_FAMILY_NAME_LENGTH);
+    if (length > MAX_FONT_FAMILY_NAME_LENGTH)
+      GST_CAT_ERROR (ebuttdparse, "Font family name is too long.");
   }
 
   if (desc->font_size) {
@@ -258,11 +318,11 @@ create_new_style (GstEbuttdStyleDescriptor * desc)
   }
 
   if (desc->color) {
-    s->color = g_strdup (desc->color);
+    s->color = parse_ebuttd_colorstring (desc->color);
   }
 
   if (desc->bg_color) {
-    s->bg_color = g_strdup (desc->bg_color);
+    s->bg_color = parse_ebuttd_colorstring (desc->bg_color);
   }
 
   if (desc->font_style) {
@@ -326,9 +386,6 @@ delete_style (GstEbuttdStyle * style)
 {
   g_return_if_fail (style != NULL);
   GST_CAT_DEBUG (ebuttdparse, "Deleting style %p...", style);
-  if (style->font_family) g_free ((gpointer) style->font_family);
-  if (style->color) g_free ((gpointer) style->color);
-  if (style->bg_color) g_free ((gpointer) style->bg_color);
   g_free ((gpointer) style);
 }
 
@@ -338,15 +395,6 @@ create_new_region (const xmlNode * node)
 {
   GstEbuttdRegion *r = g_new0 (GstEbuttdRegion, 1);
   gchar *value = NULL;
-
-  if ((value = get_xml_property (node, "id"))) {
-    r->id = g_strdup (value);
-    GST_CAT_DEBUG (ebuttdparse, "id: %s", r->id);
-    g_free (value);
-  } else {
-    GST_CAT_ERROR (ebuttdparse, "regions must have an ID.");
-    return NULL;
-  }
 
   if ((value = get_xml_property (node, "origin"))) {
     gchar *c;
@@ -465,7 +513,6 @@ delete_region (GstEbuttdRegion * region)
 {
   g_return_if_fail (region != NULL);
   GST_CAT_DEBUG (ebuttdparse, "Deleting region %p...", region);
-  if (region->id) g_free ((gpointer) region->id);
   g_free ((gpointer) region);
 }
 
@@ -1489,16 +1536,22 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
         if (xmlStrcmp (node_ptr->name, (const xmlChar *) "region") == 0) {
           /* use region id as key, create style properties object for value */
           GstEbuttdRegion *region;
+          gchar *id;
           GST_CAT_DEBUG (ebuttdparse, "parsing region element...");
-          region = create_new_region (node_ptr);
 
-          if (region) {
-            /* XXX: should check that region ID is unique. */
-            g_hash_table_insert (region_hash,
-                (gpointer) (region->id), (gpointer) region);
-            GST_CAT_DEBUG (ebuttd_parse_debug, "added region %s to %s",
-                region->id, "region_hash");
-            _print_region (region);
+          if ((id = get_xml_property (node_ptr, "id"))) {
+            region = create_new_region (node_ptr);
+            if (region) {
+              /* XXX: should check that region ID is unique. */
+              g_hash_table_insert (region_hash,
+                  (gpointer) (id), (gpointer) region);
+              GST_CAT_DEBUG (ebuttd_parse_debug, "added region %s to %s", id,
+                  "region_hash");
+              _print_region (region);
+            }
+            g_free (id);
+          } else {
+            GST_CAT_ERROR (ebuttdparse, "regions must have an ID. Ignoring...");
           }
         }
         node_ptr = node_ptr->next;
@@ -1602,7 +1655,8 @@ parse_timecode (const gchar * timestring)
   }
 
   g_strfreev (strings);
-  GST_CAT_LOG (ebuttdparse, "time.h: %u  time.m: %u  time.s: %u  time.ms: %u",
+  GST_CAT_LOG (ebuttdparse,
+      "hours: %u  minutes: %u  seconds: %u  milliseconds: %u",
       time.hours, time.minutes, time.seconds, time.milliseconds);
   return time;
 }
@@ -1638,7 +1692,7 @@ parse_element (const xmlNode * node)
 
   if ((string = xmlGetProp (node, (const xmlChar*) "style"))) {
     element->styles = g_strsplit ((const gchar*) string, " ", 0);
-    GST_CAT_DEBUG (ebuttdparse, "%u styles referenced in element.",
+    GST_CAT_DEBUG (ebuttdparse, "%u style(s) referenced in element.",
         g_strv_length (element->styles));
     xmlFree (string);
   }
@@ -1649,10 +1703,14 @@ parse_element (const xmlNode * node)
   if ((string = xmlGetProp (node, (const xmlChar*) "begin"))) {
     element->begin = parse_timecode ((const gchar*) string);
     xmlFree (string);
+  } else {
+    element->begin.hours = G_MAXUINT;
   }
   if ((string = xmlGetProp (node, (const xmlChar*) "end"))) {
     element->end = parse_timecode ((const gchar*) string);
     xmlFree (string);
+  } else {
+    element->end.hours = G_MAXUINT;
   }
   if (node->content) {
     GST_CAT_LOG (ebuttdparse, "Node content: %s", node->content);
@@ -1754,7 +1812,7 @@ merge_styles (GstEbuttdStyleDescriptor * s1, GstEbuttdStyleDescriptor * s2)
       old_id = ret->id;
       new_id = g_strconcat (old_id, "+", s2->id, NULL);
       ret->id = new_id;
-      g_free (old_id);
+      g_free ((gpointer)old_id);
 
       if (s2->text_direction)
         ret->text_direction = g_strdup (s2->text_direction);
@@ -1871,7 +1929,7 @@ resolve_element_style (GNode * node, gpointer data)
 }
 
 
-gboolean
+static gboolean
 create_style (GNode * node, gpointer data)
 {
   GstEbuttdElement *element;
@@ -1890,6 +1948,70 @@ resolve_styles (GNode * tree, GHashTable * style_hash)
       style_hash);
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, create_style,
       NULL);
+}
+
+
+static gboolean
+remove_if_break (GNode * node, gpointer data)
+{
+  GstEbuttdElement *element;
+  element = node->data;
+  if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR) {
+    GST_CAT_DEBUG (ebuttdparse, "Stripping <br>...");
+    g_node_unlink (node);
+  }
+  return FALSE;
+}
+
+
+static void
+strip_breaks (GNode * tree)
+{
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, remove_if_break,
+      NULL);
+}
+
+
+static gboolean
+resolve_element_timings (GNode * node, gpointer data)
+{
+  GstEbuttdElement *element, *leaf;
+
+  g_return_val_if_fail (node != NULL, FALSE);
+  leaf = element = node->data;
+
+  if (media_time_is_valid (leaf->begin) && media_time_is_valid (leaf->end)) {
+    GST_CAT_DEBUG (ebuttdparse, "Leaf node already has timing.");
+    return FALSE;
+  }
+
+  while (node->parent && !media_time_is_valid (element->begin)) {
+    node = node->parent;
+    element = node->data;
+  }
+
+  if (!media_time_is_valid (element->begin)) {
+    GST_CAT_ERROR (ebuttdparse, "No timing found for element.");
+  } else {
+    leaf->begin = element->begin;
+    leaf->end = element->end;
+    GST_CAT_DEBUG (ebuttdparse, "Leaf begin: %02u:%02u:%02u.%u",
+        leaf->begin.hours, leaf->begin.minutes,
+        leaf->begin.seconds, leaf->begin.milliseconds);
+    GST_CAT_DEBUG (ebuttdparse, "Leaf end: %02u:%02u:%02u.%u",
+        leaf->end.hours, leaf->end.minutes,
+        leaf->end.seconds, leaf->end.milliseconds);
+  }
+
+  return FALSE;
+}
+
+
+static void
+resolve_timings (GNode * tree)
+{
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
+      resolve_element_timings, NULL);
 }
 
 
@@ -1915,7 +2037,6 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
 
   GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
       "EBU-TT-D debug category");
-  /*GST_CAT_DEBUG (ebuttdparse, "Input file:\n%s", xml_file_buffer);*/
   GST_CAT_DEBUG (ebuttdparse, "Input file:\n%s", xml_file_buffer);
 
   /* create element tree */
@@ -1967,7 +2088,8 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       body = parse_tree (cur);
       GST_CAT_DEBUG (ebuttdparse, "Body tree contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
-      GST_CAT_DEBUG (ebuttdparse, "Body tree height is %u", g_node_max_height (body));
+      GST_CAT_DEBUG (ebuttdparse, "Body tree height is %u",
+          g_node_max_height (body));
 
       /* What to do next?
        * - Check that structure is valid according to EBU-TT-D spec.
@@ -1976,6 +2098,10 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
        */
 
       resolve_styles (body, style_hash);
+      strip_breaks (body);
+      GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
+          g_node_n_nodes (body, G_TRAVERSE_ALL));
+      resolve_timings (body);
 
 #if 0
       /**

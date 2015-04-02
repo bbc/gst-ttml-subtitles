@@ -24,6 +24,8 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
+#define MAX_FONT_FAMILY_NAME_LENGTH 128
+
 
 G_BEGIN_DECLS
 
@@ -34,6 +36,9 @@ typedef struct _GstEbuttdColor GstEbuttdColor;
 typedef struct _GstEbuttdMediaTime GstEbuttdMediaTime;
 typedef struct _GstEbuttdElement GstEbuttdElement;
 typedef struct _GstEbuttdTree GstEbuttdTree;
+typedef struct _GstEbuttdTextElement GstEbuttdTextElement;
+typedef struct _GstEbuttdTextBlock GstEbuttdTextBlock;
+typedef struct _GstEbuttdTextArea GstEbuttdTextArea;
 
 /**
  * GstEbuttdWritingMode:
@@ -92,7 +97,6 @@ struct _GstEbuttdRegion {
      *   overflow - determines whether or not content that overflows the region
      *   area is clipped.
      */
-    const gchar *id;
     gdouble origin_x, origin_y;
     gdouble extent_w, extent_h;
     GstEbuttdDisplayAlign display_align;
@@ -100,6 +104,32 @@ struct _GstEbuttdRegion {
     GstEbuttdWritingMode writing_mode;
     GstEbuttdBackgroundMode show_background;
     GstEbuttdOverflowMode overflow;
+};
+
+
+struct _GstEbuttdColor {
+  gdouble r;
+  gdouble g;
+  gdouble b;
+  gdouble a;
+};
+
+
+struct _GstEbuttdTextElement {
+  GstEbuttdStyle *style_attr;
+  gboolean newline;
+  gchar *text;
+};
+
+struct _GstEbuttdTextBlock {
+  GstEbuttdColor bg_color;
+  GSList *elements;
+};
+
+struct _GstEbuttdTextArea {
+  GstEbuttdRegion *region_attr;
+  GstEbuttdColor bg_color;
+  GSList *text_blocks;
 };
 
 
@@ -151,12 +181,12 @@ typedef enum {
 
 struct _GstEbuttdStyle {
   GstEbuttdTextDirection text_direction;
-  const gchar *font_family;
+  gchar font_family[MAX_FONT_FAMILY_NAME_LENGTH];
   gdouble font_size;
   gdouble line_height;
   GstEbuttdTextAlign text_align;
-  const gchar *color;
-  const gchar *bg_color;
+  GstEbuttdColor color;
+  GstEbuttdColor bg_color;
   GstEbuttdFontStyle font_style;
   GstEbuttdFontWeight font_weight;
   GstEbuttdTextDirection text_decoration;
@@ -184,14 +214,6 @@ struct _GstEbuttdStyleDescriptor {
   const gchar *wrap_option;
   const gchar *multi_row_align;
   const gchar *line_padding;
-};
-
-
-struct _GstEbuttdColor {
-  gdouble r;
-  gdouble g;
-  gdouble b;
-  gdouble a;
 };
 
 
