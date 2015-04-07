@@ -1957,7 +1957,7 @@ remove_if_break (GNode * node, gpointer data)
   GstEbuttdElement *element;
   element = node->data;
   if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR) {
-    GST_CAT_DEBUG (ebuttdparse, "Stripping <br>...");
+    GST_CAT_LOG (ebuttdparse, "Stripping <br>...");
     g_node_unlink (node);
   }
   return FALSE;
@@ -1991,14 +1991,16 @@ resolve_element_timings (GNode * node, gpointer data)
   }
 
   if (!media_time_is_valid (element->begin)) {
-    GST_CAT_ERROR (ebuttdparse, "No timing found for element.");
+    GST_CAT_WARNING (ebuttdparse,
+        "No timing found for element. Removing from tree...");
+    g_node_unlink (node);
   } else {
     leaf->begin = element->begin;
     leaf->end = element->end;
-    GST_CAT_DEBUG (ebuttdparse, "Leaf begin: %02u:%02u:%02u.%u",
+    GST_CAT_LOG (ebuttdparse, "Leaf begin: %02u:%02u:%02u.%u",
         leaf->begin.hours, leaf->begin.minutes,
         leaf->begin.seconds, leaf->begin.milliseconds);
-    GST_CAT_DEBUG (ebuttdparse, "Leaf end: %02u:%02u:%02u.%u",
+    GST_CAT_LOG (ebuttdparse, "Leaf end: %02u:%02u:%02u.%u",
         leaf->end.hours, leaf->end.minutes,
         leaf->end.seconds, leaf->end.milliseconds);
   }
@@ -2012,6 +2014,40 @@ resolve_timings (GNode * tree)
 {
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
       resolve_element_timings, NULL);
+}
+
+
+static gboolean
+resolve_leaf_region (GNode * node, gpointer data)
+{
+  GstEbuttdElement *element, *leaf;
+
+  g_return_val_if_fail (node != NULL, FALSE);
+  leaf = element = node->data;
+
+  while (node->parent && !element->region) {
+    node = node->parent;
+    element = node->data;
+  }
+
+  if (!element->region) {
+    GST_CAT_WARNING (ebuttdparse,
+        "No region found above leaf element. Removing from tree...");
+    g_node_unlink (node);
+  } else {
+    leaf->region = g_strdup (element->region);
+    GST_CAT_LOG (ebuttdparse, "Leaf region: %s", leaf->region);
+  }
+
+  return FALSE;
+}
+
+
+static void
+resolve_regions (GNode * tree)
+{
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
+      resolve_leaf_region, NULL);
 }
 
 
@@ -2102,6 +2138,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
       resolve_timings (body);
+      resolve_regions (body);
 
 #if 0
       /**
