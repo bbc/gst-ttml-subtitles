@@ -88,8 +88,7 @@
  *    clipped properly during blitting (if wrapping is disabled)
  */
 
-GST_DEBUG_CATEGORY (ebuttd_render_debug);
-#define GST_CAT_DEFAULT ebuttd_render_debug
+GST_DEBUG_CATEGORY_STATIC (ebuttdrender);
 
 #define DEFAULT_PROP_TEXT 	""
 #define DEFAULT_PROP_SHADING	FALSE
@@ -594,6 +593,9 @@ gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
   GstPadTemplate *template;
   PangoFontDescription *desc;
 
+  GST_DEBUG_CATEGORY_INIT (ebuttdrender, "ebuttdrender", 0,
+      "EBU-TT-D renderer debug category");
+
   /* video sink */
   template = gst_static_pad_template_get (&video_sink_template_factory);
   overlay->video_sinkpad = gst_pad_new_from_template (template, "video_sink");
@@ -698,8 +700,8 @@ void gst_base_ebuttd_overlay_region_compose (
   g_return_if_fail (composition != NULL);
 
   if (region->text_image) {
-    g_print ("Adding text image...\n");
-    g_print ("x: %d  y: %d  w: %u  h: %u, buffer-size: %u\n",
+    GST_CAT_DEBUG (ebuttdrender, "Adding text image...");
+    GST_CAT_DEBUG (ebuttdrender, "x: %d  y: %d  w: %u  h: %u, buffer-size: %u",
         (gint) region->origin_x, (gint) region->origin_y,
         (guint) region->extent_w, (guint) region->extent_h,
         gst_buffer_get_size (region->text_image));
@@ -717,8 +719,8 @@ void gst_base_ebuttd_overlay_region_compose (
   }
 
   if (region->bg_image) {
-    g_print ("Adding background image...\n");
-    g_print ("x: %d  y: %d  w: %u  h: %u, buffer-size: %u\n",
+    GST_CAT_DEBUG (ebuttdrender, "Adding background image...");
+    GST_CAT_DEBUG (ebuttdrender, "x: %d  y: %d  w: %u  h: %u, buffer-size: %u",
         (gint) region->x_bk, (gint) region->y_bk,
         (guint) region->width_bk, (guint) region->height_bk,
         gst_buffer_get_size (region->bg_image));
@@ -765,7 +767,7 @@ gst_base_ebuttd_overlay_region_new (GstBaseEbuttdOverlay * overlay, gdouble x,
 
   g_return_val_if_fail (textlen < 256, NULL);
 
-  g_print ("line_padding: %d\n", line_padding);
+  GST_CAT_DEBUG (ebuttdrender, "line_padding: %d", line_padding);
 
   region = g_new0 (GstBaseEbuttdOverlayRegion, 1);
   region->origin_x = x;
@@ -826,7 +828,7 @@ gst_base_ebuttd_overlay_region_new (GstBaseEbuttdOverlay * overlay, gdouble x,
 
   /* draw text */
   cairo_save (cr);
-  g_print ("Layout text is: %s\n", pango_layout_get_text (region->layout));
+  GST_CAT_DEBUG (ebuttdrender, "Layout text is: %s", pango_layout_get_text (region->layout));
   /*cairo_set_source_rgba (cr, r / 255.0, g / 255.0, b / 255.0, a / 255.0);*/
   pango_cairo_show_layout (cr, region->layout);
   cairo_restore (cr);
@@ -869,7 +871,7 @@ gst_base_ebuttd_overlay_region_new (GstBaseEbuttdOverlay * overlay, gdouble x,
     g = pango_color.green;
     b = pango_color.blue;
 
-    g_print ("r:%u g:%u b:%u\n", r, g, b);
+    GST_CAT_DEBUG (ebuttdrender, "r:%u g:%u b:%u", r, g, b);
 
   /*} else {
     guint hex_color;
@@ -905,7 +907,7 @@ gst_base_ebuttd_overlay_layer_free (GstBaseEbuttdOverlayLayer * layer)
 {
   g_return_if_fail (layer != NULL);
 
-  g_print ("Freeing layer %p...\n", layer);
+  GST_CAT_DEBUG (ebuttdrender, "Freeing layer %p...", layer);
   if (layer->image) {
     gst_buffer_unref (layer->image);
   }
@@ -920,7 +922,7 @@ static void
 gst_base_ebuttd_overlay_region_free (GstBaseEbuttdOverlayRegion * region)
 {
   g_return_if_fail (region != NULL);
-  g_print ("Freeing region %p...\n", region);
+  GST_CAT_DEBUG (ebuttdrender, "Freeing region %p...", region);
   if (region->layout) {
     g_object_unref (region->layout);
   }
@@ -1792,18 +1794,18 @@ gst_base_ebuttd_overlay_set_composition2 (GstBaseEbuttdOverlay * overlay,
   g_return_if_fail (region != NULL);
   g_return_if_fail (region->text_image != NULL);
 
-  g_print ("width: %d   height: %d\n", overlay->width, overlay->height);
+  GST_CAT_DEBUG (ebuttdrender, "width: %d   height: %d", overlay->width, overlay->height);
   xpos_rg = (guint) ((region->origin_x * overlay->width) / 100.0);
   ypos_rg = (guint) ((region->origin_y * overlay->height) / 100.0);
-  g_print ("xpos_bk: %d   ypos_bk: %d\n", xpos_bk, ypos_bk);
+  GST_CAT_DEBUG (ebuttdrender, "xpos_bk: %d   ypos_bk: %d", xpos_bk, ypos_bk);
   xpos_bk = xpos_rg + region->padding_start;
   ypos_bk = ypos_rg + region->padding_before;
 
   xpos = xpos_bk + overlay->line_padding;
   ypos = ypos_bk;
 
-  g_print ("Adding text image...\n");
-  g_print ("x: %d  y: %d  w: %u  h: %u, buffer-size: %u\n",
+  GST_CAT_DEBUG (ebuttdrender, "Adding text image...");
+  GST_CAT_DEBUG (ebuttdrender, "x: %d  y: %d  w: %u  h: %u, buffer-size: %u",
       xpos, ypos,
       (guint) region->extent_w, (guint) region->extent_h,
       gst_buffer_get_size (region->text_image));
@@ -1819,8 +1821,8 @@ gst_base_ebuttd_overlay_set_composition2 (GstBaseEbuttdOverlay * overlay,
       GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
 
   if (region->bg_image) {
-    g_print ("Adding background image...\n");
-    g_print ("x: %d  y: %d  w: %u  h: %u, buffer-size: %u\n",
+    GST_CAT_DEBUG (ebuttdrender, "Adding background image...");
+    GST_CAT_DEBUG (ebuttdrender, "x: %d  y: %d  w: %u  h: %u, buffer-size: %u",
         xpos_bk, ypos_bk,
         (guint) region->width_bk, (guint) region->height_bk,
         gst_buffer_get_size (region->bg_image));
@@ -1875,7 +1877,7 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
   GstBuffer *buffer, *buffer_bk;
   GstMapInfo map, map_bk;
 
-  g_print ("Input string: %s\n", string);
+  GST_CAT_DEBUG (ebuttdrender, "Input string: %s", string);
   g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
 
   if (overlay->auto_adjust_size) {
@@ -1890,7 +1892,7 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
 
   /* get subtitle image size */
   pango_layout_get_pixel_extents (overlay->layout, &ink_rect, &logical_rect);
-  g_print ("Pixel extents - w: %d  h: %d  x: %d  y: %d\n", logical_rect.width, logical_rect.height, logical_rect.x, logical_rect.y);
+  GST_CAT_DEBUG (ebuttdrender, "Pixel extents - w: %d  h: %d  x: %d  y: %d", logical_rect.width, logical_rect.height, logical_rect.x, logical_rect.y);
 
   /* apply scale to get the correct font_size */
   /* This bit added by PT. */
@@ -1915,9 +1917,9 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
 #endif
 
   /* CB: Why is the width being scaled? Is it to fit some predeclared overlay size? */
-  g_print ("shadow_offset: %f  scalef: %f\n", overlay->shadow_offset, scalef);
+  GST_CAT_DEBUG (ebuttdrender, "shadow_offset: %f  scalef: %f", overlay->shadow_offset, scalef);
   width = (logical_rect.width + overlay->shadow_offset) * scalef;
-  g_print ("width 1: %d\n", width);
+  GST_CAT_DEBUG (ebuttdrender, "width 1: %d", width);
 
   if (width + overlay->deltax >
       (overlay->use_vertical_render ? overlay->height : overlay->width)) {
@@ -1929,7 +1931,7 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
     pango_layout_get_pixel_extents (overlay->layout, &ink_rect, &logical_rect);
     width = overlay->width;
   }
-  g_print ("width 2: %d\n", width);
+  GST_CAT_DEBUG (ebuttdrender, "width 2: %d", width);
 
   height =
       (logical_rect.height + logical_rect.y + overlay->shadow_offset) * scalef;
@@ -1976,7 +1978,7 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
     cairo_matrix_init_scale (&cairo_matrix, scalef, scalef);
   }
 
-  g_print ("Creating text image buffer with width %d and height %d\n",
+  GST_CAT_DEBUG (ebuttdrender, "Creating text image buffer with width %d and height %d",
       width, height);
 
   /* reallocate overlay buffer */
@@ -2185,12 +2187,12 @@ parse_ebuttd_colorstring (const gchar * color)
     else
       ret.a = hex_pair_to_byte (c + 6) / 255.0;
 
-    g_print ("Returning color - r:%g  b:%g  g:%g  a:%g\n",
+    GST_CAT_DEBUG (ebuttdrender, "Returning color - r:%g  b:%g  g:%g  a:%g",
         ret.r, ret.b, ret.g, ret.a);
   } else if (g_strcmp0 (color, "yellow") == 0) { /* XXX:Hack for test stream. */
     ret = parse_ebuttd_colorstring ("#ffff00");
   } else {
-    g_print ("Invalid color string.\n");
+    GST_CAT_DEBUG (ebuttdrender, "Invalid color string.");
   }
 
   return ret;
@@ -2224,7 +2226,7 @@ draw_rectangle (guint width, guint height, GstBaseEbuttdOverlayColor color)
     cairo_surface_destroy (surface);
     gst_buffer_unmap (buffer, &map);
   } else {
-    g_print ("Couldn't allocate memory to store rectangle.\n");
+    GST_CAT_DEBUG (ebuttdrender, "Couldn't allocate memory to store rectangle.");
   }
 
   return buffer;
@@ -2270,15 +2272,18 @@ draw_text (const gchar * text, guint text_height,
   cur_height = logical_rect.height / pango_layout_get_line_count (layout);
   spacing = (gint) (cur_height * (line_height - 100.0)/100.0);
 
-  g_print ("Current line height is %u; changing to %d...\n",
+  GST_CAT_DEBUG (ebuttdrender, "Current line height is %u; changing to %d...",
       cur_height, cur_height + spacing);
   pango_layout_set_spacing (layout, PANGO_SCALE * spacing);
-  g_print ("Current spacing is now %d\n", pango_layout_get_spacing (layout));
+  GST_CAT_DEBUG (ebuttdrender, "Current spacing is now %d", pango_layout_get_spacing (layout));
 
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
-  g_print ("logical_rect.width: %d  logical_rect.height: %d\n",
+  GST_CAT_DEBUG (ebuttdrender, "logical_rect.width: %d  logical_rect.height: %d",
       logical_rect.width, logical_rect.height);
 
+  /* XXX: Do we need to allocate a separate surface and copy a region of it?
+   * Will it work if we allocate a surface with dimensions of logical_rect and
+   * render into that, even if the text needs to be wrapped? */
   if (wrap)
     surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
   else
@@ -2293,7 +2298,7 @@ draw_text (const gchar * text, guint text_height,
 
   /* draw text */
   cairo_save (cairo_state);
-  g_print ("Layout text is: %s\n", pango_layout_get_text (layout));
+  GST_CAT_DEBUG (ebuttdrender, "Layout text is: %s", pango_layout_get_text (layout));
   cairo_set_source_rgba (cairo_state, color.r, color.g, color.b, color.a);
   pango_cairo_show_layout (cairo_state, layout);
   cairo_restore (cairo_state);
@@ -2303,7 +2308,7 @@ draw_text (const gchar * text, guint text_height,
   spacing = MAX (spacing, 0);
   buf_width = logical_rect.width;
   buf_height = logical_rect.height + (2 * spacing);
-  g_print ("buf_width: %u  buf_height: %u\n", buf_width, buf_height);
+  GST_CAT_DEBUG (ebuttdrender, "buf_width: %u  buf_height: %u", buf_width, buf_height);
   buffer = gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
   gst_buffer_memset (buffer, 0, 0U, 4 * buf_width * buf_height);
   gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
@@ -2346,7 +2351,7 @@ create_new_layer (GstBuffer * image, guint xpos, guint ypos, guint width,
   layer->width = width;
   layer->height = height;
 
-  g_print ("Creating layer - x: %d  y: %d  w: %u  h: %u, buffer-size: %u\n",
+  GST_CAT_DEBUG (ebuttdrender, "Creating layer - x: %d  y: %d  w: %u  h: %u, buffer-size: %u",
       xpos, ypos, width, height, gst_buffer_get_size (image));
 
   gst_buffer_add_video_meta (image, GST_VIDEO_FRAME_FLAG_NONE,
@@ -2394,7 +2399,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   cell_pixel_width = overlay->width / style->cellres_x;
 
   line_padding_px = (guint) (style->line_padding * cell_pixel_width);
-  g_print ("line_padding_px: %u\n", line_padding_px);
+  GST_CAT_DEBUG (ebuttdrender, "line_padding_px: %u", line_padding_px);
 
   padding_start_px = (guint) ((region->padding_start * overlay->width) / 100.0);
   padding_end_px = (guint) ((region->padding_end * overlay->width) / 100.0);
@@ -2402,7 +2407,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
     (guint) ((region->padding_before * overlay->height) / 100.0);
   padding_after_px =
     (guint) ((region->padding_after * overlay->height) / 100.0);
-  g_print ("pad_start: %u  pad_end: %u  pad_before: %u  pad_after: %u\n",
+  GST_CAT_DEBUG (ebuttdrender, "pad_start: %u  pad_end: %u  pad_before: %u  pad_after: %u",
       padding_start_px, padding_end_px, padding_before_px, padding_after_px);
 
   region_x = (guint) ((region->origin_x * overlay->width) / 100.0);
@@ -2416,7 +2421,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   text_w =
     region_w - (padding_start_px + padding_end_px + (2 * line_padding_px));
   text_h = region_h - (padding_before_px + padding_after_px);
-  g_print ("text_w: %u   text_h: %u\n", text_w, text_h);
+  GST_CAT_DEBUG (ebuttdrender, "text_w: %u   text_h: %u", text_w, text_h);
 
   switch (style->multi_row_align) {
       case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START:
@@ -3484,7 +3489,7 @@ extract_attribute_value (const gchar * string, const gchar * attr_name)
     pointer2 = ++pointer1;
     while (*pointer2 != '"') ++pointer2;
     value = g_strndup (pointer1, pointer2 - pointer1);
-    /*g_print ("Value extracted: %s\n", value);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "Value extracted: %s", value);*/
   }
   return value;
 }
@@ -3503,7 +3508,7 @@ create_new_region (const gchar * description)
     r->origin_x = g_ascii_strtod (value, &c);
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
     r->origin_y = g_ascii_strtod (c, NULL);
-    /*g_print ("origin_x: %g   origin_y: %g\n", r->origin_x, r->origin_y);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "origin_x: %g   origin_y: %g", r->origin_x, r->origin_y);*/
     g_free (value);
   }
 
@@ -3514,7 +3519,7 @@ create_new_region (const gchar * description)
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
     r->extent_h = g_ascii_strtod (c, NULL);
     r->extent_h = (r->extent_h > 100.0) ? 100.0 : r->extent_h;
-    /*g_print ("extent_w: %g   extent_h: %g\n", r->extent_w, r->extent_h);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "extent_w: %g   extent_h: %g", r->extent_w, r->extent_h);*/
     g_free (value);
   }
 
@@ -3525,7 +3530,7 @@ create_new_region (const gchar * description)
       r->display_align = GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER;
     else
       r->display_align = GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE;
-    /*g_print ("display_align: %d\n", r->display_align);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "display_align: %d", r->display_align);*/
     g_free (value);
   }
 
@@ -3568,8 +3573,8 @@ create_new_region (const gchar * description)
         r->padding_start = g_ascii_strtod (decimals[3], NULL);
         break;
     }
-    /*g_print ("padding_start: %g  padding_end: %g  padding_before: %g "
-        "padding_after: %g\n", r->padding_start, r->padding_end,
+    /*GST_CAT_DEBUG (ebuttdrender, "padding_start: %g  padding_end: %g
+     padding_before: %g padding_after: %g", r->padding_start, r->padding_end,
         r->padding_before, r->padding_after);*/
     g_strfreev (decimals);
     g_free (value);
@@ -3584,7 +3589,7 @@ create_new_region (const gchar * description)
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBLR;
     else
       r->writing_mode = GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_LRTB;
-    /*g_print ("writing_mode: %d\n", r->writing_mode);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "writing_mode: %d", r->writing_mode);*/
     g_free (value);
   }
 
@@ -3593,7 +3598,7 @@ create_new_region (const gchar * description)
       r->show_background = GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_WHEN_ACTIVE;
     else
       r->show_background = GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_ALWAYS;
-    /*g_print ("show_background: %d\n", r->show_background);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "show_background: %d", r->show_background);*/
     g_free (value);
   }
 
@@ -3602,7 +3607,7 @@ create_new_region (const gchar * description)
       r->overflow = GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_VISIBLE;
     else
       r->overflow = GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_HIDDEN;
-    /*g_print ("overflow: %d\n", r->overflow);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "overflow: %d", r->overflow);*/
     g_free (value);
   }
 
@@ -3620,19 +3625,19 @@ create_new_style (const gchar * description)
       s->text_direction = GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_RTL;
     else
       s->text_direction = GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_LTR;
-    g_print ("direction: %d\n", s->text_direction);
+    GST_CAT_DEBUG (ebuttdrender, "direction: %d", s->text_direction);
     g_free (value);
   }
 
   if ((value = extract_attribute_value (description, "font_family"))) {
     s->font_family = g_strdup (value);
-    /*g_print ("s->font_family: %s\n", s->font_family);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "s->font_family: %s", s->font_family);*/
     g_free (value);
   }
 
   if ((value = extract_attribute_value (description, "font_size"))) {
     s->font_size = g_ascii_strtod (value, NULL);
-    /*g_print ("s->font_size: %g\n", s->font_size);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "s->font_size: %g", s->font_size);*/
     g_free (value);
   }
 
@@ -3642,7 +3647,7 @@ create_new_style (const gchar * description)
     else
       s->line_height = g_ascii_strtod (value, NULL);
     g_free (value);
-    /*g_print ("s->line_height:  %g\n",s->line_height);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "s->line_height:  %g",s->line_height);*/
   } else {
       s->line_height = 125.0;
   }
@@ -3659,7 +3664,7 @@ create_new_style (const gchar * description)
     else
       s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START;
     g_free (value);
-    /*g_print ("s->text_align:  %d\n",s->text_align);*/
+    /*GST_CAT_DEBUG (ebuttdrender, "s->text_align:  %d",s->text_align);*/
   }
 
   if ((value = extract_attribute_value (description, "foreground"))) {
@@ -3763,7 +3768,7 @@ extract_region (gchar ** text)
   if ((g_strv_length (lines) > 0) && g_str_has_prefix (lines[0], "<region")) {
     r = create_new_region (lines[0]);
   } else {
-    g_print ("Error: region description missing from head of buffer.\n");
+    GST_CAT_DEBUG (ebuttdrender, "Error: region description missing from head of buffer.");
   }
 
   stripped_text = g_strjoinv ("\n", &lines[1]);
@@ -3792,10 +3797,10 @@ extract_region_info (gchar ** text, GstBaseEbuttdOverlay * overlay)
       tmp = stripped_text;
       stripped_text = g_strjoin ("\n", stripped_text, *line, NULL);
       g_free (tmp);
-      /*g_print ("Found a non-region line in text; stripped text is now: %s\n",
+      /*GST_CAT_DEBUG (ebuttdrender, "Found a non-region line in text; stripped text is now: %s",
           stripped_text);*/
     } else {
-      /*g_print ("Found a region element in text.\n");*/
+      /*GST_CAT_DEBUG (ebuttdrender, "Found a region element in text.");*/
       GstBaseEbuttdOverlayRegion *r = create_new_region (*line);
       ++n_found;
     }
@@ -4188,8 +4193,6 @@ plugin_init (GstPlugin * plugin)
           GST_TYPE_EBUTTD_OVERLAY)) {
     return FALSE;
   }
-
-  GST_DEBUG_CATEGORY_INIT (ebuttd_render_debug, "ebuttdrender", 0, "EBU-TT-D- renderer");
 
   return TRUE;
 }
