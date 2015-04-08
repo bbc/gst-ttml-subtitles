@@ -1758,6 +1758,8 @@ gst_base_ebuttd_overlay_compose_layers (GstBaseEbuttdOverlay * overlay,
 {
   GstBaseEbuttdOverlayLayer *layer = NULL;
 
+  GST_CAT_DEBUG (ebuttdrender, "Composing layers...");
+
   g_return_if_fail (overlay != NULL);
   g_return_if_fail (layers != NULL);
 
@@ -2191,6 +2193,10 @@ parse_ebuttd_colorstring (const gchar * color)
         ret.r, ret.b, ret.g, ret.a);
   } else if (g_strcmp0 (color, "yellow") == 0) { /* XXX:Hack for test stream. */
     ret = parse_ebuttd_colorstring ("#ffff00");
+  } else if (g_strcmp0 (color, "green") == 0) { /* XXX:Hack for IMSC test stream. */
+    ret = parse_ebuttd_colorstring ("#008000");
+  } else if (g_strcmp0 (color, "black") == 0) { /* XXX:Hack for IMSC test stream. */
+    ret = parse_ebuttd_colorstring ("#000000");
   } else {
     GST_CAT_DEBUG (ebuttdrender, "Invalid color string.");
   }
@@ -2237,7 +2243,7 @@ static GstBuffer *
 draw_text (const gchar * text, guint text_height,
     GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
     guint height, guint * ink_width, guint * ink_height, PangoAlignment align,
-    gdouble line_height, gboolean wrap)
+    gdouble line_height, gboolean wrap, gchar * font_family)
 {
   GstMapInfo map;
   cairo_surface_t *surface, *clipped_surface;
@@ -2250,6 +2256,7 @@ draw_text (const gchar * text, guint text_height,
   guint cur_height;
   gint spacing = 0U;
   guint buf_width, buf_height;
+  PangoFontDescription *font_desc;
 
   layout = pango_layout_new (context);
   if (wrap) {
@@ -2260,6 +2267,10 @@ draw_text (const gchar * text, guint text_height,
   }
   pango_layout_set_height (layout, height * PANGO_SCALE);
   pango_layout_set_markup (layout, text, strlen (text));
+
+  font_desc = pango_font_description_new ();
+  pango_font_description_set_family (font_desc, font_family);
+  pango_layout_set_font_description (layout, font_desc);
 
   attr_list = pango_layout_get_attributes (layout);
   fsize = pango_attr_size_new (text_height * PANGO_SCALE);
@@ -2332,6 +2343,7 @@ draw_text (const gchar * text, guint text_height,
   if (ink_width) *ink_width = buf_width;
   if (ink_height) *ink_height = buf_height;
   g_object_unref (layout);
+  pango_font_description_free (font_desc);
   return buffer;
 }
 
@@ -2391,7 +2403,9 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   guint bg_w, bg_h;
   GstBaseEbuttdOverlayLayer *bg_layer;
 
-  g_return_val_if_fail (textlen < 256, NULL);
+  g_return_val_if_fail (textlen < 1024, NULL);
+
+  GST_CAT_DEBUG (ebuttdrender, "Rendering rectangles & text...");
 
   /* Convert relative measurements to pixel measurements based on video frame
    * size. */
@@ -2453,7 +2467,8 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   text_image = draw_text (string, text_height, text_color,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
       text_w, text_h, &ink_w, &ink_h, align, style->line_height,
-      (style->wrap_option == GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON));
+      (style->wrap_option == GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON),
+      style->font_family);
 
   switch (style->text_align) {
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
@@ -2490,22 +2505,28 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   bg_w = ink_w + (2 * line_padding_px);
   bg_h = ink_h;
 
-  bg_image = draw_rectangle (bg_w, bg_h,
-      parse_ebuttd_colorstring (style->bg_color));
+  if (style->bg_color) {
+    bg_image = draw_rectangle (bg_w, bg_h,
+        parse_ebuttd_colorstring (style->bg_color));
 
-  bg_x = text_x - line_padding_px;
-  bg_y = text_y;
+    bg_x = text_x - line_padding_px;
+    bg_y = text_y;
 
-  bg_layer = create_new_layer (bg_image, bg_x, bg_y, bg_w, bg_h);
-  overlay->layers = g_slist_prepend (overlay->layers, bg_layer);
+    bg_layer = create_new_layer (bg_image, bg_x, bg_y, bg_w, bg_h);
+    overlay->layers = g_slist_prepend (overlay->layers, bg_layer);
+  }
 
   /************* Render region background *************/
-  region_image = draw_rectangle (region_w, region_h,
-      parse_ebuttd_colorstring ("#ff000077"));
+#if 1
+  if (region->bg_color) {
+    region_image = draw_rectangle (region_w, region_h,
+        parse_ebuttd_colorstring (region->bg_color));
 
-  region_layer = create_new_layer (region_image, region_x, region_y,
-      region_w, region_h);
-  overlay->layers = g_slist_prepend (overlay->layers, region_layer);
+    region_layer = create_new_layer (region_image, region_x, region_y,
+        region_w, region_h);
+    overlay->layers = g_slist_prepend (overlay->layers, region_layer);
+  }
+#endif
 
   gst_base_ebuttd_overlay_compose_layers (overlay, overlay->layers);
 }
@@ -2745,7 +2766,7 @@ gst_base_ebuttd_overlay_render_text2 (GstBaseEbuttdOverlay * overlay,
 
   g_free (string);
 
-  overlay->need_render = FALSE;
+  overlay->need_render = TRUE;
 }
 
 
@@ -3503,6 +3524,11 @@ create_new_region (const gchar * description)
 
   value = extract_attribute_value (description, "id");
 
+  if ((value = extract_attribute_value (description, "bg_color"))) {
+    r->bg_color = g_strdup (value);
+    g_free (value);
+  }
+
   if ((value = extract_attribute_value (description, "origin"))) {
     gchar *c;
     r->origin_x = g_ascii_strtod (value, &c);
@@ -3633,12 +3659,16 @@ create_new_style (const gchar * description)
     s->font_family = g_strdup (value);
     /*GST_CAT_DEBUG (ebuttdrender, "s->font_family: %s", s->font_family);*/
     g_free (value);
+  } else {
+    s->font_family = g_strdup ("sans");
   }
 
   if ((value = extract_attribute_value (description, "font_size"))) {
     s->font_size = g_ascii_strtod (value, NULL);
     /*GST_CAT_DEBUG (ebuttdrender, "s->font_size: %g", s->font_size);*/
     g_free (value);
+  } else {
+    s->font_size = 100.0;
   }
 
   if ((value = extract_attribute_value (description, "line_height"))) {
@@ -3665,11 +3695,17 @@ create_new_style (const gchar * description)
       s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START;
     g_free (value);
     /*GST_CAT_DEBUG (ebuttdrender, "s->text_align:  %d",s->text_align);*/
+  } else {
+    /* XXX: Hack for IMSC demo. */
+    s->text_align = GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER;
   }
 
   if ((value = extract_attribute_value (description, "foreground"))) {
     s->color = g_strdup (value);
     g_free (value);
+  } else {
+    /* XXX: Hack for IMSC demo. */
+    s->color = g_strdup ("#FFFFFF");
   }
 
   if ((value = extract_attribute_value (description, "background"))) {
@@ -3765,6 +3801,8 @@ extract_region (gchar ** text)
   g_return_val_if_fail (text != NULL, NULL);
 
   lines = g_strsplit (*text, "\n", 0);
+  GST_CAT_DEBUG (ebuttdrender, "There are %u lines in text area",
+      g_strv_length (lines));
   if ((g_strv_length (lines) > 0) && g_str_has_prefix (lines[0], "<region")) {
     r = create_new_region (lines[0]);
   } else {
@@ -3990,9 +4028,13 @@ wait_for_text_buf:
         in_size = map.size;
 
         if (in_size > 0) {
-          guint n_regions = 0U;
           GstBaseEbuttdOverlayRegion *region;
           GstBaseEbuttdOverlayStyle *style;
+          gchar ** lines;
+          guint i, n_regions;
+          guint region_indices[8];
+          GSList *text_areas = NULL, *list_pointer;
+
           /* g_markup_escape_text() absolutely requires valid UTF8 input, it
            * might crash otherwise. We don't fall back on GST_SUBTITLE_ENCODING
            * here on purpose, this is something that needs fixing upstream */
@@ -4012,35 +4054,84 @@ wait_for_text_buf:
             text = g_markup_escape_text (in_text, in_size);
           }
 
-          /* P TAYLOUR */
-          /* Extract region descriptions from text. */
-          /*n_regions = extract_region_info (&text, overlay);*/
-          region = extract_region (&text);
-          style = create_new_style (text);
-
-          /* extract non pango styles. Remove markup when done. */
-          set_non_pango_markup (&text, overlay);
-          /* create styles that need to be converted to pango markup now */
-          convert_from_ebutt_to_pango (&text, overlay);
-
-          if (text != NULL && *text != '\0') {
-            gint text_len = strlen (text);
-
-            while (text_len > 0 && (text[text_len - 1] == '\n' ||
-                    text[text_len - 1] == '\r')) {
-              --text_len;
+          lines = g_strsplit (text, "\n", 0);
+          GST_CAT_DEBUG (ebuttdrender, "There are %u lines in input.",
+              g_strv_length (lines));
+          for (i = 0, n_regions = 0; i < g_strv_length (lines); ++i) {
+            if (g_str_has_prefix (lines[i], "<region")) {
+              GST_CAT_DEBUG (ebuttdrender, "line %u is region description.", i);
+              region_indices[n_regions++] = i;
             }
-            GST_DEBUG_OBJECT (overlay, "Rendering text '%*s'", text_len, text);
-            gst_base_ebuttd_overlay_render_text2 (overlay, text, text_len,
-                region, style);
-            g_free (region);
-            g_free (style);
-          } else {
-            GST_DEBUG_OBJECT (overlay, "No text to render (empty buffer)");
-            gst_base_ebuttd_overlay_render_text (overlay, " ", 1);
           }
-          if (in_text != (gchar *) map.data)
-            g_free (in_text);
+
+          /* Join together lines with their region. */
+          for (i = 0; i < n_regions; ++i) {
+            guint first_line, last_line;
+            gchar *string;
+            gint j;
+
+            first_line = region_indices[i];
+            last_line = (i == (n_regions - 1))?
+              g_strv_length (lines) - 1 : region_indices[i + 1] - 1;
+
+            GST_CAT_DEBUG (ebuttdrender, "First line: %u  last line: %u",
+                first_line, last_line);
+
+            string = g_strdup (lines[first_line++]);
+            for (j = first_line; j <= last_line; ++j) {
+              gchar *tmp = string;
+              string = g_strconcat (string, "\n", lines[j], NULL);
+              if (tmp) g_free (tmp);
+            }
+            GST_CAT_DEBUG (ebuttdrender,
+                "Appending following string to list: %s", string);
+            text_areas = g_slist_append (text_areas, string);
+          }
+
+          /* For each region, render text. */
+          list_pointer = text_areas;
+          while (list_pointer != NULL) {
+            gchar *text_area;
+            GST_CAT_DEBUG (ebuttdrender, "Rendering following text area:\n%s",
+                list_pointer->data);
+
+            text_area = g_strdup (list_pointer->data);
+
+            /* P TAYLOUR */
+            /* Extract region descriptions from text. */
+            /*n_regions = extract_region_info (&text, overlay);*/
+            region = extract_region (&text_area);
+            GST_CAT_DEBUG (ebuttdrender, "Text area after region extaction: %s",
+                text_area);
+            style = create_new_style (text_area);
+
+            /* extract non pango styles. Remove markup when done. */
+            set_non_pango_markup (&text_area, overlay);
+            /* create styles that need to be converted to pango markup now */
+            convert_from_ebutt_to_pango (&text_area, overlay);
+
+            if (text_area != NULL && *text_area != '\0') {
+              gint text_len = strlen (text_area);
+
+              while (text_len > 0 && (text_area[text_len - 1] == '\n' ||
+                    text_area[text_len - 1] == '\r')) {
+                --text_len;
+              }
+              GST_DEBUG_OBJECT (overlay, "Rendering text '%*s'", text_len, text_area);
+              gst_base_ebuttd_overlay_render_text2 (overlay, text_area, text_len,
+                  region, style);
+              g_free (region);
+              g_free (style);
+              g_free (text_area);
+            } else {
+              GST_DEBUG_OBJECT (overlay, "No text to render (empty buffer)");
+              gst_base_ebuttd_overlay_render_text (overlay, " ", 1);
+            }
+            if (in_text != (gchar *) map.data)
+              g_free (in_text);
+
+            list_pointer = list_pointer->next;
+          }
         } else {
           GST_DEBUG_OBJECT (overlay, "No text to render (empty buffer)");
           gst_base_ebuttd_overlay_render_text (overlay, " ", 1);

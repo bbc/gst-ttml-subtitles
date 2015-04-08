@@ -188,6 +188,7 @@ struct _GstBaseEbuttdOverlayRegion {
     GstBaseEbuttdOverlayWritingMode writing_mode;
     GstBaseEbuttdOverlayBackgroundMode show_background;
     GstBaseEbuttdOverlayOverflowMode overflow;
+    const gchar *bg_color;
 
     /* Data objects needed to render a region of subtitles. */
     PangoLayout *layout;   /* Pango layout that will handle text rendering. */
