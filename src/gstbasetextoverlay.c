@@ -2243,7 +2243,7 @@ static GstBuffer *
 draw_text (const gchar * text, guint text_height,
     GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
     guint height, guint * ink_width, guint * ink_height, PangoAlignment align,
-    gdouble line_height, gboolean wrap, gchar * font_family)
+    gdouble line_height, gboolean wrap, gchar * font_family, GSList ** extents)
 {
   GstMapInfo map;
   cairo_surface_t *surface, *clipped_surface;
@@ -2257,6 +2257,7 @@ draw_text (const gchar * text, guint text_height,
   gint spacing = 0U;
   guint buf_width, buf_height;
   PangoFontDescription *font_desc;
+  guint i;
 
   layout = pango_layout_new (context);
   if (wrap) {
@@ -2342,6 +2343,25 @@ draw_text (const gchar * text, guint text_height,
 
   if (ink_width) *ink_width = buf_width;
   if (ink_height) *ink_height = buf_height;
+  for (i = 0; i < pango_layout_get_line_count (layout); ++i) {
+    PangoLayoutLine *line;
+    PangoRectangle logical_extents;
+    gint xpos;
+    GstBaseEbuttdOverlayExtents *e =
+      g_new0 (GstBaseEbuttdOverlayExtents, 1);
+
+    line = pango_layout_get_line (layout, i);
+    pango_layout_line_get_pixel_extents (line, NULL, &logical_extents);
+    e->x = logical_extents.x;
+    e->y = i * (buf_height/ pango_layout_get_line_count (layout));
+    e->width = logical_extents.width;
+    e->height = (buf_height/ pango_layout_get_line_count (layout));
+    pango_layout_line_index_to_x (line, 0, FALSE, &xpos);
+    xpos /= PANGO_SCALE;
+    GST_CAT_DEBUG (ebuttdrender, "Appending line x:%d y:%d w:%u h:%u xpos:%d",
+        e->x, e->y, e->width, e->height, xpos);
+    *extents = g_slist_append (*extents, e);
+  }
   g_object_unref (layout);
   pango_font_description_free (font_desc);
   return buffer;
@@ -2402,6 +2422,8 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   gint bg_x, bg_y;
   guint bg_w, bg_h;
   GstBaseEbuttdOverlayLayer *bg_layer;
+  GSList *extents = NULL;
+  guint i;
 
   g_return_val_if_fail (textlen < 1024, NULL);
 
@@ -2468,7 +2490,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
       text_w, text_h, &ink_w, &ink_h, align, style->line_height,
       (style->wrap_option == GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON),
-      style->font_family);
+      style->font_family, &extents);
 
   switch (style->text_align) {
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
@@ -2502,18 +2524,24 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   overlay->layers = g_slist_append (overlay->layers, text_layer);
 
   /************* Render text background *************/
-  bg_w = ink_w + (2 * line_padding_px);
-  bg_h = ink_h;
+  GST_CAT_DEBUG (ebuttdrender, "There are %d lines of text", g_slist_length (extents));
+  for (i = 0; i < g_slist_length (extents); ++i) {
+    gint offset;
+    GstBaseEbuttdOverlayExtents *e = g_slist_nth_data (extents, i);
+    bg_w = e->width + (2 * line_padding_px);
+    bg_h = e->height;
 
-  if (style->bg_color) {
-    bg_image = draw_rectangle (bg_w, bg_h,
-        parse_ebuttd_colorstring (style->bg_color));
+    if (style->bg_color) {
+      bg_image = draw_rectangle (bg_w, bg_h,
+          parse_ebuttd_colorstring (style->bg_color));
 
-    bg_x = text_x - line_padding_px;
-    bg_y = text_y;
+      offset = (ink_w - e->width)/2;
+      bg_x = (text_x + offset) - line_padding_px;
+      bg_y = text_y + e->y;
 
-    bg_layer = create_new_layer (bg_image, bg_x, bg_y, bg_w, bg_h);
-    overlay->layers = g_slist_prepend (overlay->layers, bg_layer);
+      bg_layer = create_new_layer (bg_image, bg_x, bg_y, bg_w, bg_h);
+      overlay->layers = g_slist_prepend (overlay->layers, bg_layer);
+    }
   }
 
   /************* Render region background *************/
@@ -3660,7 +3688,7 @@ create_new_style (const gchar * description)
     /*GST_CAT_DEBUG (ebuttdrender, "s->font_family: %s", s->font_family);*/
     g_free (value);
   } else {
-    s->font_family = g_strdup ("sans");
+    s->font_family = g_strdup ("DejaVu Sans Mono");
   }
 
   if ((value = extract_attribute_value (description, "font_size"))) {

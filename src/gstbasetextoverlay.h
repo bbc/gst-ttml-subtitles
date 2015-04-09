@@ -51,6 +51,13 @@ typedef struct _GstBaseEbuttdOverlayStyle GstBaseEbuttdOverlayStyle;
 typedef struct _GstBaseEbuttdOverlayColor GstBaseEbuttdOverlayColor;
 typedef struct _GstBaseEbuttdOverlayLayer GstBaseEbuttdOverlayLayer;
 
+typedef struct {
+  gint x;
+  gint y;
+  guint width;
+  guint height;
+} GstBaseEbuttdOverlayExtents;
+
 /**
  * GstBaseEbuttdOverlayVAlign:
  * @GST_BASE_EBUTTD_OVERLAY_VALIGN_BASELINE: draw text on the baseline
