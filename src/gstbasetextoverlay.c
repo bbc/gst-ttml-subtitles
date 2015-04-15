@@ -2526,7 +2526,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   /************* Render text background *************/
   GST_CAT_DEBUG (ebuttdrender, "There are %d lines of text", g_slist_length (extents));
   for (i = 0; i < g_slist_length (extents); ++i) {
-    gint offset;
+    gint offset = 0;
     GstBaseEbuttdOverlayExtents *e = g_slist_nth_data (extents, i);
     bg_w = e->width + (2 * line_padding_px);
     bg_h = e->height;
@@ -2535,7 +2535,11 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
       bg_image = draw_rectangle (bg_w, bg_h,
           parse_ebuttd_colorstring (style->bg_color));
 
-      offset = (ink_w - e->width)/2;
+      if (align == PANGO_ALIGN_CENTER)
+        offset = (ink_w - e->width)/2;
+      else if (align == PANGO_ALIGN_RIGHT)
+        offset = ink_w - e->width;
+
       bg_x = (text_x + offset) - line_padding_px;
       bg_y = text_y + e->y;
 
