@@ -81,6 +81,7 @@
 #include "gstbasetextoverlay.h"
 #include "gsttextoverlay.h"
 #include <string.h>
+#include <math.h>
 
 /* FIXME:
  *  - use proper strides and offset for I420
@@ -2195,6 +2196,8 @@ parse_ebuttd_colorstring (const gchar * color)
     ret = parse_ebuttd_colorstring ("#ffff00");
   } else if (g_strcmp0 (color, "green") == 0) { /* XXX:Hack for IMSC test stream. */
     ret = parse_ebuttd_colorstring ("#008000");
+  } else if (g_strcmp0 (color, "white") == 0) { /* XXX:Hack for IMSC test stream. */
+    ret = parse_ebuttd_colorstring ("#FFFFFF");
   } else if (g_strcmp0 (color, "black") == 0) { /* XXX:Hack for IMSC test stream. */
     ret = parse_ebuttd_colorstring ("#000000");
   } else {
@@ -2253,13 +2256,15 @@ draw_text (const gchar * text, guint text_height,
   PangoAttrList *attr_list;
   PangoAttribute *fsize;
   PangoRectangle ink_rect, logical_rect;
-  guint cur_height;
+  gdouble cur_height;
   gint spacing = 0U;
   guint buf_width, buf_height;
   PangoFontDescription *font_desc;
   guint i;
+  gdouble offset;
 
   layout = pango_layout_new (context);
+  pango_layout_set_markup (layout, text, strlen (text));
   if (wrap) {
     pango_layout_set_width (layout, width * PANGO_SCALE);
     pango_layout_set_wrap (layout, PANGO_WRAP_WORD_CHAR);
@@ -2267,23 +2272,28 @@ draw_text (const gchar * text, guint text_height,
     pango_layout_set_width (layout, -1);
   }
   pango_layout_set_height (layout, height * PANGO_SCALE);
-  pango_layout_set_markup (layout, text, strlen (text));
 
   font_desc = pango_font_description_new ();
   pango_font_description_set_family (font_desc, font_family);
   pango_layout_set_font_description (layout, font_desc);
 
   attr_list = pango_layout_get_attributes (layout);
-  fsize = pango_attr_size_new (text_height * PANGO_SCALE);
+  fsize = pango_attr_size_new_absolute (text_height * PANGO_SCALE);
+  /*fsize = pango_attr_size_new (text_height * PANGO_SCALE);*/
   pango_attr_list_change (attr_list, fsize);
   pango_layout_set_attributes (layout, attr_list);
 
   pango_layout_set_alignment (layout, align);
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
 
-  cur_height = logical_rect.height / pango_layout_get_line_count (layout);
-  spacing = (gint) (cur_height * (line_height - 100.0)/100.0);
+  /* XXX: Is this the best way to do it? Could we alternatively find the extents of the first line? */
+  cur_height = (gdouble)logical_rect.height
+    / pango_layout_get_line_count (layout);
+  offset = cur_height - (gdouble)text_height;
+  spacing = (gint) lround ((text_height * (line_height - 100.0)/100.0) - offset);
+  GST_CAT_DEBUG (ebuttdrender, "offset: %g   spacing: %d", offset, spacing);
 
+  GST_CAT_DEBUG (ebuttdrender, "line_height: %g", line_height);
   GST_CAT_DEBUG (ebuttdrender, "Current line height is %u; changing to %d...",
       cur_height, cur_height + spacing);
   pango_layout_set_spacing (layout, PANGO_SCALE * spacing);
@@ -2457,6 +2467,7 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   text_w =
     region_w - (padding_start_px + padding_end_px + (2 * line_padding_px));
   text_h = region_h - (padding_before_px + padding_after_px);
+  GST_CAT_DEBUG (ebuttdrender, "font_size: %g   cell_pixel_height: %u   text_height: %u", style->font_size, cell_pixel_height, text_height);
   GST_CAT_DEBUG (ebuttdrender, "text_w: %u   text_h: %u", text_w, text_h);
 
   switch (style->multi_row_align) {
@@ -2492,6 +2503,8 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
       (style->wrap_option == GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON),
       style->font_family, &extents);
 
+  GST_CAT_DEBUG (ebuttdrender, "ink_w: %u  ink_h: %u  region_y: %u  region_h: %u", ink_w, ink_h, region_y, region_h);
+
   switch (style->text_align) {
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
     case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT:
@@ -2509,11 +2522,14 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
   }
 
   switch (region->display_align) {
+    gint offset;
     case GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE:
       text_y = region_y + padding_before_px;
       break;
     case GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_CENTER:
-      text_y = region_y + (region_h - ink_h)/2;
+      offset = (gint)region_h - ink_h;
+      GST_CAT_DEBUG (ebuttdrender, "offset: %d", offset);
+      text_y = region_y + (MAX(offset, 0))/2;
       break;
     case GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER:
       text_y = (region_y + region_h) - (padding_after_px + ink_h);
