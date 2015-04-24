@@ -35,6 +35,8 @@ typedef struct _GstEbuttdStyleDescriptor GstEbuttdStyleDescriptor;
 typedef struct _GstEbuttdColor GstEbuttdColor;
 typedef struct _GstEbuttdMediaTime GstEbuttdMediaTime;
 typedef struct _GstEbuttdElement GstEbuttdElement;
+typedef struct _GstEbuttdScene GstEbuttdScene;
+typedef struct _GstEbuttdTransition GstEbuttdTransition;
 typedef struct _GstEbuttdTree GstEbuttdTree;
 typedef struct _GstEbuttdTextElement GstEbuttdTextElement;
 typedef struct _GstEbuttdTextBlock GstEbuttdTextBlock;
@@ -237,11 +239,29 @@ struct _GstEbuttdElement {
   GstEbuttdElementType type;
   gchar **styles;
   gchar *region;
-  GstEbuttdMediaTime begin;
-  GstEbuttdMediaTime end;
+  GstClockTime begin;
+  GstClockTime end;
   GstEbuttdStyleDescriptor *resolved_style;
   GstEbuttdStyle *style;
   gchar *text;
+};
+
+
+/* Represents a static scene consisting of one or more text elements that
+ * should be visible over a period of time. */
+struct _GstEbuttdScene {
+  GstClockTime begin;
+  GstClockTime end;
+  GList *elements;
+};
+
+
+/* Represents a transition, i.e., a point in time where one or more elements
+ * change from being visible to invisible (or vice-versa). */
+struct _GstEbuttdTransition {
+  GstClockTime time;
+  GList *appearing_elements;
+  GList *disappearing_elements;
 };
 
 

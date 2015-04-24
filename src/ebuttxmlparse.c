@@ -1618,6 +1618,7 @@ extract_tt_tag_properties (xmlNodePtr ttnode, DocMetadata * document_metadata)
 }
 
 
+#if 0
 static GstEbuttdMediaTime
 parse_timecode (const gchar * timestring)
 {
@@ -1658,6 +1659,63 @@ parse_timecode (const gchar * timestring)
   GST_CAT_LOG (ebuttdparse,
       "hours: %u  minutes: %u  seconds: %u  milliseconds: %u",
       time.hours, time.minutes, time.seconds, time.milliseconds);
+  return time;
+}
+#endif
+
+
+static GstClockTime
+parse_timecode (const gchar * timestring)
+{
+  gchar **strings;
+  const gchar *dec_point;
+  guint64 hours = 0, minutes = 0, seconds = 0, milliseconds = 0;
+  GstClockTime time = GST_CLOCK_TIME_NONE;
+
+  g_return_val_if_fail (timestring != NULL, time);
+  /*GST_CAT_DEBUG (ebuttdparse, "parse_timecode (%s)", timestring);*/
+
+  strings = g_strsplit (timestring, ":", 3);
+  if (g_strv_length (strings) != 3U) {
+    GST_CAT_ERROR (ebuttdparse, "badly formatted time string: %s", timestring);
+    return time;
+  }
+
+  hours = g_ascii_strtoull (strings[0], NULL, 10U);
+  minutes = g_ascii_strtoull (strings[1], NULL, 10U);
+  if ((dec_point = g_strstr_len (strings[2], strlen (strings[2]), "."))) {
+    guint n_digits;
+    char ** substrings = g_strsplit (strings[2], ".", 2);
+    seconds = g_ascii_strtoull (substrings[0], NULL, 10U);
+    n_digits = strlen (substrings[1]);
+    if (n_digits > 3) {
+      GST_CAT_ERROR (ebuttdparse, "badly formatted time string "
+          "(too many millisecond digits): %s\n", timestring);
+    } else {
+      milliseconds = g_ascii_strtoull (substrings[1], NULL, 10U);
+      for (n_digits = (3 - n_digits); n_digits; --n_digits)
+        milliseconds *= 10;
+    }
+    g_strfreev (substrings);
+  } else {
+    seconds = g_ascii_strtoull (strings[2], NULL, 10U);
+  }
+
+  if (minutes > 59 || seconds > 60) {
+    GST_CAT_ERROR (ebuttdparse, "invalid time string "
+        "(minutes or seconds out-of-bounds): %s\n", timestring);
+  }
+
+  g_strfreev (strings);
+  GST_CAT_LOG (ebuttdparse,
+      "hours: %llu  minutes: %llu  seconds: %llu  milliseconds: %llu",
+      hours, minutes, seconds, milliseconds);
+
+  time = hours * GST_SECOND * 3600
+       + minutes * GST_SECOND * 60
+       + seconds * GST_SECOND
+       + milliseconds * GST_MSECOND;
+
   return time;
 }
 
@@ -1704,14 +1762,16 @@ parse_element (const xmlNode * node)
     element->begin = parse_timecode ((const gchar*) string);
     xmlFree (string);
   } else {
-    element->begin.hours = G_MAXUINT;
+    element->begin = GST_CLOCK_TIME_NONE;
   }
   if ((string = xmlGetProp (node, (const xmlChar*) "end"))) {
     element->end = parse_timecode ((const gchar*) string);
     xmlFree (string);
   } else {
-    element->end.hours = G_MAXUINT;
+    element->end = GST_CLOCK_TIME_NONE;
   }
+  /*GST_CAT_DEBUG (ebuttdparse, "element->begin: %llu   element->end: %llu",
+      element->begin, element->end);*/
   if (node->content) {
     GST_CAT_LOG (ebuttdparse, "Node content: %s", node->content);
     element->text = g_strdup ((gchar*) node->content);
@@ -1979,30 +2039,31 @@ resolve_element_timings (GNode * node, gpointer data)
 
   g_return_val_if_fail (node != NULL, FALSE);
   leaf = element = node->data;
+  /*GST_CAT_DEBUG (ebuttdparse, "leaf_type: %u   leaf->begin: %llu   leaf->end: %llu",
+      element->type, element->begin, element->end);*/
 
-  if (media_time_is_valid (leaf->begin) && media_time_is_valid (leaf->end)) {
+  if (GST_CLOCK_TIME_IS_VALID (leaf->begin)
+      && GST_CLOCK_TIME_IS_VALID (leaf->end)) {
     GST_CAT_DEBUG (ebuttdparse, "Leaf node already has timing.");
     return FALSE;
   }
 
-  while (node->parent && !media_time_is_valid (element->begin)) {
+  while (node->parent && !GST_CLOCK_TIME_IS_VALID (element->begin)) {
     node = node->parent;
     element = node->data;
+    /*GST_CAT_DEBUG (ebuttdparse, "type: %u   element->begin: %llu   element->end: %llu",
+        element->type, element->begin, element->end);*/
   }
 
-  if (!media_time_is_valid (element->begin)) {
+  if (!GST_CLOCK_TIME_IS_VALID (element->begin)) {
     GST_CAT_WARNING (ebuttdparse,
         "No timing found for element. Removing from tree...");
     g_node_unlink (node);
   } else {
     leaf->begin = element->begin;
     leaf->end = element->end;
-    GST_CAT_LOG (ebuttdparse, "Leaf begin: %02u:%02u:%02u.%u",
-        leaf->begin.hours, leaf->begin.minutes,
-        leaf->begin.seconds, leaf->begin.milliseconds);
-    GST_CAT_LOG (ebuttdparse, "Leaf end: %02u:%02u:%02u.%u",
-        leaf->end.hours, leaf->end.minutes,
-        leaf->end.seconds, leaf->end.milliseconds);
+    GST_CAT_LOG (ebuttdparse, "Leaf begin: %llu", leaf->begin);
+    GST_CAT_LOG (ebuttdparse, "Leaf end: %llu", leaf->end);
   }
 
   return FALSE;
@@ -2051,6 +2112,163 @@ resolve_regions (GNode * tree)
 }
 
 
+typedef struct {
+  GstClockTime start_time;
+  GstClockTime next_transition_time;
+} TrState;
+
+
+static gboolean
+update_transition_time (GNode * node, gpointer data)
+{
+  GstEbuttdElement *element;
+  TrState *state;
+
+  g_return_val_if_fail (node != NULL, FALSE);
+  element = node->data;
+  state = (TrState *)data;
+
+  /*GST_CAT_DEBUG (ebuttdparse, "begin: %llu  end: %llu  start_time: %llu",
+      element->begin, element->end, state->start_time);*/
+
+  if ((element->begin > state->start_time)
+      && (element->begin < state->next_transition_time)) {
+    state->next_transition_time = element->begin;
+    /*GST_CAT_DEBUG (ebuttdparse,
+        "Updating next transition time to element begin time (%llu)",
+        state->next_transition_time);*/
+  } else if ((element->end > state->start_time)
+      && (element->end < state->next_transition_time)) {
+    state->next_transition_time = element->end;
+    /*GST_CAT_DEBUG (ebuttdparse,
+        "Updating next transition time to element end time (%llu)",
+        state->next_transition_time);*/
+  }
+
+  return FALSE;
+}
+
+
+static gboolean
+find_transitioning_element (GNode * node, gpointer data)
+{
+  GstEbuttdElement *element;
+  GstEbuttdTransition *transition;
+
+  g_return_val_if_fail (node != NULL, FALSE);
+  g_return_val_if_fail (data != NULL, FALSE);
+  element = node->data;
+  transition = (GstEbuttdTransition *)data;
+
+  if (element->begin == transition->time) {
+    transition->appearing_elements =
+      g_list_append (transition->appearing_elements, element);
+    /*GST_CAT_DEBUG (ebuttdparse, "Found element appearing at time %llu",
+        transition->time);*/
+  } else if (element->end == transition->time) {
+    transition->disappearing_elements =
+      g_list_append (transition->disappearing_elements, element);
+    /*GST_CAT_DEBUG (ebuttdparse, "Found element disappearing at time %llu",
+        transition->time);*/
+  }
+
+  return FALSE;
+}
+
+/* Return details about the next transition after @time. */
+static GstEbuttdTransition *
+find_next_transition (GNode * tree, GstClockTime time)
+{
+  GstEbuttdTransition * transition;
+  TrState state;
+
+  g_return_val_if_fail (tree != NULL, NULL);
+  state.start_time = GST_CLOCK_TIME_IS_VALID (time) ? time : 0;
+  state.next_transition_time = GST_CLOCK_TIME_NONE;
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
+      update_transition_time, &state);
+
+  if (state.next_transition_time == GST_CLOCK_TIME_NONE)
+    return NULL;
+
+  transition = g_new0 (GstEbuttdTransition, 1);
+  transition->time = state.next_transition_time;
+  /*GST_CAT_DEBUG (ebuttdparse, "Next transition is at %llu",
+      state.next_transition_time);*/
+
+  /* Find which elements start/end at the transition time. */
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
+      find_transitioning_element, transition);
+
+  return transition;
+}
+
+
+static GList *
+update_active_element_list (GList * active_elements,
+    GstEbuttdTransition * transition)
+{
+  GList *disappearing_element;
+  GList *appearing_element;
+
+  g_return_val_if_fail (transition != NULL, NULL);
+
+  disappearing_element = g_list_first (transition->disappearing_elements);
+  appearing_element = g_list_first (transition->appearing_elements);
+
+  /* If elements in transition->disappearing_elements are in active_elements,
+   * remove them. */
+  while (disappearing_element) {
+    active_elements =
+      g_list_remove (active_elements, disappearing_element->data);
+    disappearing_element = disappearing_element->next;
+  }
+
+  /* If elements in transition->appearing_elements are not in active_elements,
+   * add them. */
+  while (appearing_element) {
+    active_elements =
+      g_list_append (active_elements, appearing_element->data);
+    appearing_element = appearing_element->next;
+  }
+
+  return active_elements;
+}
+
+
+static GList *
+create_scenes (GNode * tree)
+{
+  GstEbuttdScene *cur_scene = NULL;
+  GList *output_scenes = NULL;
+  GList *active_elements = NULL;
+  GstClockTime timestamp = GST_CLOCK_TIME_NONE;
+  GstEbuttdTransition *transition;
+
+  g_return_val_if_fail (tree != NULL, NULL);
+
+  while ((transition = find_next_transition (tree, timestamp))) {
+    GST_CAT_DEBUG (ebuttdparse, "Next transition found at time %llu",
+        transition->time);
+    if (cur_scene) cur_scene->end = transition->time;
+
+    active_elements = update_active_element_list (active_elements, transition);
+    GST_CAT_DEBUG (ebuttdparse, "There will be %u active elements after transition", g_list_length (active_elements));
+
+    if (active_elements) {
+      GstEbuttdScene * new_scene = g_new0 (GstEbuttdScene, 1);
+      new_scene->begin = transition->time;
+      new_scene->elements = g_list_copy (active_elements);
+      output_scenes = g_list_append (output_scenes, new_scene);
+      cur_scene = new_scene;
+    }
+    timestamp = transition->time;
+  }
+
+  return output_scenes;
+}
+
+
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer)
 {
@@ -2070,6 +2288,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       NULL, (GDestroyNotify) delete_region);
   DocMetadata *document_metadata = NULL;
   GNode * body = NULL;
+  GList *scenes = NULL;
 
   GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
       "EBU-TT-D debug category");
@@ -2138,7 +2357,13 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
       resolve_timings (body);
+      GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
+          g_node_n_nodes (body, G_TRAVERSE_ALL));
       resolve_regions (body);
+      GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
+          g_node_n_nodes (body, G_TRAVERSE_ALL));
+      scenes = create_scenes (body);
+      GST_CAT_DEBUG (ebuttdparse, "There are %u scenes in all.", g_list_length (scenes));
 
 #if 0
       /**
