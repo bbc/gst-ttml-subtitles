@@ -2269,6 +2269,25 @@ create_scenes (GNode * tree)
 }
 
 
+static gboolean
+strip_whitespace (GNode * node, gpointer data)
+{
+  GstEbuttdElement *element;
+  element = node->data;
+  if (element->text) g_strstrip (element->text);
+  return FALSE;
+}
+
+
+static void
+strip_surrounding_whitespace (GNode * tree)
+{
+  g_return_if_fail (tree != NULL);
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, strip_whitespace,
+      NULL);
+}
+
+
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer)
 {
@@ -2356,12 +2375,9 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       strip_breaks (body);
       GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
+      strip_surrounding_whitespace (body);
       resolve_timings (body);
-      GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
-          g_node_n_nodes (body, G_TRAVERSE_ALL));
       resolve_regions (body);
-      GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
-          g_node_n_nodes (body, G_TRAVERSE_ALL));
       scenes = create_scenes (body);
       GST_CAT_DEBUG (ebuttdparse, "There are %u scenes in all.", g_list_length (scenes));
 
