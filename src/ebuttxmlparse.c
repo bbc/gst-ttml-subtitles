@@ -99,43 +99,53 @@ _print_style (GstEbuttdStyle * style)
 
 
 static void
-_print_style_desc (GstEbuttdStyleDescriptor * desc)
+_print_style_set (GstEbuttdStyleSet * set)
 {
-  g_return_if_fail (desc != NULL);
+  g_return_if_fail (set != NULL);
 
-  GST_CAT_LOG (ebuttdparse, "Style description %p:", desc);
-  if (desc->id)
-    GST_CAT_LOG (ebuttdparse, "\t\tid: %s", desc->id);
-  if (desc->text_direction)
-    GST_CAT_LOG (ebuttdparse, "\t\ttext_direction: %s", desc->text_direction);
-  if (desc->font_family)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_family: %s", desc->font_family);
-  if (desc->font_size)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_size: %s", desc->font_size);
-  if (desc->line_height)
-    GST_CAT_LOG (ebuttdparse, "\t\tline_height: %s", desc->line_height);
-  if (desc->text_align)
-    GST_CAT_LOG (ebuttdparse, "\t\ttext_align: %s", desc->text_align);
-  if (desc->color)
-    GST_CAT_LOG (ebuttdparse, "\t\tcolor: %s", desc->color);
-  if (desc->bg_color)
-    GST_CAT_LOG (ebuttdparse, "\t\tbg_color: %s", desc->bg_color);
-  if (desc->font_style)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_style: %s", desc->font_style);
-  if (desc->font_weight)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_weight: %s", desc->font_weight);
-  if (desc->text_decoration)
-    GST_CAT_LOG (ebuttdparse, "\t\ttext_decoration: %s",
-        desc->text_decoration);
-  if (desc->unicode_bidi)
-    GST_CAT_LOG (ebuttdparse, "\t\tunicode_bidi: %s", desc->unicode_bidi);
-  if (desc->wrap_option)
-    GST_CAT_LOG (ebuttdparse, "\t\twrap_option: %s", desc->wrap_option);
-  if (desc->multi_row_align)
-    GST_CAT_LOG (ebuttdparse, "\t\tmulti_row_align: %s",
-        desc->multi_row_align);
-  if (desc->line_padding)
-    GST_CAT_LOG (ebuttdparse, "\t\tline_padding: %s", desc->line_padding);
+  GST_CAT_LOG (ebuttdparse, "Style setription %p:", set);
+  if (set->text_direction)
+    GST_CAT_LOG (ebuttdparse, "\t\ttext_direction: %s", set->text_direction);
+  if (set->font_family)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_family: %s", set->font_family);
+  if (set->font_size)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_size: %s", set->font_size);
+  if (set->line_height)
+    GST_CAT_LOG (ebuttdparse, "\t\tline_height: %s", set->line_height);
+  if (set->text_align)
+    GST_CAT_LOG (ebuttdparse, "\t\ttext_align: %s", set->text_align);
+  if (set->color)
+    GST_CAT_LOG (ebuttdparse, "\t\tcolor: %s", set->color);
+  if (set->bg_color)
+    GST_CAT_LOG (ebuttdparse, "\t\tbg_color: %s", set->bg_color);
+  if (set->font_style)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_style: %s", set->font_style);
+  if (set->font_weight)
+    GST_CAT_LOG (ebuttdparse, "\t\tfont_weight: %s", set->font_weight);
+  if (set->text_decoration)
+    GST_CAT_LOG (ebuttdparse, "\t\ttext_decoration: %s", set->text_decoration);
+  if (set->unicode_bidi)
+    GST_CAT_LOG (ebuttdparse, "\t\tunicode_bidi: %s", set->unicode_bidi);
+  if (set->wrap_option)
+    GST_CAT_LOG (ebuttdparse, "\t\twrap_option: %s", set->wrap_option);
+  if (set->multi_row_align)
+    GST_CAT_LOG (ebuttdparse, "\t\tmulti_row_align: %s", set->multi_row_align);
+  if (set->line_padding)
+    GST_CAT_LOG (ebuttdparse, "\t\tline_padding: %s", set->line_padding);
+  if (set->origin)
+    GST_CAT_LOG (ebuttdparse, "\t\torigin: %s", set->origin);
+  if (set->extent)
+    GST_CAT_LOG (ebuttdparse, "\t\textent: %s", set->extent);
+  if (set->display_align)
+    GST_CAT_LOG (ebuttdparse, "\t\tdisplay_align: %s", set->display_align);
+  if (set->overflow)
+    GST_CAT_LOG (ebuttdparse, "\t\toverflow: %s", set->overflow);
+  if (set->padding)
+    GST_CAT_LOG (ebuttdparse, "\t\tpadding: %s", set->padding);
+  if (set->writing_mode)
+    GST_CAT_LOG (ebuttdparse, "\t\twriting_mode: %s", set->writing_mode);
+  if (set->show_background)
+    GST_CAT_LOG (ebuttdparse, "\t\tshow_background: %s", set->show_background);
 }
 
 
@@ -159,14 +169,14 @@ _print_region (GstEbuttdRegion * region)
 }
 
 
-static GstEbuttdStyleDescriptor *
-parse_style (const xmlNode * node)
+static GstEbuttdStyleSet *
+parse_style_set (const xmlNode * node)
 {
-  GstEbuttdStyleDescriptor *s = g_new0 (GstEbuttdStyleDescriptor, 1);
+  GstEbuttdStyleSet *s = g_new0 (GstEbuttdStyleSet, 1);
   gchar *value = NULL;
 
   if ((value = get_xml_property (node, "id"))) {
-    s->id = g_strdup (value);
+    /*s->id = g_strdup (value);*/
     g_free (value);
   } else {
     GST_CAT_ERROR (ebuttdparse, "styles must have an ID.");
@@ -243,15 +253,49 @@ parse_style (const xmlNode * node)
     g_free (value);
   }
 
+  if ((value = get_xml_property (node, "origin"))) {
+    s->origin = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = get_xml_property (node, "extent"))) {
+    s->extent = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = get_xml_property (node, "display_align"))) {
+    s->display_align = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = get_xml_property (node, "overflow"))) {
+    s->overflow = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = get_xml_property (node, "padding"))) {
+    s->padding = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = get_xml_property (node, "writing_mode"))) {
+    s->writing_mode = g_strdup (value);
+    g_free (value);
+  }
+
+  if ((value = get_xml_property (node, "show_background"))) {
+    s->show_background = g_strdup (value);
+    g_free (value);
+  }
+
   return s;
 }
 
 static void
-delete_style_descriptor (GstEbuttdStyleDescriptor * style)
+delete_style_set (GstEbuttdStyleSet * style)
 {
   g_return_if_fail (style != NULL);
-  GST_CAT_DEBUG (ebuttdparse, "Deleting style %p...", style);
-  if (style->id) g_free ((gpointer) style->id);
+  GST_CAT_DEBUG (ebuttdparse, "Deleting style set %p...", style);
   if (style->text_direction) g_free ((gpointer) style->text_direction);
   if (style->font_family) g_free ((gpointer) style->font_family);
   if (style->font_size) g_free ((gpointer) style->font_size);
@@ -266,12 +310,19 @@ delete_style_descriptor (GstEbuttdStyleDescriptor * style)
   if (style->wrap_option) g_free ((gpointer) style->wrap_option);
   if (style->multi_row_align) g_free ((gpointer) style->multi_row_align);
   if (style->line_padding) g_free ((gpointer) style->line_padding);
+  if (style->origin) g_free ((gpointer) style->origin);
+  if (style->extent) g_free ((gpointer) style->extent);
+  if (style->display_align) g_free ((gpointer) style->display_align);
+  if (style->overflow) g_free ((gpointer) style->overflow);
+  if (style->padding) g_free ((gpointer) style->padding);
+  if (style->writing_mode) g_free ((gpointer) style->writing_mode);
+  if (style->show_background) g_free ((gpointer) style->show_background);
   g_free ((gpointer) style);
 }
 
 
 static GstEbuttdStyle *
-create_new_style (GstEbuttdStyleDescriptor * desc)
+create_new_style (GstEbuttdStyleSet * desc)
 {
   GstEbuttdStyle *s = g_new0 (GstEbuttdStyle, 1);
 
@@ -1500,69 +1551,6 @@ handle_line_break (xmlNodePtr node, SubSubtitle * sub_subtitle)
   return found_br;
 }
 
-void
-xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
-    GHashTable * region_hash)
-{
-  xmlNodePtr head_child, node_ptr; /* pointers to different levels */
-
-  head_child = head_cur->children;
-  while (head_child != NULL) {
-    if (xmlStrcmp (head_child->name, (const xmlChar *) "styling") == 0) {
-      node_ptr = head_child->children;
-      while (node_ptr != NULL) {
-        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "style") == 0) {
-          /* use style id as key, create style properties object for value */
-          GstEbuttdStyleDescriptor *style;
-          style = parse_style (node_ptr);
-
-          if (style) {
-            /* XXX: should check that style ID is unique. */
-            g_hash_table_insert (style_hash,
-                (gpointer) (style->id), (gpointer) style);
-            GST_CAT_DEBUG (ebuttd_parse_debug, "added style %s to %s",
-                style->id, "style_hash");
-            _print_style_desc (style);
-          }
-        }
-        node_ptr = node_ptr->next;
-      }
-    }
-#if 1
-    if (xmlStrcmp (head_child->name, (const xmlChar *) "layout") == 0) {
-      GST_CAT_DEBUG (ebuttdparse, "parsing layout element...");
-      node_ptr = head_child->children;
-      while (node_ptr != NULL) {
-        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "region") == 0) {
-          /* use region id as key, create style properties object for value */
-          GstEbuttdRegion *region;
-          gchar *id;
-          GST_CAT_DEBUG (ebuttdparse, "parsing region element...");
-
-          if ((id = get_xml_property (node_ptr, "id"))) {
-            region = create_new_region (node_ptr);
-            if (region) {
-              /* XXX: should check that region ID is unique. */
-              g_hash_table_insert (region_hash,
-                  (gpointer) (id), (gpointer) region);
-              GST_CAT_DEBUG (ebuttd_parse_debug, "added region %s to %s", id,
-                  "region_hash");
-              _print_region (region);
-            }
-            g_free (id);
-          } else {
-            GST_CAT_ERROR (ebuttdparse, "regions must have an ID. Ignoring...");
-          }
-        }
-        node_ptr = node_ptr->next;
-      }
-    }
-    /* XXX: Add code to parse metadata. */
-#endif
-    head_child = head_child->next;
-  }
-}
-
 DocMetadata *
 extract_tt_tag_properties (xmlNodePtr ttnode, DocMetadata * document_metadata)
 {
@@ -1730,7 +1718,11 @@ parse_element (const xmlNode * node)
 
   element = g_new0 (GstEbuttdElement, 1);
   GST_CAT_DEBUG (ebuttdparse, "Element name: %s", (const char*) node->name);
-  if ((g_strcmp0 ((const char*) node->name, "body") == 0)) {
+  if ((g_strcmp0 ((const char*) node->name, "style") == 0)) {
+    element->type = GST_EBUTTD_ELEMENT_TYPE_STYLE;
+  } else if ((g_strcmp0 ((const char*) node->name, "region") == 0)) {
+    element->type = GST_EBUTTD_ELEMENT_TYPE_REGION;
+  } else if ((g_strcmp0 ((const char*) node->name, "body") == 0)) {
     element->type = GST_EBUTTD_ELEMENT_TYPE_BODY;
   } else if ((g_strcmp0 ((const char*) node->name, "div") == 0)) {
     element->type = GST_EBUTTD_ELEMENT_TYPE_DIV;
@@ -1748,22 +1740,45 @@ parse_element (const xmlNode * node)
     g_assert (TRUE);
   }
 
+  if ((string = xmlGetProp (node, (const xmlChar*) "id"))) {
+    element->id = g_strdup ((const gchar*) string);
+    xmlFree (string);
+  }
+
   if ((string = xmlGetProp (node, (const xmlChar*) "style"))) {
     element->styles = g_strsplit ((const gchar*) string, " ", 0);
     GST_CAT_DEBUG (ebuttdparse, "%u style(s) referenced in element.",
         g_strv_length (element->styles));
     xmlFree (string);
   }
+
+  /* XXX: Place parsing of attributes that are common to all element types
+   * before this line. */
+
+  if (element->type == GST_EBUTTD_ELEMENT_TYPE_STYLE
+      || element->type == GST_EBUTTD_ELEMENT_TYPE_REGION) {
+    GstEbuttdStyleSet *ss;
+    ss = parse_style_set (node);
+    if (ss)
+      element->style_set = ss;
+    else
+      GST_CAT_WARNING (ebuttdparse,
+          "Style or Region contains no styling attributes.");
+    return element;
+  }
+
   if ((string = xmlGetProp (node, (const xmlChar*) "region"))) {
     element->region = g_strdup ((const gchar*) string);
     xmlFree (string);
   }
+
   if ((string = xmlGetProp (node, (const xmlChar*) "begin"))) {
     element->begin = parse_timecode ((const gchar*) string);
     xmlFree (string);
   } else {
     element->begin = GST_CLOCK_TIME_NONE;
   }
+
   if ((string = xmlGetProp (node, (const xmlChar*) "end"))) {
     element->end = parse_timecode ((const gchar*) string);
     xmlFree (string);
@@ -1772,6 +1787,7 @@ parse_element (const xmlNode * node)
   }
   /*GST_CAT_DEBUG (ebuttdparse, "element->begin: %llu   element->end: %llu",
       element->begin, element->end);*/
+
   if (node->content) {
     GST_CAT_LOG (ebuttdparse, "Node content: %s", node->content);
     element->text = g_strdup ((gchar*) node->content);
@@ -1802,15 +1818,14 @@ parse_tree (const xmlNode * node)
 }
 
 
-static GstEbuttdStyleDescriptor *
-copy_style (GstEbuttdStyleDescriptor * style)
+static GstEbuttdStyleSet *
+copy_style_set (GstEbuttdStyleSet * style)
 {
-  GstEbuttdStyleDescriptor *ret;
+  GstEbuttdStyleSet *ret;
 
   g_return_val_if_fail (style != NULL, NULL);
-  ret = g_new0 (GstEbuttdStyleDescriptor, 1);
-  g_assert (style->id != NULL);
-  ret->id = g_strdup (style->id);
+  ret = g_new0 (GstEbuttdStyleSet, 1);
+
   if (style->text_direction)
     ret->text_direction = g_strdup (style->text_direction);
   if (style->font_family)
@@ -1839,41 +1854,47 @@ copy_style (GstEbuttdStyleDescriptor * style)
     ret->multi_row_align = g_strdup (style->multi_row_align);
   if (style->line_padding)
     ret->line_padding = g_strdup (style->line_padding);
+  if (style->origin)
+    ret->origin = g_strdup (style->origin);
+  if (style->extent)
+    ret->extent = g_strdup (style->extent);
+  if (style->display_align)
+    ret->display_align = g_strdup (style->display_align);
+  if (style->overflow)
+    ret->overflow = g_strdup (style->overflow);
+  if (style->padding)
+    ret->padding = g_strdup (style->padding);
+  if (style->writing_mode)
+    ret->writing_mode = g_strdup (style->writing_mode);
+  if (style->show_background)
+    ret->show_background = g_strdup (style->show_background);
 
   return ret;
 }
 
 
-static GstEbuttdStyleDescriptor *
-merge_styles (GstEbuttdStyleDescriptor * s1, GstEbuttdStyleDescriptor * s2)
+static GstEbuttdStyleSet *
+merge_style_sets (GstEbuttdStyleSet * s1, GstEbuttdStyleSet * s2)
 {
-  GstEbuttdStyleDescriptor *ret = NULL;
+  GstEbuttdStyleSet *ret = NULL;
 
-#if 0
-  g_print ("Resolving styles ");
-  if (s1)
-    g_print ("%s and ", s1->id);
-  else
-    g_print ("NULL and ");
-  if (s2)
-    GST_CAT_DEBUG (ebuttdparse, "%s", s2->id);
-  else
-    GST_CAT_DEBUG (ebuttdparse, "NULL");
-  g_assert (s1 != s2);
-#endif
+  /*
+   * The following styling attributes are not inherited:
+   *   - backgroundColor
+   *   - origin
+   *   - extent
+   *   - displayAlign
+   *   - overflow
+   *   - padding
+   *   - writingMode
+   *   - showBackground
+   *   - unicodeBidi
+   */
 
   if (s1) {
-    ret = copy_style (s1);
+    ret = copy_style_set (s1);
 
     if (s2) {
-      const gchar *old_id, *new_id;
-      g_assert (s2->id != NULL);
-
-      old_id = ret->id;
-      new_id = g_strconcat (old_id, "+", s2->id, NULL);
-      ret->id = new_id;
-      g_free ((gpointer)old_id);
-
       if (s2->text_direction)
         ret->text_direction = g_strdup (s2->text_direction);
       if (s2->font_family)
@@ -1886,16 +1907,12 @@ merge_styles (GstEbuttdStyleDescriptor * s1, GstEbuttdStyleDescriptor * s2)
         ret->text_align = g_strdup (s2->text_align);
       if (s2->color)
         ret->color = g_strdup (s2->color);
-      if (s2->bg_color)
-        ret->bg_color = g_strdup (s2->bg_color);
       if (s2->font_style)
         ret->font_style = g_strdup (s2->font_style);
       if (s2->font_weight)
         ret->font_weight = g_strdup (s2->font_weight);
       if (s2->text_decoration)
         ret->text_decoration = g_strdup (s2->text_decoration);
-      if (s2->unicode_bidi)
-        ret->unicode_bidi = g_strdup (s2->unicode_bidi);
       if (s2->wrap_option)
         ret->wrap_option = g_strdup (s2->wrap_option);
       if (s2->multi_row_align)
@@ -1904,7 +1921,7 @@ merge_styles (GstEbuttdStyleDescriptor * s1, GstEbuttdStyleDescriptor * s2)
         ret->line_padding = g_strdup (s2->line_padding);
     }
   } else if (s2) {
-    ret = copy_style (s2);
+    ret = copy_style_set (s2);
   }
 
   return ret;
@@ -1916,7 +1933,7 @@ resolve_element_style (GNode * node, gpointer data)
 {
   /* Combine styles with resolved style of parent; styles listed later override
    * those earlier in the list. */
-  GstEbuttdStyleDescriptor *tmp = NULL, *s = NULL, *merged_styles = NULL;
+  GstEbuttdStyleSet *tmp = NULL, *s = NULL, *merged_styles = NULL;
   GstEbuttdElement *element, *parent;
   GHashTable *style_hash;
   guint i;
@@ -1951,7 +1968,7 @@ resolve_element_style (GNode * node, gpointer data)
   g_print ("resolve_element_style: ");
   if (node->parent) {
     parent = node->parent->data;
-    g_print ("[parent]:%s ", parent->resolved_style->id);
+    g_print ("[parent]:%s ", parent->style_set->id);
   } else {
     g_print ("[parent]:NULL ");
   }
@@ -1968,7 +1985,7 @@ resolve_element_style (GNode * node, gpointer data)
       tmp = merged_styles;
       s = g_hash_table_lookup (style_hash, element->styles[i]);
       g_assert (s != NULL);
-      merged_styles = merge_styles (merged_styles, s);
+      merged_styles = merge_style_sets (merged_styles, s);
       g_free (tmp);
     }
   }
@@ -1976,14 +1993,14 @@ resolve_element_style (GNode * node, gpointer data)
   if (node->parent) {
     parent = node->parent->data;
     tmp = merged_styles;
-    merged_styles = merge_styles (parent->resolved_style, merged_styles);
+    merged_styles = merge_style_sets (parent->style_set, merged_styles);
     g_free (tmp);
   }
 
-  element->resolved_style = merged_styles;
-  if (element->resolved_style) {
+  element->style_set = merged_styles;
+  if (element->style_set) {
     GST_CAT_LOG (ebuttdparse, "Resolved style:");
-    _print_style_desc (element->resolved_style);
+    _print_style_set (element->style_set);
   }
   return FALSE;
 }
@@ -1994,7 +2011,7 @@ create_style (GNode * node, gpointer data)
 {
   GstEbuttdElement *element;
   element = node->data;
-  element->style = create_new_style (element->resolved_style);
+  element->style = create_new_style (element->style_set);
   GST_CAT_LOG (ebuttdparse, "created style for leaf node:");
   _print_style (element->style);
   return FALSE;
@@ -2288,6 +2305,71 @@ strip_surrounding_whitespace (GNode * tree)
 }
 
 
+void
+xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
+    GHashTable * region_hash)
+{
+  xmlNodePtr head_child, node_ptr; /* pointers to different levels */
+
+  head_child = head_cur->children;
+  while (head_child != NULL) {
+    if (xmlStrcmp (head_child->name, (const xmlChar *) "styling") == 0) {
+      node_ptr = head_child->children;
+      while (node_ptr != NULL) {
+        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "style") == 0) {
+          /* use style id as key, create style properties object for value */
+          GstEbuttdElement *element;
+          element = parse_element (node_ptr);
+
+          if (element) {
+            g_assert (element->id != NULL);
+            /* XXX: should check that style ID is unique. */
+            g_hash_table_insert (style_hash,
+                (gpointer) (element->id), (gpointer) element);
+            GST_CAT_DEBUG (ebuttd_parse_debug, "added element %s to %s",
+                element->id, "style_hash");
+            _print_style_set (element->style_set);
+          }
+        }
+        node_ptr = node_ptr->next;
+      }
+    }
+#if 1
+    if (xmlStrcmp (head_child->name, (const xmlChar *) "layout") == 0) {
+      GST_CAT_DEBUG (ebuttdparse, "parsing layout element...");
+      node_ptr = head_child->children;
+      while (node_ptr != NULL) {
+        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "region") == 0) {
+          /* use region id as key, create style properties object for value */
+          GstEbuttdRegion *region;
+          gchar *id;
+          GST_CAT_DEBUG (ebuttdparse, "parsing region element...");
+
+          if ((id = get_xml_property (node_ptr, "id"))) {
+            region = create_new_region (node_ptr);
+            if (region) {
+              /* XXX: should check that region ID is unique. */
+              g_hash_table_insert (region_hash,
+                  (gpointer) (id), (gpointer) region);
+              GST_CAT_DEBUG (ebuttd_parse_debug, "added region %s to %s", id,
+                  "region_hash");
+              _print_region (region);
+            }
+            g_free (id);
+          } else {
+            GST_CAT_ERROR (ebuttdparse, "regions must have an ID. Ignoring...");
+          }
+        }
+        node_ptr = node_ptr->next;
+      }
+    }
+    /* XXX: Add code to parse metadata. */
+#endif
+    head_child = head_child->next;
+  }
+}
+
+
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer)
 {
@@ -2302,7 +2384,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   inherited_regions = NULL;
 
   GHashTable *style_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) delete_style_descriptor);
+      NULL, (GDestroyNotify) delete_style_set);
   GHashTable *region_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_region);
   DocMetadata *document_metadata = NULL;

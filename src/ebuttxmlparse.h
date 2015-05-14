@@ -31,7 +31,7 @@ G_BEGIN_DECLS
 
 typedef struct _GstEbuttdRegion GstEbuttdRegion;
 typedef struct _GstEbuttdStyle GstEbuttdStyle;
-typedef struct _GstEbuttdStyleDescriptor GstEbuttdStyleDescriptor;
+typedef struct _GstEbuttdStyleSet GstEbuttdStyleSet;
 typedef struct _GstEbuttdColor GstEbuttdColor;
 typedef struct _GstEbuttdMediaTime GstEbuttdMediaTime;
 typedef struct _GstEbuttdElement GstEbuttdElement;
@@ -196,12 +196,18 @@ struct _GstEbuttdStyle {
   GstEbuttdWrapping wrap_option;
   GstEbuttdMultiRowAlign multi_row_align;
   gdouble line_padding;
+  gdouble origin_x, origin_y;
+  gdouble extent_w, extent_h;
+  GstEbuttdDisplayAlign display_align;
+  gdouble padding_start, padding_end, padding_before, padding_after;
+  GstEbuttdWritingMode writing_mode;
+  GstEbuttdBackgroundMode show_background;
+  GstEbuttdOverflowMode overflow;
   /*guint cellres_x, cellres_y;*/
 };
 
 
-struct _GstEbuttdStyleDescriptor {
-  const gchar *id;
+struct _GstEbuttdStyleSet {
   const gchar *text_direction;
   const gchar *font_family;
   const gchar *font_size;
@@ -216,10 +222,19 @@ struct _GstEbuttdStyleDescriptor {
   const gchar *wrap_option;
   const gchar *multi_row_align;
   const gchar *line_padding;
+  const gchar *origin;
+  const gchar *extent;
+  const gchar *display_align;
+  const gchar *overflow;
+  const gchar *padding;
+  const gchar *writing_mode;
+  const gchar *show_background;
 };
 
 
 typedef enum {
+  GST_EBUTTD_ELEMENT_TYPE_STYLE,
+  GST_EBUTTD_ELEMENT_TYPE_REGION,
   GST_EBUTTD_ELEMENT_TYPE_BODY,
   GST_EBUTTD_ELEMENT_TYPE_DIV,
   GST_EBUTTD_ELEMENT_TYPE_P,
@@ -237,11 +252,12 @@ struct _GstEbuttdMediaTime {
 
 struct _GstEbuttdElement {
   GstEbuttdElementType type;
+  gchar *id;
   gchar **styles;
   gchar *region;
   GstClockTime begin;
   GstClockTime end;
-  GstEbuttdStyleDescriptor *resolved_style;
+  GstEbuttdStyleSet *style_set;
   GstEbuttdStyle *style;
   gchar *text;
 };
