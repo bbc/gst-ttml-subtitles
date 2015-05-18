@@ -1960,7 +1960,7 @@ merge_style_sets (GstEbuttdStyleSet * set1, GstEbuttdStyleSet * set2)
 
 
 static GstEbuttdStyleSet *
-inherit_styles (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
+inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
 {
   GstEbuttdStyleSet *ret = NULL;
 
@@ -2118,7 +2118,7 @@ resolve_element_style (GNode * node, gpointer data)
     parent = node->parent->data;
     if (parent->style_set) {
       tmp = element->style_set;
-      element->style_set = inherit_styles (parent->style_set,
+      element->style_set = inherit_styling (parent->style_set,
           element->style_set);
       g_free (tmp);
     }
@@ -2275,7 +2275,7 @@ inherit_region_style (GNode * node, gpointer data)
   GST_CAT_DEBUG (ebuttdparse, "Inheriting styling from region %s...",
       element->region);
   tmp = element->style_set;
-  element->style_set = inherit_styles (region->style_set, element->style_set);
+  element->style_set = inherit_styling (region->style_set, element->style_set);
   g_free (tmp);
 
   GST_CAT_LOG (ebuttdparse, "Style is now as follows:");
