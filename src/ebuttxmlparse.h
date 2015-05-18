@@ -264,7 +264,7 @@ struct _GstEbuttdElement {
 
 
 /* Represents a static scene consisting of one or more text elements that
- * should be visible over a period of time. */
+ * should be visible over a specific period of time. */
 struct _GstEbuttdScene {
   GstClockTime begin;
   GstClockTime end;
@@ -273,7 +273,7 @@ struct _GstEbuttdScene {
 
 
 /* Represents a transition, i.e., a point in time where one or more elements
- * change from being visible to invisible (or vice-versa). */
+ * change from being visible to invisible (and/or vice-versa). */
 struct _GstEbuttdTransition {
   GstClockTime time;
   GList *appearing_elements;
