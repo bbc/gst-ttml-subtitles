@@ -2998,7 +2998,7 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
     GHashTableIter iter;
     gpointer key, value;
     GList *l;
-    GList *areas = NULL;
+    GPtrArray *areas = g_ptr_array_new ();
 
     g_assert (scene != NULL);
     GST_CAT_DEBUG (ebuttdparse, "\n\n==== Handling scene ====");
@@ -3034,16 +3034,49 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
       g_node_prepend (region_node, isd_tree);
 
       area = create_subtitle_area (region_node);
-      areas = g_list_append (areas, area);
+      g_ptr_array_add (areas, area);
       g_node_destroy (isd_tree);
     }
     GST_CAT_DEBUG (ebuttdparse, "Finished handling scene...");
-    GST_CAT_DEBUG (ebuttdparse, "Have created %u areas", g_list_length (areas));
+    /*GST_CAT_DEBUG (ebuttdparse, "Have created %u areas", g_list_length (areas));*/
 
+    gst_buffer_add_subtitle_meta (scene->buf, areas);
     scenes = g_list_next (scenes);
   }
   GST_CAT_DEBUG (ebuttdparse, "Finished handling all scenes.");
   return NULL;
+}
+
+
+static void
+fill_buffers (GList * scenes)
+{
+  GstEbuttdScene *scene;
+  GList *elements;
+  GstEbuttdElement *element;
+
+  while (scenes) {
+    guint text_index = 0U;
+    scene = scenes->data;
+    elements = scene->elements;
+    scene->buf = gst_buffer_new ();
+    GST_BUFFER_PTS (scene->buf) = scene->begin;
+    GST_BUFFER_DURATION (scene->buf) = (scene->end - scene->begin);
+
+    while (elements) {
+      GstMemory *mem;
+      element = elements->data;
+
+      if (element->text) {
+        mem = gst_allocator_alloc (NULL, strlen (element->text) + 1, NULL);
+        gst_buffer_insert_memory (scene->buf, -1, mem);
+        GST_CAT_DEBUG (ebuttdparse, "Inserted text at memory position %u in GstBuffer; GstBuffer now contains %u GstMemorys.", text_index, gst_buffer_n_memory (scene->buf));
+        element->text_index = text_index++;
+      }
+      elements = elements->next;
+    }
+    scenes = scenes->next;
+  }
 }
 
 
@@ -3142,6 +3175,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       scenes = create_scenes (body);
       GST_CAT_DEBUG (ebuttdparse, "There are %u scenes in all.", g_list_length (scenes));
       GST_CAT_DEBUG (ebuttdparse, "Region hash address: %p", region_hash);
+      fill_buffers (scenes);
       create_isds (body, scenes, region_hash);
 
 #if 0

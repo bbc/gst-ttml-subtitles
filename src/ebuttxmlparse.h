@@ -270,6 +270,7 @@ struct _GstEbuttdScene {
   GstClockTime begin;
   GstClockTime end;
   GList *elements;
+  GstBuffer *buf;
 };
 
 
