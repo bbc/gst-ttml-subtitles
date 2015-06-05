@@ -260,6 +260,7 @@ struct _GstEbuttdElement {
   GstEbuttdStyleSet *style_set;
   GstEbuttdStyle *style;
   gchar *text;
+  guint text_index;
 };
 
 

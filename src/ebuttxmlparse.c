@@ -2839,6 +2839,7 @@ create_isd_tree (GNode * tree, GList * active_elements)
 
   for (leaves = g_list_first (active_elements); leaves != NULL;
       leaves = leaves->next) {
+    GNode * new_leaf;
     leaf = leaves->data;
     /* XXX: Revert to storing nodes in active_elements to avoid find
      * operation? */
@@ -2876,6 +2877,10 @@ create_isd_tree (GNode * tree, GList * active_elements)
       }
     }
 
+    /* Append active element to tip of branch. */
+    new_leaf = g_node_new (element_node->data);
+    g_node_append (junction, new_leaf);
+
     /* XXX: Possible optimisation for sibling elements: */
 #if 0
     /* Check if any of this element's siblings are active; if so, remove them
@@ -2891,6 +2896,90 @@ create_isd_tree (GNode * tree, GList * active_elements)
 #endif
   }
   return ret;
+}
+
+
+static GstSubtitleArea *
+create_subtitle_area (GNode * tree)
+{
+  GstSubtitleArea *area;
+  GstSubtitleStyleSet *region_style;
+  GstSubtitleColor body_colour;
+  GstEbuttdElement *element;
+  GNode *node;
+
+  g_return_val_if_fail (tree != NULL, NULL);
+  element = tree->data;
+  g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_REGION);
+
+  /* Create SubtitleArea from region. */
+  region_style = gst_subtitle_style_set_new ();
+  update_style_set (region_style, element->style_set);
+  area = gst_subtitle_area_new (region_style);
+  g_assert (area != NULL);
+
+  node = tree->children;
+  g_assert (node->next == NULL);
+  element = node->data;
+  g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_BODY);
+  /*body_colour = parse_ebuttd_colorstring (element->style_set->bg_color);*/
+
+  node = node->children;
+  while (node) {
+    GstSubtitleColor div_color;
+    GNode *p_node;
+
+    element = node->data;
+    g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_DIV);
+    /*div_color = parse_ebuttd_colorstring (element->style_set->bg_color);*/
+
+    p_node = node->children;
+    while (p_node) {
+      GstSubtitleBlock *block;
+      GstSubtitleStyleSet *block_style;
+      GNode *span_node;
+
+      element = p_node->data;
+      g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_P);
+      block_style = gst_subtitle_style_set_new ();
+      update_style_set (block_style, element->style_set);
+
+      /* XXX: blend bg colors from body, div and p here. */
+
+      block = gst_subtitle_block_new (block_style);
+      g_assert (block != NULL);
+
+      span_node = p_node->children;
+      while (span_node) {
+        GstSubtitleElement *e;
+        GstSubtitleStyleSet *element_style;
+
+        element = span_node->data;
+        g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN
+            || element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN);
+
+        if (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN) {
+          element = span_node->children->data;
+          g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN);
+        }
+
+        element_style = gst_subtitle_style_set_new ();
+        update_style_set (element_style, element->style_set);
+        e = gst_subtitle_element_new (element_style, element->text_index);
+
+        gst_subtitle_block_add_element (block, e);
+        GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+        span_node = span_node->next;
+      }
+
+      gst_subtitle_area_add_block (area, block);
+      GST_CAT_DEBUG (ebuttdparse, "Added block to area; there are now %u blocks in the area.", gst_subtitle_area_get_block_count (area));
+      p_node = p_node->next;
+    }
+    node = node->next;
+  }
+
+  return area;
 }
 
 
@@ -2912,6 +3001,7 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
     GList *region_trees = NULL;
     gpointer key, value;
     GList *l;
+    GList *areas = NULL;
 
     g_assert (scene != NULL);
     GST_CAT_DEBUG (ebuttdparse, "\n\n==== Handling scene ====");
@@ -2951,6 +3041,15 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
     GST_CAT_DEBUG (ebuttdparse, "Finished handling scene...");
     GST_CAT_DEBUG (ebuttdparse, "%u region trees created.",
         g_list_length (region_trees));
+
+    /* Create from each region tree data objects (areas, blocks and elements) that can be placed into subtitle meta. */
+    /* XXX: Is it best to have this functionality here, or to place it in the previous loop? */
+    for (region_trees = g_list_first (region_trees); region_trees != NULL;
+        region_trees = region_trees->next) {
+      GstSubtitleArea *area = create_subtitle_area (region_trees->data);
+      areas = g_list_append (areas, area);
+    }
+    GST_CAT_DEBUG (ebuttdparse, "Have created %u areas", g_list_length (areas));
 
     scenes = g_list_next (scenes);
   }
