@@ -1,4 +1,6 @@
 #include <glib.h>
+#include <gst/subtitle/subtitle.h>
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,12 +36,12 @@ hex_pair_to_byte (const gchar * hex_pair)
 }
 
 
-static GstEbuttdColor
+static GstSubtitleColor
 parse_ebuttd_colorstring (const gchar * color)
 {
   guint length;
   const gchar *c = NULL;
-  GstEbuttdColor ret = { 0, 0, 0, 0 };
+  GstSubtitleColor ret = { 0, 0, 0, 0 };
 
   g_return_val_if_fail (color != NULL, ret);
 
@@ -68,6 +70,49 @@ parse_ebuttd_colorstring (const gchar * color)
   return ret;
 }
 
+
+static void
+_print_element (GstEbuttdElement * element)
+{
+  g_return_if_fail (element != NULL);
+
+  if (element->id)
+    GST_CAT_DEBUG (ebuttdparse, "Element ID: %s", element->id);
+  switch (element->type) {
+    case GST_EBUTTD_ELEMENT_TYPE_STYLE:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <style>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_REGION:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <region>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_BODY:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <body>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_DIV:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <div>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_P:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <p>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_SPAN:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <span>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <anon-span>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_BR:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <br>");
+      break;
+  }
+  if (element->region)
+    GST_CAT_DEBUG (ebuttdparse, "Element region: %s", element->region);
+  if (element->begin != GST_CLOCK_TIME_NONE)
+    GST_CAT_DEBUG (ebuttdparse, "Element begin: %llu", element->begin);
+  if (element->end != GST_CLOCK_TIME_NONE)
+    GST_CAT_DEBUG (ebuttdparse, "Element end: %llu", element->end);
+  if (element->text)
+    GST_CAT_DEBUG (ebuttdparse, "Element text: %s", element->text);
+}
 
 #if 1
 static void
@@ -355,6 +400,7 @@ delete_element (GstEbuttdElement * element)
 }
 
 
+#if 0
 static GstEbuttdStyle *
 create_new_style (GstEbuttdStyleSet * desc)
 {
@@ -464,6 +510,7 @@ create_new_style (GstEbuttdStyleSet * desc)
 
   return s;
 }
+#endif
 
 
 static GstEbuttdRegion *
@@ -1843,6 +1890,214 @@ parse_tree (const xmlNode * node)
 }
 
 
+static void
+update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess)
+{
+  g_return_val_if_fail (ss != NULL, NULL);
+  g_return_val_if_fail (ess != NULL, NULL);
+
+  if (ess->text_direction) {
+    if (g_strcmp0 (ess->text_direction, "rtl") == 0)
+      ss->text_direction = GST_EBUTTD_TEXT_DIRECTION_RTL;
+    else
+      ss->text_direction = GST_EBUTTD_TEXT_DIRECTION_LTR;
+  }
+
+  if (ess->font_family) {
+    gsize length = g_strlcpy (ss->font_family, ess->font_family,
+        MAX_FONT_FAMILY_NAME_LENGTH);
+    if (length > MAX_FONT_FAMILY_NAME_LENGTH)
+      GST_CAT_ERROR (ebuttdparse, "Font family name is too long.");
+  }
+
+  if (ess->font_size) {
+    ss->font_size = g_ascii_strtod (ess->font_size, NULL);
+  }
+
+  if (ess->line_height) {
+    if (g_strcmp0 (ess->line_height, "normal") == 0)
+      ss->line_height = 125.0;
+    else
+      ss->line_height = g_ascii_strtod (ess->line_height, NULL);
+  }
+
+  if (ess->text_align) {
+    if (g_strcmp0 (ess->text_align, "left") == 0)
+      ss->text_align = GST_EBUTTD_TEXT_ALIGN_LEFT;
+    else if (g_strcmp0 (ess->text_align, "center") == 0)
+      ss->text_align = GST_EBUTTD_TEXT_ALIGN_CENTER;
+    else if (g_strcmp0 (ess->text_align, "right") == 0)
+      ss->text_align = GST_EBUTTD_TEXT_ALIGN_RIGHT;
+    else if (g_strcmp0 (ess->text_align, "end") == 0)
+      ss->text_align = GST_EBUTTD_TEXT_ALIGN_END;
+    else
+      ss->text_align = GST_EBUTTD_TEXT_ALIGN_START;
+  }
+
+  if (ess->color) {
+    ss->color = parse_ebuttd_colorstring (ess->color);
+  }
+
+  if (ess->bg_color) {
+    ss->bg_color = parse_ebuttd_colorstring (ess->bg_color);
+  }
+
+  if (ess->font_style) {
+    if (g_strcmp0 (ess->font_style, "italic") == 0)
+      ss->font_style = GST_EBUTTD_FONT_STYLE_ITALIC;
+    else
+      ss->font_style = GST_EBUTTD_FONT_STYLE_NORMAL;
+  }
+
+  if (ess->font_weight) {
+    if (g_strcmp0 (ess->font_weight, "bold") == 0)
+      ss->font_weight = GST_EBUTTD_FONT_WEIGHT_BOLD;
+    else
+      ss->font_weight = GST_EBUTTD_FONT_WEIGHT_NORMAL;
+  }
+
+  if (ess->text_decoration) {
+    if (g_strcmp0 (ess->text_decoration, "underline") == 0)
+      ss->text_decoration = GST_EBUTTD_TEXT_DECORATION_UNDERLINE;
+    else
+      ss->text_decoration = GST_EBUTTD_TEXT_DECORATION_NONE;
+  }
+
+  if (ess->unicode_bidi) {
+    if (g_strcmp0 (ess->unicode_bidi, "embed") == 0)
+      ss->unicode_bidi = GST_EBUTTD_UNICODE_BIDI_EMBED;
+    else if (g_strcmp0 (ess->unicode_bidi, "bidiOverride") == 0)
+      ss->unicode_bidi = GST_EBUTTD_UNICODE_BIDI_OVERRIDE;
+    else
+      ss->unicode_bidi = GST_EBUTTD_UNICODE_BIDI_NORMAL;
+  }
+
+  if (ess->wrap_option) {
+    if (g_strcmp0 (ess->wrap_option, "noWrap") == 0)
+      ss->wrap_option = GST_EBUTTD_WRAPPING_OFF;
+    else
+      ss->wrap_option = GST_EBUTTD_WRAPPING_ON;
+  }
+
+  if (ess->multi_row_align) {
+    if (g_strcmp0 (ess->multi_row_align, "start") == 0)
+      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_START;
+    else if (g_strcmp0 (ess->multi_row_align, "center") == 0)
+      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_CENTER;
+    else if (g_strcmp0 (ess->multi_row_align, "end") == 0)
+      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_END;
+    else
+      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_AUTO;
+  }
+
+  if (ess->line_padding) {
+    ss->line_padding = g_ascii_strtod (ess->line_padding, NULL);
+  }
+
+  if (ess->origin) {
+    gchar *c;
+    ss->origin_x = g_ascii_strtod (ess->origin, &c);
+    while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
+    ss->origin_y = g_ascii_strtod (c, NULL);
+    /*GST_CAT_DEBUG (ebuttdparse, "origin_x: %g   origin_y: %g", ss->origin_x, ss->origin_y);*/
+  }
+
+  if (ess->extent) {
+    gchar *c;
+    ss->extent_w = g_ascii_strtod (ess->extent, &c);
+    ss->extent_w = (ss->extent_w > 100.0) ? 100.0 : ss->extent_w;
+    while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
+    ss->extent_h = g_ascii_strtod (c, NULL);
+    ss->extent_h = (ss->extent_h > 100.0) ? 100.0 : ss->extent_h;
+    /*GST_CAT_DEBUG (ebuttdparse, "extent_w: %g   extent_h: %g", ss->extent_w, ss->extent_h);*/
+  }
+
+  if (ess->display_align) {
+    if (g_strcmp0 (ess->display_align, "center") == 0)
+      ss->display_align = GST_EBUTTD_DISPLAY_ALIGN_CENTER;
+    else if (g_strcmp0 (ess->display_align, "after") == 0)
+      ss->display_align = GST_EBUTTD_DISPLAY_ALIGN_AFTER;
+    else
+      ss->display_align = GST_EBUTTD_DISPLAY_ALIGN_BEFORE;
+    /*GST_CAT_DEBUG (ebuttdparse, "displayAlign: %d", ss->display_align);*/
+  }
+
+  if (ess->padding) {
+    gchar **decimals;
+    guint n_decimals;
+    gint i;
+
+    decimals = g_strsplit (ess->padding, "%", 0);
+    n_decimals = g_strv_length (decimals) - 1;
+    for (i = 0; i < n_decimals; ++i) {
+      g_strstrip (decimals[i]);
+    }
+
+    switch (n_decimals) {
+      case 1:
+        ss->padding_start = ss->padding_end =
+          ss->padding_before = ss->padding_after =
+          g_ascii_strtod (decimals[0], NULL);
+        break;
+
+      case 2:
+        ss->padding_before = ss->padding_after =
+          g_ascii_strtod (decimals[0], NULL);
+        ss->padding_start = ss->padding_end =
+          g_ascii_strtod (decimals[1], NULL);
+        break;
+
+      case 3:
+        ss->padding_before = g_ascii_strtod (decimals[0], NULL);
+        ss->padding_start = ss->padding_end =
+          g_ascii_strtod (decimals[1], NULL);
+        ss->padding_after = g_ascii_strtod (decimals[2], NULL);
+        break;
+
+      case 4:
+        ss->padding_before = g_ascii_strtod (decimals[0], NULL);
+        ss->padding_end = g_ascii_strtod (decimals[1], NULL);
+        ss->padding_after = g_ascii_strtod (decimals[2], NULL);
+        ss->padding_start = g_ascii_strtod (decimals[3], NULL);
+        break;
+    }
+    /*g_print ("paddingStart: %g  padding_end: %g  padding_before: %g "
+        "padding_after: %g\n", ss->padding_start, ss->padding_end,
+        ss->padding_before, ss->padding_after);*/
+    g_strfreev (decimals);
+  }
+
+  if (ess->writing_mode) {
+    if (g_str_has_prefix (ess->writing_mode, "rl"))
+      ss->writing_mode = GST_EBUTTD_WRITING_MODE_RLTB;
+    else if ((g_strcmp0 (ess->writing_mode, "tbrl") == 0)
+        || (g_strcmp0 (ess->writing_mode, "tb") == 0))
+      ss->writing_mode = GST_EBUTTD_WRITING_MODE_TBRL;
+    else if (g_strcmp0 (ess->writing_mode, "tblr") == 0)
+      ss->writing_mode = GST_EBUTTD_WRITING_MODE_TBLR;
+    else
+      ss->writing_mode = GST_EBUTTD_WRITING_MODE_LRTB;
+    /*GST_CAT_DEBUG (ebuttdparse, "writingMode: %d", ss->writing_mode);*/
+  }
+
+  if (ess->show_background) {
+    if (g_strcmp0 (ess->show_background, "whenActive") == 0)
+      ss->show_background = GST_EBUTTD_BACKGROUND_MODE_WHEN_ACTIVE;
+    else
+      ss->show_background = GST_EBUTTD_BACKGROUND_MODE_ALWAYS;
+    /*GST_CAT_DEBUG (ebuttdparse, "showBackground: %d", ss->show_background);*/
+  }
+
+  if (ess->overflow) {
+    if (g_strcmp0 (ess->overflow, "visible") == 0)
+      ss->overflow = GST_EBUTTD_OVERFLOW_MODE_VISIBLE;
+    else
+      ss->overflow = GST_EBUTTD_OVERFLOW_MODE_HIDDEN;
+    /*GST_CAT_DEBUG (ebuttdparse, "overflow: %d", ss->overflow);*/
+  }
+}
+
+
 static GstEbuttdStyleSet *
 copy_style_set (GstEbuttdStyleSet * style)
 {
@@ -2064,6 +2319,12 @@ resolve_element_style (GNode * node, gpointer data)
   element = node->data;
 
   switch (element->type) {
+    case GST_EBUTTD_ELEMENT_TYPE_STYLE:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <style>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_REGION:
+      GST_CAT_DEBUG (ebuttdparse, "Element type: <region>");
+      break;
     case GST_EBUTTD_ELEMENT_TYPE_BODY:
       GST_CAT_DEBUG (ebuttdparse, "Element type: <body>");
       break;
@@ -2133,6 +2394,7 @@ resolve_element_style (GNode * node, gpointer data)
 }
 
 
+#if 0
 static gboolean
 create_style (GNode * node, gpointer data)
 {
@@ -2143,6 +2405,7 @@ create_style (GNode * node, gpointer data)
   _print_style (element->style);
   return FALSE;
 }
+#endif
 
 
 static void
@@ -2150,8 +2413,8 @@ resolve_body_styles (GNode * tree, GHashTable * style_hash)
 {
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, resolve_element_style,
       style_hash);
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, create_style,
-      NULL);
+  /*g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, create_style,
+      NULL);*/
 }
 
 
@@ -2529,6 +2792,173 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
 }
 
 
+static GHashTable *
+split_scenes_by_region (GList * active_elements)
+{
+  GHashTable *ret = NULL;
+
+  g_return_val_if_fail (active_elements != NULL, NULL);
+
+  ret = g_hash_table_new (g_str_hash, g_str_equal);
+
+  while (active_elements) {
+    GstEbuttdElement *element = active_elements->data;
+    _print_element (element);
+    GList *list = g_hash_table_lookup (ret, element->region);
+    list = g_list_append (list, element);
+    GST_CAT_DEBUG (ebuttdparse, "Inserting list under the following key: %s",
+        element->region);
+    g_hash_table_insert (ret, element->region, list);
+    active_elements = active_elements->next;
+  }
+
+  GST_CAT_DEBUG (ebuttdparse, "Active elements have been split into %u regions",
+      g_hash_table_size (ret));
+
+    return ret;
+}
+
+
+static GNode *
+create_isd_tree (GNode * tree, GList * active_elements)
+{
+  GList *leaves;
+  GstEbuttdElement *leaf, *e;
+  GQueue *node_stack;
+  GNode *element_node, *foo, *junction, *sibling;
+  GNode *ret = NULL;
+
+  g_return_val_if_fail (tree != NULL, NULL);
+  g_return_val_if_fail (active_elements != NULL, NULL);
+
+  node_stack = g_queue_new ();
+
+  g_print ("\n");
+  GST_CAT_DEBUG (ebuttdparse, "There are %u active elements",
+      g_list_length (active_elements));
+
+  for (leaves = g_list_first (active_elements); leaves != NULL;
+      leaves = leaves->next) {
+    leaf = leaves->data;
+    /* XXX: Revert to storing nodes in active_elements to avoid find
+     * operation? */
+    element_node = g_node_find (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, leaf);
+    g_assert (element_node != NULL);
+    GST_CAT_DEBUG (ebuttdparse, "Finding ancestors for following element:");
+    _print_element (element_node->data);
+
+    for (foo = element_node->parent; foo; foo = foo->parent) {
+      if (ret && (junction = g_node_find (ret, G_PRE_ORDER,
+              G_TRAVERSE_ALL, foo->data))) {
+          GST_CAT_DEBUG (ebuttdparse, "Element already exists in output tree:");
+          _print_element (foo->data);
+          break;
+      } else {
+        g_queue_push_head (node_stack, foo->data);
+        GST_CAT_DEBUG (ebuttdparse, "Added following element to stack:");
+        _print_element (foo->data);
+        GST_CAT_DEBUG (ebuttdparse, "Stack depth is now %u",
+            g_queue_get_length (node_stack));
+      }
+    }
+
+    while ((e = g_queue_pop_head (node_stack))) {
+      GNode *n = g_node_new (e);
+      if (junction) {
+        junction = g_node_append (junction, n);
+        GST_CAT_DEBUG (ebuttdparse, "Appended following element to ret:");
+        _print_element (junction->data);
+      } else {
+        GST_CAT_DEBUG (ebuttdparse,
+            "Setting the following element at the head of ret:");
+        _print_element (n->data);
+        ret = junction = n;
+      }
+    }
+
+    /* XXX: Possible optimisation for sibling elements: */
+#if 0
+    /* Check if any of this element's siblings are active; if so, remove them
+     * from list - we already have their ancestors in the output list. */
+    /* Remove the element and any siblings from the list of active elements. */
+    for (sibling = element_node->parent->children; sibling; sibling = sibling->next) {
+      if (g_list_find (active_elements, sibling->data)) {
+        g_list_remove (active_elements, sibling->data);
+        GST_CAT_DEBUG (ebuttdparse,"Removed sibling element from active_elements; there are now %u active elements.",
+            g_list_length (active_elements));
+      }
+    }
+#endif
+  }
+  return ret;
+}
+
+
+static GNode *
+create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
+{
+  /*GNode *root = g_node_new (NULL);*/
+
+  g_return_if_fail (tree != NULL);
+  g_return_if_fail (scenes != NULL);
+  g_return_if_fail (region_hash != NULL);
+
+  GST_CAT_DEBUG (ebuttdparse, "About to create ISDs...");
+
+  while (scenes) {
+    GstEbuttdScene * scene = scenes->data;
+    GHashTable *elements_by_region;
+    GHashTableIter iter;
+    GList *region_trees = NULL;
+    gpointer key, value;
+    GList *l;
+
+    g_assert (scene != NULL);
+    GST_CAT_DEBUG (ebuttdparse, "\n\n==== Handling scene ====");
+
+    /* Split the active nodes by region. XXX: Remember to free hash table after
+     * use. */
+    elements_by_region = split_scenes_by_region (scene->elements);
+
+    GST_CAT_DEBUG (ebuttdparse, "Hash table has %u entries.",
+        g_hash_table_size (elements_by_region));
+
+    g_hash_table_iter_init (&iter, elements_by_region);
+    while (g_hash_table_iter_next (&iter, &key, &value)) {
+      GstEbuttdElement *region;
+      GNode *region_node;
+      GNode *isd_tree;
+      gchar *region_name = (gchar *)key;
+      GList *region_elements = (GList *)value;
+
+      isd_tree = create_isd_tree (tree, region_elements);
+      GST_CAT_DEBUG (ebuttdparse, "Returned tree has %u nodes",
+          g_node_n_nodes (isd_tree, G_TRAVERSE_ALL));
+
+      /* Retrieve region element and wrap in a node. */
+      GST_CAT_DEBUG (ebuttdparse, "About to retrieve %s from hash table %p",
+          region_name, region_hash);
+      region = g_hash_table_lookup (region_hash, region_name);
+      g_assert (region != NULL);
+      region_node = g_node_new (region);
+
+      /* Reparent tree to region node. */
+      g_node_prepend (region_node, isd_tree);
+
+      /* Add resulting tree to list. */
+      region_trees = g_list_append (region_trees, region_node);
+    }
+    GST_CAT_DEBUG (ebuttdparse, "Finished handling scene...");
+    GST_CAT_DEBUG (ebuttdparse, "%u region trees created.",
+        g_list_length (region_trees));
+
+    scenes = g_list_next (scenes);
+  }
+  GST_CAT_DEBUG (ebuttdparse, "Finished handling all scenes.");
+  return NULL;
+}
+
+
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer)
 {
@@ -2623,6 +3053,8 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       inherit_region_styles (body, region_hash);
       scenes = create_scenes (body);
       GST_CAT_DEBUG (ebuttdparse, "There are %u scenes in all.", g_list_length (scenes));
+      GST_CAT_DEBUG (ebuttdparse, "Region hash address: %p", region_hash);
+      create_isds (body, scenes, region_hash);
 
 #if 0
       /**
