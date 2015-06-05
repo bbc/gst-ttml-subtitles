@@ -67,7 +67,7 @@ gst_subtitle_meta_free (GstMeta * meta, GstBuffer * buffer)
   GstSubtitleMeta *subtitle_meta = (GstSubtitleMeta *) meta;
 
   if (subtitle_meta->areas)
-    gst_subtitle_sample_areas_unref (subtitle_meta->areas);
+    g_ptr_array_unref (subtitle_meta->areas);
 }
 
 const GstMetaInfo *
