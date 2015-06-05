@@ -61,6 +61,38 @@ gst_subtitle_style_set_new ()
   return ret;
 }
 
+void
+gst_subtitle_style_set_copy (const GstSubtitleStyleSet * src,
+    GstSubtitleStyleSet * dest)
+{
+  dest->text_direction = src->text_direction;
+  g_strlcpy (dest->font_family, src->font_family, MAX_FONT_FAMILY_NAME_LENGTH);
+  dest->font_size = src->font_size;
+  dest->line_height = src->line_height;
+  dest->text_align = src->text_align;
+  dest->color = src->color;
+  dest->bg_color = src->bg_color;
+  dest->font_style = src->font_style;
+  dest->font_weight = src->font_weight;
+  dest->text_decoration = src->text_decoration;
+  dest->unicode_bidi = src->unicode_bidi;
+  dest->wrap_option = src->wrap_option;
+  dest->multi_row_align = src->multi_row_align;
+  dest->line_padding = src->line_padding;
+  dest->origin_x = src->origin_x;
+  dest->origin_y = src->origin_y;
+  dest->extent_w = src->extent_w;
+  dest->extent_h = src->extent_h;
+  dest->display_align = src->display_align;
+  dest->padding_start = src->padding_start;
+  dest->padding_end = src->padding_end;
+  dest->padding_before = src->padding_before;
+  dest->padding_after = src->padding_after;
+  dest->writing_mode = src->writing_mode;
+  dest->show_background = src->show_background;
+  dest->overflow = src->overflow;
+}
+
 
 static void
 _gst_subtitle_element_free (GstSubtitleElement * element)
