@@ -18,7 +18,7 @@ libgstebuttdparse_la_SOURCES = \
 
 # compiler and linker flags used to compile this plugin, set in configure.ac
 libgstebuttdparse_la_CFLAGS = $(GST_CFLAGS) $(LIBXML2_CFLAGS)
-libgstebuttdparse_la_LIBADD = $(GST_LIBS) $(LIBXML2_LIBS)
+libgstebuttdparse_la_LIBADD = $(GST_LIBS) $(LIBXML2_LIBS) -lgstsubtitle-@GST_API_VERSION@
 libgstebuttdparse_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) $(LIBXML2_LDFLAGS)
 libgstebuttdparse_la_LIBTOOLFLAGS = $(GST_PLUGIN_LIBTOOLFLAGS)
 
