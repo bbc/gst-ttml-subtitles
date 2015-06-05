@@ -2986,8 +2986,6 @@ create_subtitle_area (GNode * tree)
 static GNode *
 create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
 {
-  /*GNode *root = g_node_new (NULL);*/
-
   g_return_if_fail (tree != NULL);
   g_return_if_fail (scenes != NULL);
   g_return_if_fail (region_hash != NULL);
@@ -2998,7 +2996,6 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
     GstEbuttdScene * scene = scenes->data;
     GHashTable *elements_by_region;
     GHashTableIter iter;
-    GList *region_trees = NULL;
     gpointer key, value;
     GList *l;
     GList *areas = NULL;
@@ -3020,6 +3017,7 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
       GNode *isd_tree;
       gchar *region_name = (gchar *)key;
       GList *region_elements = (GList *)value;
+      GstSubtitleArea *area;
 
       isd_tree = create_isd_tree (tree, region_elements);
       GST_CAT_DEBUG (ebuttdparse, "Returned tree has %u nodes",
@@ -3035,20 +3033,11 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
       /* Reparent tree to region node. */
       g_node_prepend (region_node, isd_tree);
 
-      /* Add resulting tree to list. */
-      region_trees = g_list_append (region_trees, region_node);
+      area = create_subtitle_area (region_node);
+      areas = g_list_append (areas, area);
+      g_node_destroy (isd_tree);
     }
     GST_CAT_DEBUG (ebuttdparse, "Finished handling scene...");
-    GST_CAT_DEBUG (ebuttdparse, "%u region trees created.",
-        g_list_length (region_trees));
-
-    /* Create from each region tree data objects (areas, blocks and elements) that can be placed into subtitle meta. */
-    /* XXX: Is it best to have this functionality here, or to place it in the previous loop? */
-    for (region_trees = g_list_first (region_trees); region_trees != NULL;
-        region_trees = region_trees->next) {
-      GstSubtitleArea *area = create_subtitle_area (region_trees->data);
-      areas = g_list_append (areas, area);
-    }
     GST_CAT_DEBUG (ebuttdparse, "Have created %u areas", g_list_length (areas));
 
     scenes = g_list_next (scenes);
