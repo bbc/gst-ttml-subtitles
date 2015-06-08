@@ -2200,6 +2200,8 @@ parse_ebuttd_colorstring (const gchar * color)
     ret = parse_ebuttd_colorstring ("#FFFFFF");
   } else if (g_strcmp0 (color, "black") == 0) { /* XXX:Hack for IMSC test stream. */
     ret = parse_ebuttd_colorstring ("#000000");
+  } else if (g_strcmp0 (color, "red") == 0) { /* XXX:Hack for IMSC test stream. */
+    ret = parse_ebuttd_colorstring ("#FF0000");
   } else {
     GST_CAT_DEBUG (ebuttdrender, "Invalid color string.");
   }
