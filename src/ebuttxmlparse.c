@@ -3068,7 +3068,17 @@ fill_buffers (GList * scenes)
       element = elements->data;
 
       if (element->text) {
+        GstMapInfo map;
+
         mem = gst_allocator_alloc (NULL, strlen (element->text) + 1, NULL);
+        if (!gst_memory_map (mem, &map, GST_MAP_READ | GST_MAP_WRITE))
+          GST_CAT_ERROR (ebuttdparse, "Failed to map memory.");
+
+        g_strlcpy ((gchar *)map.data, element->text, map.size);
+        GST_CAT_DEBUG (ebuttdparse, "Inserted following text into buffer: %s",
+            (gchar *)map.data);
+        gst_memory_unmap (mem, &map);
+
         gst_buffer_insert_memory (scene->buf, -1, mem);
         GST_CAT_DEBUG (ebuttdparse, "Inserted text at memory position %u in GstBuffer; GstBuffer now contains %u GstMemorys.", text_index, gst_buffer_n_memory (scene->buf));
         element->text_index = text_index++;
