@@ -3080,6 +3080,19 @@ fill_buffers (GList * scenes)
 }
 
 
+GList * create_buffer_list (GList * scenes)
+{
+  GList *ret = NULL;
+
+  while (scenes) {
+    GstEbuttdScene *scene = scenes->data;
+    ret = g_list_prepend (ret, scene->buf);
+    scenes = scenes->next;
+  }
+  return g_list_reverse (ret);
+}
+
+
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer)
 {
@@ -3098,8 +3111,9 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   GHashTable *region_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
   DocMetadata *document_metadata = NULL;
-  GNode * body = NULL;
+  GNode *body = NULL;
   GList *scenes = NULL;
+  GList *buffer_list = NULL;
 
   GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
       "EBU-TT-D debug category");
@@ -3177,6 +3191,11 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       GST_CAT_DEBUG (ebuttdparse, "Region hash address: %p", region_hash);
       fill_buffers (scenes);
       create_isds (body, scenes, region_hash);
+      buffer_list = create_buffer_list (scenes);
+      GST_CAT_DEBUG (ebuttdparse, "There are %u buffers in output list.",
+          g_list_length (buffer_list));
+
+      /* XXX: Increment buffer refcount by 1 when adding to buffer_list, then free the scenes before returning. */
 
 #if 0
       /**
@@ -3378,5 +3397,5 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   * free subsubtitles and contents
   */
 
-  return g_list_reverse (subtitle_list);
+  return buffer_list;
 }

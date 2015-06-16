@@ -1579,6 +1579,25 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
     guint subtitle_len;
     subtitle_list = ebutt_xml_parse (self->textbuf->str);
 
+    while (subtitle_list) {
+      GstBuffer *op_buffer = subtitle_list->data;
+      self->segment.position = GST_BUFFER_PTS (op_buffer);
+
+      GST_DEBUG_OBJECT (self, "Sending buffer %p, %u %u",
+          op_buffer, GST_BUFFER_PTS (op_buffer),
+          GST_BUFFER_DURATION (op_buffer));
+
+      ret = gst_pad_push (self->srcpad, op_buffer);
+
+      if (ret != GST_FLOW_OK)
+        GST_DEBUG_OBJECT (self, "flow: %s", gst_flow_get_name (ret));
+
+      subtitle_list = subtitle_list->next;
+    }
+
+    g_list_free (subtitle_list);
+
+#if 0
     for (sub_obj = subtitle_list; sub_obj != NULL; sub_obj = sub_obj->next) {
       /* retrieve structure from gpointer */
       SubStateObj *sub_n_state_ptr;
@@ -1631,6 +1650,7 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
         GST_DEBUG_OBJECT (self, "flow: %s", gst_flow_get_name (ret));
       }
     }
+#endif
   } else {
     while (!self->flushing && (line = get_next_line (self))) {
       guint offset = 0;
