@@ -1891,10 +1891,14 @@ parse_tree (const xmlNode * node)
 
 
 static void
-update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess)
+update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
+    guint cellres_x, guint cellres_y)
 {
   g_return_val_if_fail (ss != NULL, NULL);
   g_return_val_if_fail (ess != NULL, NULL);
+
+  GST_CAT_DEBUG (ebuttdparse, "cellres_x: %u  cellres_y: %u", cellres_x,
+      cellres_y);
 
   if (ess->text_direction) {
     if (g_strcmp0 (ess->text_direction, "rtl") == 0)
@@ -1911,14 +1915,16 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess)
   }
 
   if (ess->font_size) {
-    ss->font_size = g_ascii_strtod (ess->font_size, NULL);
+    ss->font_size = g_ascii_strtod (ess->font_size, NULL) / 100.0;
+    ss->font_size *= (1.0 / cellres_y);
+    GST_CAT_DEBUG (ebuttdparse, "Font size: %g", ss->font_size);
   }
 
   if (ess->line_height) {
     if (g_strcmp0 (ess->line_height, "normal") == 0)
-      ss->line_height = 125.0;
+      ss->line_height = 1.25;
     else
-      ss->line_height = g_ascii_strtod (ess->line_height, NULL);
+      ss->line_height = g_ascii_strtod (ess->line_height, NULL) / 100.0;
   }
 
   if (ess->text_align) {
@@ -1992,23 +1998,31 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess)
 
   if (ess->line_padding) {
     ss->line_padding = g_ascii_strtod (ess->line_padding, NULL);
+    ss->line_padding *= (1.0 / cellres_x);
+    GST_CAT_DEBUG (ebuttdparse, "Line padding: %g", ss->line_padding);
   }
 
   if (ess->origin) {
     gchar *c;
-    ss->origin_x = g_ascii_strtod (ess->origin, &c);
+    ss->origin_x = g_ascii_strtod (ess->origin, &c) / 100.0;
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
-    ss->origin_y = g_ascii_strtod (c, NULL);
+    ss->origin_y = g_ascii_strtod (c, NULL) / 100.0;
     /*GST_CAT_DEBUG (ebuttdparse, "origin_x: %g   origin_y: %g", ss->origin_x, ss->origin_y);*/
   }
 
   if (ess->extent) {
     gchar *c;
-    ss->extent_w = g_ascii_strtod (ess->extent, &c);
-    ss->extent_w = (ss->extent_w > 100.0) ? 100.0 : ss->extent_w;
+    ss->extent_w = g_ascii_strtod (ess->extent, &c) / 100.0;
+    if ((ss->origin_x + ss->extent_w) > 1.0) {
+      GST_CAT_WARNING (ebuttdparse, "Specified region extends off screen in the X dimension; limiting it to the screen boundary.");
+      ss->extent_w = 1.0 - ss->origin_x;
+    }
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
-    ss->extent_h = g_ascii_strtod (c, NULL);
-    ss->extent_h = (ss->extent_h > 100.0) ? 100.0 : ss->extent_h;
+    ss->extent_h = g_ascii_strtod (c, NULL) / 100.0;
+    if ((ss->origin_y + ss->extent_h) > 1.0) {
+      GST_CAT_WARNING (ebuttdparse, "Specified region extends off screen in the Y dimension; limiting it to the screen boundary.");
+      ss->extent_h = 1.0 - ss->origin_y;
+    }
     /*GST_CAT_DEBUG (ebuttdparse, "extent_w: %g   extent_h: %g", ss->extent_w, ss->extent_h);*/
   }
 
@@ -2037,28 +2051,28 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess)
       case 1:
         ss->padding_start = ss->padding_end =
           ss->padding_before = ss->padding_after =
-          g_ascii_strtod (decimals[0], NULL);
+          g_ascii_strtod (decimals[0], NULL) / 100.0;
         break;
 
       case 2:
         ss->padding_before = ss->padding_after =
-          g_ascii_strtod (decimals[0], NULL);
+          g_ascii_strtod (decimals[0], NULL) / 100.0;
         ss->padding_start = ss->padding_end =
-          g_ascii_strtod (decimals[1], NULL);
+          g_ascii_strtod (decimals[1], NULL) / 100.0;
         break;
 
       case 3:
-        ss->padding_before = g_ascii_strtod (decimals[0], NULL);
+        ss->padding_before = g_ascii_strtod (decimals[0], NULL) / 100.0;
         ss->padding_start = ss->padding_end =
-          g_ascii_strtod (decimals[1], NULL);
-        ss->padding_after = g_ascii_strtod (decimals[2], NULL);
+          g_ascii_strtod (decimals[1], NULL) / 100.0;
+        ss->padding_after = g_ascii_strtod (decimals[2], NULL) / 100.0;
         break;
 
       case 4:
-        ss->padding_before = g_ascii_strtod (decimals[0], NULL);
-        ss->padding_end = g_ascii_strtod (decimals[1], NULL);
-        ss->padding_after = g_ascii_strtod (decimals[2], NULL);
-        ss->padding_start = g_ascii_strtod (decimals[3], NULL);
+        ss->padding_before = g_ascii_strtod (decimals[0], NULL) / 100.0;
+        ss->padding_end = g_ascii_strtod (decimals[1], NULL) / 100.0;
+        ss->padding_after = g_ascii_strtod (decimals[2], NULL) / 100.0;
+        ss->padding_start = g_ascii_strtod (decimals[3], NULL) / 100.0;
         break;
     }
     /*g_print ("paddingStart: %g  padding_end: %g  padding_before: %g "
@@ -2900,7 +2914,7 @@ create_isd_tree (GNode * tree, GList * active_elements)
 
 
 static GstSubtitleArea *
-create_subtitle_area (GNode * tree)
+create_subtitle_area (GNode * tree, guint cellres_x, guint cellres_y)
 {
   GstSubtitleArea *area;
   GstSubtitleStyleSet *region_style;
@@ -2914,7 +2928,7 @@ create_subtitle_area (GNode * tree)
 
   /* Create SubtitleArea from region. */
   region_style = gst_subtitle_style_set_new ();
-  update_style_set (region_style, element->style_set);
+  update_style_set (region_style, element->style_set, cellres_x, cellres_y);
   area = gst_subtitle_area_new (region_style);
   g_assert (area != NULL);
 
@@ -2942,7 +2956,7 @@ create_subtitle_area (GNode * tree)
       element = p_node->data;
       g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_P);
       block_style = gst_subtitle_style_set_new ();
-      update_style_set (block_style, element->style_set);
+      update_style_set (block_style, element->style_set, cellres_x, cellres_y);
 
       /* XXX: blend bg colors from body, div and p here. */
 
@@ -2964,7 +2978,8 @@ create_subtitle_area (GNode * tree)
         }
 
         element_style = gst_subtitle_style_set_new ();
-        update_style_set (element_style, element->style_set);
+        update_style_set (element_style, element->style_set,
+            cellres_x, cellres_y);
         e = gst_subtitle_element_new (element_style, element->text_index);
 
         gst_subtitle_block_add_element (block, e);
@@ -2984,7 +2999,8 @@ create_subtitle_area (GNode * tree)
 
 
 static GNode *
-create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
+create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
+    guint cellres_x, guint cellres_y)
 {
   g_return_if_fail (tree != NULL);
   g_return_if_fail (scenes != NULL);
@@ -3033,7 +3049,7 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash)
       /* Reparent tree to region node. */
       g_node_prepend (region_node, isd_tree);
 
-      area = create_subtitle_area (region_node);
+      area = create_subtitle_area (region_node, cellres_x, cellres_y);
       g_ptr_array_add (areas, area);
       g_node_destroy (isd_tree);
     }
@@ -3124,6 +3140,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   GNode *body = NULL;
   GList *scenes = NULL;
   GList *buffer_list = NULL;
+  guint cellres_x, cellres_y;
 
   GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
       "EBU-TT-D debug category");
@@ -3166,6 +3183,10 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
     document_metadata = extract_tt_tag_properties (cur, document_metadata);
   }
 
+  cellres_x = (guint) g_ascii_strtoull (document_metadata->cell_resolution_x,
+      NULL, 10U);
+  cellres_y = (guint) g_ascii_strtoull (document_metadata->cell_resolution_y,
+      NULL, 10U);
 
   cur = cur->children;
   while (cur != NULL) {
@@ -3200,7 +3221,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       GST_CAT_DEBUG (ebuttdparse, "There are %u scenes in all.", g_list_length (scenes));
       GST_CAT_DEBUG (ebuttdparse, "Region hash address: %p", region_hash);
       fill_buffers (scenes);
-      create_isds (body, scenes, region_hash);
+      create_isds (body, scenes, region_hash, cellres_x, cellres_y);
       buffer_list = create_buffer_list (scenes);
       GST_CAT_DEBUG (ebuttdparse, "There are %u buffers in output list.",
           g_list_length (buffer_list));
