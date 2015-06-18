@@ -110,8 +110,10 @@ _print_element (GstEbuttdElement * element)
     GST_CAT_DEBUG (ebuttdparse, "Element begin: %llu", element->begin);
   if (element->end != GST_CLOCK_TIME_NONE)
     GST_CAT_DEBUG (ebuttdparse, "Element end: %llu", element->end);
-  if (element->text)
+  if (element->text) {
     GST_CAT_DEBUG (ebuttdparse, "Element text: %s", element->text);
+    GST_CAT_DEBUG (ebuttdparse, "Element text index: %u", element->text_index);
+  }
 }
 
 #if 1
@@ -2913,8 +2915,31 @@ create_isd_tree (GNode * tree, GList * active_elements)
 }
 
 
+static guint
+append_text_to_buffer (GstBuffer * buf, gchar * text)
+{
+  GstMemory *mem;
+  GstMapInfo map;
+  guint ret;
+
+  mem = gst_allocator_alloc (NULL, strlen (text) + 1, NULL);
+  if (!gst_memory_map (mem, &map, GST_MAP_WRITE))
+    GST_CAT_ERROR (ebuttdparse, "Failed to map memory.");
+
+  g_strlcpy ((gchar *)map.data, text, map.size);
+  GST_CAT_DEBUG (ebuttdparse, "Inserted following text into buffer: %s",
+      (gchar *)map.data);
+  gst_memory_unmap (mem, &map);
+
+  ret = gst_buffer_n_memory (buf);
+  gst_buffer_insert_memory (buf, -1, mem);
+  return ret;
+}
+
+
 static GstSubtitleArea *
-create_subtitle_area (GNode * tree, guint cellres_x, guint cellres_y)
+create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
+    guint cellres_y)
 {
   GstSubtitleArea *area;
   GstSubtitleStyleSet *region_style;
@@ -2967,6 +2992,7 @@ create_subtitle_area (GNode * tree, guint cellres_x, guint cellres_y)
       while (span_node) {
         GstSubtitleElement *e;
         GstSubtitleStyleSet *element_style;
+        guint buffer_index;
 
         element = span_node->data;
         g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN
@@ -2980,7 +3006,16 @@ create_subtitle_area (GNode * tree, guint cellres_x, guint cellres_y)
         element_style = gst_subtitle_style_set_new ();
         update_style_set (element_style, element->style_set,
             cellres_x, cellres_y);
-        e = gst_subtitle_element_new (element_style, element->text_index);
+        GST_CAT_DEBUG (ebuttdparse, "Creating element with text index %u",
+            element->text_index);
+
+        /* Create new memory holding element text and append to scene's
+         * buffer. */
+        g_assert (element->text != NULL);
+        buffer_index = append_text_to_buffer (scene->buf, element->text);
+        GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
+            buffer_index);
+        e = gst_subtitle_element_new (element_style, buffer_index);
 
         gst_subtitle_block_add_element (block, e);
         GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
@@ -3019,6 +3054,10 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
     g_assert (scene != NULL);
     GST_CAT_DEBUG (ebuttdparse, "\n\n==== Handling scene ====");
 
+    scene->buf = gst_buffer_new ();
+    GST_BUFFER_PTS (scene->buf) = scene->begin;
+    GST_BUFFER_DURATION (scene->buf) = (scene->end - scene->begin);
+
     /* Split the active nodes by region. XXX: Remember to free hash table after
      * use. */
     elements_by_region = split_scenes_by_region (scene->elements);
@@ -3049,7 +3088,7 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
       /* Reparent tree to region node. */
       g_node_prepend (region_node, isd_tree);
 
-      area = create_subtitle_area (region_node, cellres_x, cellres_y);
+      area = create_subtitle_area (scene, region_node, cellres_x, cellres_y);
       g_ptr_array_add (areas, area);
       g_node_destroy (isd_tree);
     }
@@ -3097,7 +3136,6 @@ fill_buffers (GList * scenes)
 
         gst_buffer_insert_memory (scene->buf, -1, mem);
         GST_CAT_DEBUG (ebuttdparse, "Inserted text at memory position %u in GstBuffer; GstBuffer now contains %u GstMemorys.", text_index, gst_buffer_n_memory (scene->buf));
-        element->text_index = text_index++;
       }
       elements = elements->next;
     }
@@ -3220,7 +3258,6 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       scenes = create_scenes (body);
       GST_CAT_DEBUG (ebuttdparse, "There are %u scenes in all.", g_list_length (scenes));
       GST_CAT_DEBUG (ebuttdparse, "Region hash address: %p", region_hash);
-      fill_buffers (scenes);
       create_isds (body, scenes, region_hash, cellres_x, cellres_y);
       buffer_list = create_buffer_list (scenes);
       GST_CAT_DEBUG (ebuttdparse, "There are %u buffers in output list.",
