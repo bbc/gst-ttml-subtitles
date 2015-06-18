@@ -58,6 +58,22 @@ typedef struct {
   guint height;
 } GstBaseEbuttdOverlayExtents;
 
+typedef struct {
+  GstBuffer *text_image;
+  GstBuffer *background_image;
+  guint width;
+  guint height;
+  guint text_offset_x;
+  guint text_offset_y;
+  gboolean newline;
+} GstBaseEbuttdOverlayRenderedElement;
+
+typedef struct {
+  GstBuffer *image;
+  guint width;
+  guint height;
+} GstBaseEbuttdOverlayRenderedBlock;
+
 /**
  * GstBaseEbuttdOverlayVAlign:
  * @GST_BASE_EBUTTD_OVERLAY_VALIGN_BASELINE: draw text on the baseline
@@ -370,6 +386,7 @@ struct _GstBaseEbuttdOverlay {
     gchar                   *background_color; /* for overwriting pangos background */
 
     GSList *layers;
+    GList * compositions;
 };
 
 struct _GstBaseEbuttdOverlayClass {

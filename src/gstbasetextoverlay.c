@@ -77,6 +77,7 @@
 
 #include <gst/video/video.h>
 #include <gst/video/gstvideometa.h>
+#include <gst/subtitle/subtitle.h>
 
 #include "gstbasetextoverlay.h"
 #include "gsttextoverlay.h"
@@ -682,6 +683,7 @@ gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
   overlay->background_ypad = DEFAULT_PROP_BACKGROUND_YPAD;
 
   overlay->layers = NULL;
+  overlay->compositions = NULL;
 
   g_mutex_init (&overlay->lock);
   g_cond_init (&overlay->cond);
@@ -1781,6 +1783,31 @@ gst_base_ebuttd_overlay_compose_layers (GstBaseEbuttdOverlay * overlay,
 }
 
 
+static GstVideoOverlayComposition *
+gst_base_ebuttd_overlay_compose_layers2 (GList * layers)
+{
+  GstBaseEbuttdOverlayLayer *layer = NULL;
+  GstVideoOverlayComposition *ret = NULL;
+
+  GST_CAT_DEBUG (ebuttdrender, "Composing layers...");
+
+  g_return_if_fail (layers != NULL);
+
+  layer = (GstBaseEbuttdOverlayLayer *)layers->data;
+  g_assert (layer != NULL);
+
+  ret = gst_video_overlay_composition_new (layer->rectangle);
+
+  while ((layers = g_list_next (layers))) {
+    layer = (GstBaseEbuttdOverlayLayer *)layers->data;
+    g_assert (layer != NULL);
+    gst_video_overlay_composition_add_rectangle (ret, layer->rectangle);
+  }
+
+  return ret;
+}
+
+
 #if 0
 static inline void
 gst_base_ebuttd_overlay_set_composition2 (GstBaseEbuttdOverlay * overlay,
@@ -2246,7 +2273,7 @@ draw_rectangle (guint width, guint height, GstBaseEbuttdOverlayColor color)
 
 static GstBuffer *
 draw_text (const gchar * text, guint text_height,
-    GstBaseEbuttdOverlayColor color, PangoContext *context, guint width,
+    GstSubtitleColor color, PangoContext *context, guint width,
     guint height, guint * ink_width, guint * ink_height, PangoAlignment align,
     gdouble line_height, gboolean wrap, gchar * font_family, GSList ** extents)
 {
@@ -2292,14 +2319,14 @@ draw_text (const gchar * text, guint text_height,
   cur_height = (gdouble)logical_rect.height
     / pango_layout_get_line_count (layout);
   offset = cur_height - (gdouble)text_height;
-  spacing = (gint) lround ((text_height * (line_height - 100.0)/100.0) - offset);
+  spacing = (gint) lround ((text_height * (line_height - 1.0)) - offset);
   GST_CAT_DEBUG (ebuttdrender, "offset: %g   spacing: %d", offset, spacing);
 
   GST_CAT_DEBUG (ebuttdrender, "line_height: %g", line_height);
-  GST_CAT_DEBUG (ebuttdrender, "Current line height is %u; changing to %d...",
+  GST_CAT_DEBUG (ebuttdrender, "Current line height is %g; changing to %g...",
       cur_height, cur_height + spacing);
   pango_layout_set_spacing (layout, PANGO_SCALE * spacing);
-  GST_CAT_DEBUG (ebuttdrender, "Current spacing is now %d", pango_layout_get_spacing (layout));
+  GST_CAT_DEBUG (ebuttdrender, "Current spacing is now %d", pango_layout_get_spacing (layout) / PANGO_SCALE);
 
   pango_layout_get_pixel_extents (layout, &ink_rect, &logical_rect);
   GST_CAT_DEBUG (ebuttdrender, "logical_rect.width: %d  logical_rect.height: %d",
@@ -2499,11 +2526,11 @@ gst_base_ebuttd_overlay_render_pangocairo2 (GstBaseEbuttdOverlay * overlay,
         break;
   }
 
-  text_image = draw_text (string, text_height, text_color,
+  /*text_image = draw_text (string, text_height, (GstSubtitleColor)text_color,
       GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
       text_w, text_h, &ink_w, &ink_h, align, style->line_height,
       (style->wrap_option == GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON),
-      style->font_family, &extents);
+      style->font_family, &extents);*/
 
   GST_CAT_DEBUG (ebuttdrender, "ink_w: %u  ink_h: %u  region_y: %u  region_h: %u", ink_w, ink_h, region_y, region_h);
 
@@ -2897,9 +2924,12 @@ gst_base_ebuttd_overlay_push_frame (GstBaseEbuttdOverlay * overlay,
     GstBuffer * video_frame)
 {
   GstVideoFrame frame;
+  GList *compositions = overlay->compositions;
 
-  if (overlay->composition == NULL)
+  if (compositions == NULL) {
+    GST_CAT_DEBUG (ebuttdrender, "No compositions.");
     goto done;
+  }
 
   if (gst_pad_check_reconfigure (overlay->srcpad))
     gst_base_ebuttd_overlay_negotiate (overlay, NULL);
@@ -2907,7 +2937,7 @@ gst_base_ebuttd_overlay_push_frame (GstBaseEbuttdOverlay * overlay,
   video_frame = gst_buffer_make_writable (video_frame);
 
   if (overlay->attach_compo_to_buffer) {
-    GST_DEBUG_OBJECT (overlay, "Attaching text overlay image to video buffer");
+    GST_DEBUG_OBJECT (overlay, "Attaching text overlay images to video buffer");
     gst_buffer_add_video_overlay_composition_meta (video_frame,
         overlay->composition);
     /* FIXME: emulate shaded background box if want_shading=true */
@@ -2929,7 +2959,12 @@ gst_base_ebuttd_overlay_push_frame (GstBaseEbuttdOverlay * overlay,
         xpos, xpos + overlay->image_width, ypos, ypos + overlay->image_height);
   }*/
 
-  gst_video_overlay_composition_blend (overlay->composition, &frame);
+  while (compositions) {
+    GstVideoOverlayComposition *composition = compositions->data;
+    GST_CAT_DEBUG (ebuttdrender, "Blending composition...");
+    gst_video_overlay_composition_blend (composition, &frame);
+    compositions = compositions->next;
+  }
 
   gst_video_frame_unmap (&frame);
 
@@ -2937,6 +2972,11 @@ gst_base_ebuttd_overlay_push_frame (GstBaseEbuttdOverlay * overlay,
     g_slist_free_full (overlay->layers,
         (GDestroyNotify) gst_base_ebuttd_overlay_layer_free);
   overlay->layers = NULL;
+
+  if (overlay->compositions)
+    g_slist_free_full (overlay->compositions,
+        (GDestroyNotify) gst_video_overlay_composition_unref);
+  overlay->compositions = NULL;
 
 done:
 
@@ -3901,6 +3941,175 @@ extract_region_info (gchar ** text, GstBaseEbuttdOverlay * overlay)
 }
 
 
+static GstBaseEbuttdOverlayRenderedElement *
+render_text_element (GstBaseEbuttdOverlay * overlay,
+    GstSubtitleElement * element, GstBuffer * text_buf, guint width,
+    guint height)
+{
+  GstBaseEbuttdOverlayRenderedElement *ret;
+  GstMemory *mem;
+  GstMapInfo map;
+  gchar *string;
+  guint ink_width, ink_height;
+  PangoAlignment align;
+  GSList *extents = NULL;
+  guint text_height;
+  GstBaseEbuttdOverlayExtents *e;
+
+  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedElement);
+
+  /* Get text from GstBuffer */
+  GST_CAT_DEBUG (ebuttdrender, "No. of strings in buffer: %u; text_index of element: %u", gst_buffer_n_memory (text_buf), element->text_index);
+  mem = gst_buffer_get_memory (text_buf, element->text_index);
+  g_assert (mem != NULL);
+  if (!gst_memory_map (mem, &map, GST_MAP_READ))
+    GST_CAT_ERROR (ebuttdrender, "Failed to map memory.");
+
+  string = g_strndup ((const gchar *)map.data, map.size);
+  g_assert (string != NULL);
+  /* XXX: check that text is valid UTF-8? */
+  GST_CAT_DEBUG (ebuttdrender, "Text associated with element is: %s", string);
+
+  /* Render text */
+  switch (element->style.multi_row_align) {
+      case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START:
+        align = PANGO_ALIGN_LEFT;
+        break;
+      case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER:
+        align = PANGO_ALIGN_CENTER;
+        break;
+      case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END:
+        align = PANGO_ALIGN_RIGHT;
+        break;
+      default:
+        switch (element->style.text_align) {
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT:
+            align = PANGO_ALIGN_LEFT;
+            break;
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER:
+            align = PANGO_ALIGN_CENTER;
+            break;
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END:
+          case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT:
+            align = PANGO_ALIGN_RIGHT;
+            break;
+        }
+        break;
+  }
+
+  text_height = (guint) round (element->style.font_size * overlay->height);
+  GST_CAT_DEBUG (ebuttdrender, "Text height: %u", text_height);
+
+  ret->text_image = draw_text (string, text_height, element->style.color,
+      GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
+      -1, -1, &ink_width, &ink_height, align, element->style.line_height,
+      (element->style.wrap_option == GST_SUBTITLE_WRAPPING_ON),
+      element->style.font_family, &extents);
+
+  ret->width = ink_width;
+  ret->height = ink_height;
+  GST_CAT_DEBUG (ebuttdrender, "rendered width: %u   rendered_height: %u",
+      ret->width, ret->height);
+
+  e = (g_slist_last (extents))->data;
+  GST_CAT_DEBUG (ebuttdrender, "extentX: %u   extentY: %u   extentW: %u   extentH: %u", e->x, e->y, e->width, e->height);
+
+  /* For each line of text produced, create a background image to go behind it (assuming a non-transparent background colour). */
+
+  gst_memory_unmap (mem, &map);
+  gst_memory_unref (mem);
+  return ret;
+}
+
+
+static GstBaseEbuttdOverlayRenderedBlock *
+render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
+    GstBuffer * text_buf, guint width, guint height)
+{
+  GstBaseEbuttdOverlayRenderedBlock *ret;
+  GList *elements = NULL;
+  GstSubtitleElement *element;
+  GstBaseEbuttdOverlayRenderedElement *rendered_element;
+  guint offset_x = 0U;
+  guint rendered_height = 0U;
+  guint i;
+
+  GST_CAT_DEBUG (ebuttdrender, "Rendering txt block; text_buf:%p  width:%u  height:%u", text_buf, width, height);
+
+  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedBlock);
+
+  /* Render text in contained elements. */
+  for (i = 0; i < block->elements->len; ++i) {
+    element = g_ptr_array_index (block->elements, i);
+
+    rendered_element = render_text_element (overlay, element, text_buf, width, height);
+    elements = g_list_append (elements, rendered_element);
+  }
+
+  /* Render background rectangle, if needed. */
+
+  /* Arrange, taking alignment into account. */
+
+  rendered_element = (g_list_first (elements))->data;
+  ret->image = rendered_element->text_image;
+  ret->width = rendered_element->width;
+  ret->height = rendered_element->height;
+  GST_CAT_DEBUG (ebuttdrender, "block width: %u   block height: %u",
+      ret->width, ret->height);
+  return ret;
+}
+
+
+/* XXX: Return a GstVideoOverlayComposition or add to a list in overlay? */
+static GstVideoOverlayComposition *
+render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
+  GstBuffer * text_buf)
+{
+  GList *blocks = NULL;
+  GstSubtitleBlock *block;
+  GstBaseEbuttdOverlayRenderedBlock *rendered_block;
+  guint width, height;
+  guint rendered_height = 0U;
+  guint i;
+  GstBaseEbuttdOverlayLayer *layer;
+  guint x, y, w, h;
+  GList * layers = NULL;
+  GstVideoOverlayComposition *ret = NULL;
+
+  GST_CAT_DEBUG (ebuttdrender, "Rendering text area %p", area);
+
+  width = (guint) (area->style.extent_w * overlay->width);
+  height = (guint) (area->style.extent_h * overlay->height);
+
+  /* Render each block and append to the list. */
+  for (i = 0; i < area->blocks->len; ++i) {
+    GST_CAT_DEBUG (ebuttdrender,
+        "Rendering block; current height remaining in text area is %u", height);
+    block = g_ptr_array_index (area->blocks, i);
+    rendered_block = render_text_block (overlay, block, text_buf, width,
+        height);
+    GST_CAT_DEBUG (ebuttdrender, "Height of rendered block is %u",
+        rendered_block->height);
+    blocks = g_list_append (blocks, rendered_block);
+    rendered_height += rendered_block->height;
+    height -= rendered_block->height;
+  }
+
+  /* Create a GstVideoOverlayComposition  from the various layers and add to list of GstVideoOverlayCompositions. Need to observe displayAlign. */
+
+  rendered_block = (g_list_first (blocks))->data;
+  x = area->style.origin_x * overlay->width;
+  y = area->style.origin_y * overlay->height;
+  w = rendered_block->width;
+  h = rendered_block->height;
+  layer = create_new_layer (rendered_block->image, x, y, w, h);
+  layers = g_list_append (layers, layer);
+  ret = gst_base_ebuttd_overlay_compose_layers2 (layers);
+  return ret;
+}
+
+
 static GstFlowReturn
 gst_base_ebuttd_overlay_video_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer)
@@ -4069,6 +4278,26 @@ wait_for_text_buf:
         /* Push the video frame */
         ret = gst_pad_push (overlay->srcpad, buffer);
       } else {
+        GstSubtitleArea *area = NULL;
+        GList *layers = NULL;
+        guint i;
+        GstSubtitleMeta *subtitle_meta = NULL;
+
+        subtitle_meta = gst_buffer_get_subtitle_meta (overlay->text_buffer);
+        g_assert (subtitle_meta != NULL);
+
+        for (i = 0; i < subtitle_meta->areas->len; ++i) {
+          GstVideoOverlayComposition *composition;
+          area = g_ptr_array_index (subtitle_meta->areas, i);
+          g_assert (area != NULL);
+          composition = render_text_area (overlay, area, overlay->text_buffer);
+          overlay->compositions = g_list_append (overlay->compositions,
+              composition);
+        }
+
+        overlay->need_render = TRUE;
+
+#if 0
         GstMapInfo map;
         gchar *in_text;
         gsize in_size;
@@ -4188,6 +4417,7 @@ wait_for_text_buf:
         }
 
         gst_buffer_unmap (overlay->text_buffer, &map);
+#endif
 
         GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
         ret = gst_base_ebuttd_overlay_push_frame (overlay, buffer);
