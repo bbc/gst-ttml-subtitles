@@ -2916,7 +2916,7 @@ create_isd_tree (GNode * tree, GList * active_elements)
 
 
 static guint
-append_text_to_buffer (GstBuffer * buf, gchar * text)
+append_text_to_buffer (GstBuffer * buf, const gchar * text)
 {
   GstMemory *mem;
   GstMapInfo map;
@@ -2976,7 +2976,7 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
     while (p_node) {
       GstSubtitleBlock *block;
       GstSubtitleStyleSet *block_style;
-      GNode *span_node;
+      GNode *content_node;
 
       element = p_node->data;
       g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_P);
@@ -2988,18 +2988,37 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
       block = gst_subtitle_block_new (block_style);
       g_assert (block != NULL);
 
-      span_node = p_node->children;
-      while (span_node) {
+      content_node = p_node->children;
+      while (content_node) {
         GstSubtitleElement *e;
         GstSubtitleStyleSet *element_style;
         guint buffer_index;
         GNode *anon_node;
 
-        element = span_node->data;
+        element = content_node->data;
         g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN
             || element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN);
 
-        if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
+        /* XXX: A lot of code below is repetitive (the code that creates a
+         * GstSubtitleElement and puts its text into the GstBuffer), and so
+         * should be moved into a separate function. */
+        if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR) {
+          element_style = gst_subtitle_style_set_new ();
+          update_style_set (element_style, element->style_set,
+              cellres_x, cellres_y);
+          GST_CAT_DEBUG (ebuttdparse, "Creating element with text index %u",
+              element->text_index);
+
+          /* Create new memory holding element text and append to scene's
+           * buffer. */
+          buffer_index = append_text_to_buffer (scene->buf, "\n");
+          GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
+              buffer_index);
+          e = gst_subtitle_element_new (element_style, buffer_index);
+
+          gst_subtitle_block_add_element (block, e);
+          GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+        } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
           element_style = gst_subtitle_style_set_new ();
           update_style_set (element_style, element->style_set,
               cellres_x, cellres_y);
@@ -3018,35 +3037,59 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
           GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
         } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN) {
           /* Loop through anon-span children of this span. */
-          anon_node = span_node->children;
+          anon_node = content_node->children;
           while (anon_node) {
             GstSubtitleElement *e;
             GstSubtitleStyleSet *element_style;
             guint buffer_index;
 
             element = anon_node->data;
-            g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN);
-            element_style = gst_subtitle_style_set_new ();
-            update_style_set (element_style, element->style_set,
-                cellres_x, cellres_y);
-            GST_CAT_DEBUG (ebuttdparse, "Creating element with text index %u",
-                element->text_index);
 
-            /* Create new memory holding element text and append to scene's
-             * buffer. */
-            g_assert (element->text != NULL);
-            buffer_index = append_text_to_buffer (scene->buf, element->text);
-            GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
-                buffer_index);
-            e = gst_subtitle_element_new (element_style, buffer_index);
+            if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR) {
+              element_style = gst_subtitle_style_set_new ();
+              update_style_set (element_style, element->style_set,
+                  cellres_x, cellres_y);
+              GST_CAT_DEBUG (ebuttdparse, "Creating element with text index %u",
+                  element->text_index);
 
-            gst_subtitle_block_add_element (block, e);
-            GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+              /* Create new memory holding element text and append to scene's
+               * buffer. */
+              buffer_index = append_text_to_buffer (scene->buf, "\n");
+              GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
+                  buffer_index);
+              e = gst_subtitle_element_new (element_style, buffer_index);
+
+              gst_subtitle_block_add_element (block, e);
+              GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+            } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
+              element_style = gst_subtitle_style_set_new ();
+              update_style_set (element_style, element->style_set,
+                  cellres_x, cellres_y);
+              GST_CAT_DEBUG (ebuttdparse, "Creating element with text index %u",
+                  element->text_index);
+
+              /* Create new memory holding element text and append to scene's
+               * buffer. */
+              g_assert (element->text != NULL);
+              buffer_index = append_text_to_buffer (scene->buf, element->text);
+              GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
+                  buffer_index);
+              e = gst_subtitle_element_new (element_style, buffer_index);
+
+              gst_subtitle_block_add_element (block, e);
+              GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+            } else {
+              GST_CAT_ERROR (ebuttdparse,
+                  "Element type not allowed at this level of document.");
+            }
             anon_node = anon_node->next;
           }
+        } else {
+          GST_CAT_ERROR (ebuttdparse,
+              "Element type not allowed at this level of document.");
         }
 
-        span_node = span_node->next;
+        content_node = content_node->next;
       }
 
       gst_subtitle_area_add_block (area, block);
@@ -3275,7 +3318,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
 
       resolve_region_styles (region_hash, style_hash);
       resolve_body_styles (body, style_hash);
-      strip_breaks (body);
+      /*strip_breaks (body);*/
       GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
       strip_surrounding_whitespace (body);
