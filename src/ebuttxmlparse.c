@@ -2721,6 +2721,8 @@ create_scenes (GNode * tree)
       new_scene->elements = g_list_copy (active_elements);
       output_scenes = g_list_append (output_scenes, new_scene);
       cur_scene = new_scene;
+    } else {
+      cur_scene = NULL;
     }
     timestamp = transition->time;
   }
