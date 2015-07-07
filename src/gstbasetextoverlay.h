@@ -66,13 +66,37 @@ typedef struct {
   guint text_offset_x;
   guint text_offset_y;
   gboolean newline;
+  GSList *line_extents;
 } GstBaseEbuttdOverlayRenderedElement;
 
 typedef struct {
   GstBuffer *image;
+  GSList *layers;
   guint width;
   guint height;
 } GstBaseEbuttdOverlayRenderedBlock;
+
+typedef struct {
+  guint first_pixel;
+  guint last_pixel;
+} GstBaseEbuttdOverlayWordBounds;
+
+typedef struct {
+  cairo_t *state;
+  cairo_surface_t *surface;
+  guint width;
+  guint height;
+  GArray *word_bounds;
+} GstBaseEbuttdOverlayGlyphString;
+
+typedef struct {
+  GstBuffer *text_image;
+  GSList *line_extents;
+  PangoLayout *layout;
+  guint width;
+  guint height;
+} GstBaseEbuttdOverlayRenderedTextBlock;
+
 
 /**
  * GstBaseEbuttdOverlayVAlign:
