@@ -2248,37 +2248,37 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
    *   - unicodeBidi
    */
 
-  if (parent) {
-    ret = copy_style_set (parent);
-
-    if (child) {
-      if (child->text_direction)
-        ret->text_direction = g_strdup (child->text_direction);
-      if (child->font_family)
-        ret->font_family = g_strdup (child->font_family);
-      if (child->font_size)
-        ret->font_size = g_strdup (child->font_size);
-      if (child->line_height)
-        ret->line_height = g_strdup (child->line_height);
-      if (child->text_align)
-        ret->text_align = g_strdup (child->text_align);
-      if (child->color)
-        ret->color = g_strdup (child->color);
-      if (child->font_style)
-        ret->font_style = g_strdup (child->font_style);
-      if (child->font_weight)
-        ret->font_weight = g_strdup (child->font_weight);
-      if (child->text_decoration)
-        ret->text_decoration = g_strdup (child->text_decoration);
-      if (child->wrap_option)
-        ret->wrap_option = g_strdup (child->wrap_option);
-      if (child->multi_row_align)
-        ret->multi_row_align = g_strdup (child->multi_row_align);
-      if (child->line_padding)
-        ret->line_padding = g_strdup (child->line_padding);
-    }
-  } else if (child) {
+  if (child) {
     ret = copy_style_set (child);
+  } else {
+    ret = g_new0 (GstEbuttdStyleSet, 1);
+  }
+
+  if (parent) {
+    if (parent->text_direction && !ret->text_direction)
+      ret->text_direction = g_strdup (parent->text_direction);
+    if (parent->font_family && !ret->font_family)
+      ret->font_family = g_strdup (parent->font_family);
+    if (parent->font_size && !ret->font_size)
+      ret->font_size = g_strdup (parent->font_size);
+    if (parent->line_height && !ret->line_height)
+      ret->line_height = g_strdup (parent->line_height);
+    if (parent->text_align && !ret->text_align)
+      ret->text_align = g_strdup (parent->text_align);
+    if (parent->color && !ret->color)
+      ret->color = g_strdup (parent->color);
+    if (parent->font_style && !ret->font_style)
+      ret->font_style = g_strdup (parent->font_style);
+    if (parent->font_weight && !ret->font_weight)
+      ret->font_weight = g_strdup (parent->font_weight);
+    if (parent->text_decoration && !ret->text_decoration)
+      ret->text_decoration = g_strdup (parent->text_decoration);
+    if (parent->wrap_option && !ret->wrap_option)
+      ret->wrap_option = g_strdup (parent->wrap_option);
+    if (parent->multi_row_align && !ret->multi_row_align)
+      ret->multi_row_align = g_strdup (parent->multi_row_align);
+    if (parent->line_padding && !ret->line_padding)
+      ret->line_padding = g_strdup (parent->line_padding);
   }
 
   return ret;
@@ -2294,6 +2294,9 @@ merge_region_styles (gpointer key, gpointer value, gpointer user_data)
   GstEbuttdElement *style = NULL;
   GHashTable *style_hash = (GHashTable *)user_data;
   gint i;
+
+  if (!region->styles)
+    return;
 
   GST_CAT_DEBUG (ebuttdparse, "Resolving styles for region %s", id);
   for (i = 0; i < g_strv_length (region->styles); ++i) {
@@ -2319,14 +2322,48 @@ resolve_region_styles (GHashTable * region_hash, GHashTable * style_hash)
 }
 
 
+static gchar *
+get_element_type_string (GstEbuttdElement * element)
+{
+  switch (element->type) {
+    case GST_EBUTTD_ELEMENT_TYPE_STYLE:
+      return g_strdup ("<style>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_REGION:
+      return g_strdup ("<region>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_BODY:
+      return g_strdup ("<body>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_DIV:
+      return g_strdup ("<div>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_P:
+      return g_strdup ("<p>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_SPAN:
+      return g_strdup ("<span>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN:
+      return g_strdup ("<anon-span>");
+      break;
+    case GST_EBUTTD_ELEMENT_TYPE_BR:
+      return g_strdup ("<br>");
+      break;
+    default:
+      return g_strdup ("Unknown");
+      break;
+  }
+}
+
+
 gboolean
 resolve_element_style (GNode * node, gpointer data)
 {
-  /* Combine styles with resolved style of parent; styles listed later override
-   * those earlier in the list. */
   GstEbuttdStyleSet *tmp = NULL;
   GstEbuttdElement *element, *parent, *style;
   GHashTable *style_hash;
+  gchar *type_string;
   gint i;
 
   g_return_val_if_fail (node != NULL, FALSE);
@@ -2334,32 +2371,9 @@ resolve_element_style (GNode * node, gpointer data)
   style_hash = (GHashTable *)data;
   element = node->data;
 
-  switch (element->type) {
-    case GST_EBUTTD_ELEMENT_TYPE_STYLE:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <style>");
-      break;
-    case GST_EBUTTD_ELEMENT_TYPE_REGION:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <region>");
-      break;
-    case GST_EBUTTD_ELEMENT_TYPE_BODY:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <body>");
-      break;
-    case GST_EBUTTD_ELEMENT_TYPE_DIV:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <div>");
-      break;
-    case GST_EBUTTD_ELEMENT_TYPE_P:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <p>");
-      break;
-    case GST_EBUTTD_ELEMENT_TYPE_SPAN:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <span>");
-      break;
-    case GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <anon-span>");
-      break;
-    case GST_EBUTTD_ELEMENT_TYPE_BR:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <br>");
-      break;
-  }
+  type_string = get_element_type_string (element);
+  GST_CAT_DEBUG (ebuttdparse, "Element type: %s", type_string);
+  g_free (type_string);
 
 #if 0
   g_print ("resolve_element_style: ");
@@ -2395,14 +2409,22 @@ resolve_element_style (GNode * node, gpointer data)
     parent = node->parent->data;
     if (parent->style_set) {
       tmp = element->style_set;
-      element->style_set = inherit_styling (parent->style_set,
-          element->style_set);
-      g_free (tmp);
+      if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
+        /* For anon spans, we want all style attributes to be inherited from
+         * parent. */
+        element->style_set = merge_style_sets (parent->style_set,
+            element->style_set);
+      } else {
+        element->style_set = inherit_styling (parent->style_set,
+            element->style_set);
+      }
+      _print_style_set (element->style_set);
+      if (tmp) g_free (tmp);
     }
   }
 
   if (element->style_set) {
-    GST_CAT_LOG (ebuttdparse, "Resolved style:");
+    GST_CAT_DEBUG (ebuttdparse, "Resolved style:");
     _print_style_set (element->style_set);
   }
 
@@ -2555,7 +2577,7 @@ inherit_region_style (GNode * node, gpointer data)
       element->region);
   tmp = element->style_set;
   element->style_set = inherit_styling (region->style_set, element->style_set);
-  g_free (tmp);
+  if (tmp) g_free (tmp);
 
   GST_CAT_LOG (ebuttdparse, "Style is now as follows:");
   _print_style_set (element->style_set);
