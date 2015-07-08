@@ -4721,7 +4721,8 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   /* Render each block and append to the list. */
   for (i = 0; i < area->blocks->len; ++i) {
     GST_CAT_DEBUG (ebuttdrender,
-        "Rendering block; current height remaining in text area is %u", height);
+        "Rendering block; current height remaining in text area is %u",
+        height - (padding_before + padding_after + rendered_height));
     block = g_ptr_array_index (area->blocks, i);
     rendered_block = render_text_block (overlay, block, text_buf,
         x + padding_start, y + padding_before + rendered_height,
@@ -4732,7 +4733,6 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     layers = g_slist_concat (layers, rendered_block->layers);
     blocks = g_list_append (blocks, rendered_block);
     rendered_height += rendered_block->height;
-    height -= rendered_block->height;
   }
 
   GST_CAT_DEBUG (ebuttdrender, "There are %u layers in total.",
