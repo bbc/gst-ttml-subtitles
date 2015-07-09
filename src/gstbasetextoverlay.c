@@ -77,7 +77,6 @@
 
 #include <gst/video/video.h>
 #include <gst/video/gstvideometa.h>
-#include <gst/subtitle/subtitle.h>
 
 #include "gstbasetextoverlay.h"
 #include "gsttextoverlay.h"
@@ -4413,6 +4412,24 @@ get_max_font_size (GPtrArray * elements)
 }
 
 
+static GstBaseEbuttdOverlayLocatedImage *
+create_located_image (GstBuffer * image, gint x, gint y, guint width,
+    guint height)
+{
+  GstBaseEbuttdOverlayLocatedImage *ret;
+
+  ret = g_new0 (GstBaseEbuttdOverlayLocatedImage, 1);
+
+  ret->image = image;
+  ret->extents.x = x;
+  ret->extents.y = y;
+  ret->extents.width = width;
+  ret->extents.height = height;
+
+  return ret;
+}
+
+
 /* Render the background rectangles to be placed behind each element. */
 static GSList *
 render_element_backgrounds (GPtrArray * elements, GPtrArray * ranges,
@@ -4427,7 +4444,7 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * ranges,
   GstSubtitleElement *element;
   guint rect_width;
   GstBuffer *rectangle;
-  GstBaseEbuttdOverlayLayer *layer;
+  GstBaseEbuttdOverlayLocatedImage *image;
   guint first_char_start, last_char_end;
   guint i;
   GSList *ret = NULL;
@@ -4505,9 +4522,9 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * ranges,
       if (rect_width > 0) { /* <br>s will result in zero-width rectangle */
         rectangle = draw_rectangle (rect_width, line_height,
             element->style.bg_color);
-        layer = create_new_layer (rectangle, origin_x + area_start,
+        image = create_located_image (rectangle, origin_x + area_start,
             origin_y + (cur_line * line_height), rect_width, line_height);
-        ret = g_slist_append (ret, layer);
+        ret = g_slist_append (ret, image);
       }
     }
   }
@@ -4567,26 +4584,26 @@ get_alignment (GstSubtitleStyleSet * style)
   PangoAlignment align;
 
   switch (style->multi_row_align) {
-    case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START:
+    case GST_SUBTITLE_MULTI_ROW_ALIGN_START:
       align = PANGO_ALIGN_LEFT;
       break;
-    case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER:
+    case GST_SUBTITLE_MULTI_ROW_ALIGN_CENTER:
       align = PANGO_ALIGN_CENTER;
       break;
-    case GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END:
+    case GST_SUBTITLE_MULTI_ROW_ALIGN_END:
       align = PANGO_ALIGN_RIGHT;
       break;
     default:
       switch (style->text_align) {
-        case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START:
-        case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT:
+        case GST_SUBTITLE_TEXT_ALIGN_START:
+        case GST_SUBTITLE_TEXT_ALIGN_LEFT:
           align = PANGO_ALIGN_LEFT;
           break;
-        case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER:
+        case GST_SUBTITLE_TEXT_ALIGN_CENTER:
           align = PANGO_ALIGN_CENTER;
           break;
-        case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END:
-        case GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT:
+        case GST_SUBTITLE_TEXT_ALIGN_END:
+        case GST_SUBTITLE_TEXT_ALIGN_RIGHT:
           align = PANGO_ALIGN_RIGHT;
           break;
       }
@@ -4623,6 +4640,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   GST_CAT_DEBUG (ebuttdrender, "Rendering txt block; text_buf:%p  width:%u  height:%u", text_buf, width, height);
 
   ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedBlock);
+  ret->block = block;
 
   /* Join text from elements to form a single marked-up string. */
   marked_up_string = generate_marked_up_string (block->elements, text_buf,
@@ -4652,13 +4670,13 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   if (!is_color_transparent (&block->style.bg_color)) {
     block_bg_image = draw_rectangle (block_extents.width, block_extents.height,
         block->style.bg_color);
-    bg_layer = create_new_layer (block_bg_image, block_extents.x,
+    bg_layer = create_located_image (block_bg_image, block_extents.x,
         block_extents.y, block_extents.width, block_extents.height);
     layers = g_slist_prepend (layers, bg_layer);
   }
 
   /* XXX:Need to check whether this is the correct way to calculate text vertical offset. */
-  text_layer = create_new_layer (rendered_text->text_image,
+  text_layer = create_located_image (rendered_text->text_image,
       origin_x + (guint) (block->style.line_padding * overlay->width),
       origin_y, rendered_text->width, rendered_text->height);
 
@@ -4677,6 +4695,32 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
 }
 
 
+static GSList *
+create_layers (GstBaseEbuttdOverlayRenderedBlock * block, guint offset_x,
+    guint offset_y)
+{
+  /* Create a layer for each located image that makes up the block area, offsetting them according to offset_x and offset_y,  */
+  GSList *located_images;
+  GstBaseEbuttdOverlayLocatedImage *located_image;
+  GstBaseEbuttdOverlayLayer *layer;
+  GSList *ret = NULL;
+
+  GST_CAT_DEBUG (ebuttdrender, "offset_x:%u  offset_y:%u", offset_x, offset_y);
+
+  for (located_images = block->layers; located_images != NULL;
+      located_images = located_images->next) {
+    located_image = located_images->data;
+    layer = create_new_layer (located_image->image,
+        located_image->extents.x + offset_x,
+        located_image->extents.y + offset_y,
+        located_image->extents.width, located_image->extents.height);
+    ret = g_slist_append (ret, layer);
+  }
+
+  return ret;
+}
+
+
 /* XXX: Return a GstVideoOverlayComposition or add to a list in overlay? */
 static GstVideoOverlayComposition *
 render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
@@ -4691,6 +4735,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   GstBuffer *bg_image;
   GstBaseEbuttdOverlayLayer *bg_layer;
   guint x, y, w, h;
+  guint offset_x, offset_y;
   guint padding_start, padding_end, padding_before, padding_after;
   GSList *layers = NULL;
   GstVideoOverlayComposition *ret = NULL;
@@ -4725,18 +4770,66 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
         height - (padding_before + padding_after + rendered_height));
     block = g_ptr_array_index (area->blocks, i);
     rendered_block = render_text_block (overlay, block, text_buf,
-        x + padding_start, y + padding_before + rendered_height,
-        width - (padding_start + padding_end),
+        0, 0, width - (padding_start + padding_end),
         height - (padding_before + padding_after + rendered_height), TRUE);
     GST_CAT_DEBUG (ebuttdrender, "Height of rendered block is %u",
         rendered_block->height);
-    layers = g_slist_concat (layers, rendered_block->layers);
+
     blocks = g_list_append (blocks, rendered_block);
     rendered_height += rendered_block->height;
   }
 
   GST_CAT_DEBUG (ebuttdrender, "There are %u layers in total.",
       g_slist_length (layers));
+
+  switch (area->style.display_align) {
+    gint offset;
+    case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
+      GST_CAT_DEBUG (ebuttdrender, "displayAlign = BEFORE");
+      offset_y = y + padding_before;
+      break;
+    case GST_SUBTITLE_DISPLAY_ALIGN_CENTER:
+      GST_CAT_DEBUG (ebuttdrender, "displayAlign = CENTER");
+      offset = (gint)height - rendered_height;
+      GST_CAT_DEBUG (ebuttdrender, "offset: %d", offset);
+      offset_y = y + (MAX(offset, 0))/2;
+      break;
+    case GST_SUBTITLE_DISPLAY_ALIGN_AFTER:
+      GST_CAT_DEBUG (ebuttdrender, "displayAlign = AFTER");
+      offset_y = (y + height) - (padding_after + rendered_height);
+      break;
+  }
+
+  GST_CAT_DEBUG (ebuttdrender, "Set vertical offset to %u", offset_y);
+
+  for (blocks = g_list_first (blocks); blocks != NULL; blocks = blocks->next) {
+    GSList *block_layers;
+    GstBaseEbuttdOverlayRenderedBlock *block =
+      (GstBaseEbuttdOverlayRenderedBlock *)blocks->data;
+
+    switch (block->block->style.text_align) {
+      gint offset;
+      case GST_SUBTITLE_TEXT_ALIGN_START:
+      case GST_SUBTITLE_TEXT_ALIGN_LEFT:
+        offset_x = x + padding_start;
+        break;
+      case GST_SUBTITLE_TEXT_ALIGN_CENTER:
+        /* XXX: Don't think this correctly handles case where padding_start !=
+         * padding_end. */
+        offset = (gint)width - block->width;
+        offset_x = x + (MAX (offset, 0))/2;
+        break;
+      case GST_SUBTITLE_TEXT_ALIGN_END:
+      case GST_SUBTITLE_TEXT_ALIGN_RIGHT:
+        offset_x = (x + width) - block->width - padding_end;
+        break;
+    }
+
+    block_layers = create_layers (block, offset_x, offset_y);
+    layers = g_slist_concat (layers, block_layers);
+    offset_y += block->height;
+    GST_CAT_DEBUG (ebuttdrender, "Increased vertical offset to %u", offset_y);
+  }
 
   /* Create a GstVideoOverlayComposition  from the various layers and add to list of GstVideoOverlayCompositions. Need to observe displayAlign. */
 

@@ -28,6 +28,7 @@
 #include <gst/gst.h>
 #include <gst/video/video.h>
 #include <gst/video/video-overlay-composition.h>
+#include <gst/subtitle/subtitle.h>
 #include <pango/pangocairo.h>
 
 G_BEGIN_DECLS
@@ -59,6 +60,11 @@ typedef struct {
 } GstBaseEbuttdOverlayExtents;
 
 typedef struct {
+  GstBuffer *image;
+  GstBaseEbuttdOverlayExtents extents;
+} GstBaseEbuttdOverlayLocatedImage;
+
+typedef struct {
   GstBuffer *text_image;
   GstBuffer *background_image;
   guint width;
@@ -70,6 +76,7 @@ typedef struct {
 } GstBaseEbuttdOverlayRenderedElement;
 
 typedef struct {
+  GstSubtitleBlock *block;
   GstBuffer *image;
   GSList *layers;
   guint width;
