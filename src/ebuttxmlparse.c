@@ -310,7 +310,7 @@ parse_style_set (const xmlNode * node)
     g_free (value);
   }
 
-  if ((value = get_xml_property (node, "display_align"))) {
+  if ((value = get_xml_property (node, "displayAlign"))) {
     s->display_align = g_strdup (value);
     g_free (value);
   }
@@ -325,12 +325,12 @@ parse_style_set (const xmlNode * node)
     g_free (value);
   }
 
-  if ((value = get_xml_property (node, "writing_mode"))) {
+  if ((value = get_xml_property (node, "writingMode"))) {
     s->writing_mode = g_strdup (value);
     g_free (value);
   }
 
-  if ((value = get_xml_property (node, "show_background"))) {
+  if ((value = get_xml_property (node, "showBackground"))) {
     s->show_background = g_strdup (value);
     g_free (value);
   }
