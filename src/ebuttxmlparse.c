@@ -1892,6 +1892,7 @@ parse_tree (const xmlNode * node)
 }
 
 
+/* XXX: Do we need to put defaults in here, seeing that the passed-in style set should have default values, and if a value isn't recognized it seems reasonable to do nothing...? */
 static void
 update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
     guint cellres_x, guint cellres_y)
@@ -1904,9 +1905,9 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
 
   if (ess->text_direction) {
     if (g_strcmp0 (ess->text_direction, "rtl") == 0)
-      ss->text_direction = GST_EBUTTD_TEXT_DIRECTION_RTL;
+      ss->text_direction = GST_SUBTITLE_TEXT_DIRECTION_RTL;
     else
-      ss->text_direction = GST_EBUTTD_TEXT_DIRECTION_LTR;
+      ss->text_direction = GST_SUBTITLE_TEXT_DIRECTION_LTR;
   }
 
   if (ess->font_family) {
@@ -1931,15 +1932,15 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
 
   if (ess->text_align) {
     if (g_strcmp0 (ess->text_align, "left") == 0)
-      ss->text_align = GST_EBUTTD_TEXT_ALIGN_LEFT;
+      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_LEFT;
     else if (g_strcmp0 (ess->text_align, "center") == 0)
-      ss->text_align = GST_EBUTTD_TEXT_ALIGN_CENTER;
+      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_CENTER;
     else if (g_strcmp0 (ess->text_align, "right") == 0)
-      ss->text_align = GST_EBUTTD_TEXT_ALIGN_RIGHT;
+      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_RIGHT;
     else if (g_strcmp0 (ess->text_align, "end") == 0)
-      ss->text_align = GST_EBUTTD_TEXT_ALIGN_END;
+      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_END;
     else
-      ss->text_align = GST_EBUTTD_TEXT_ALIGN_START;
+      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_START;
   }
 
   if (ess->color) {
@@ -1952,50 +1953,50 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
 
   if (ess->font_style) {
     if (g_strcmp0 (ess->font_style, "italic") == 0)
-      ss->font_style = GST_EBUTTD_FONT_STYLE_ITALIC;
+      ss->font_style = GST_SUBTITLE_FONT_STYLE_ITALIC;
     else
-      ss->font_style = GST_EBUTTD_FONT_STYLE_NORMAL;
+      ss->font_style = GST_SUBTITLE_FONT_STYLE_NORMAL;
   }
 
   if (ess->font_weight) {
     if (g_strcmp0 (ess->font_weight, "bold") == 0)
-      ss->font_weight = GST_EBUTTD_FONT_WEIGHT_BOLD;
+      ss->font_weight = GST_SUBTITLE_FONT_WEIGHT_BOLD;
     else
-      ss->font_weight = GST_EBUTTD_FONT_WEIGHT_NORMAL;
+      ss->font_weight = GST_SUBTITLE_FONT_WEIGHT_NORMAL;
   }
 
   if (ess->text_decoration) {
     if (g_strcmp0 (ess->text_decoration, "underline") == 0)
-      ss->text_decoration = GST_EBUTTD_TEXT_DECORATION_UNDERLINE;
+      ss->text_decoration = GST_SUBTITLE_TEXT_DECORATION_UNDERLINE;
     else
-      ss->text_decoration = GST_EBUTTD_TEXT_DECORATION_NONE;
+      ss->text_decoration = GST_SUBTITLE_TEXT_DECORATION_NONE;
   }
 
   if (ess->unicode_bidi) {
     if (g_strcmp0 (ess->unicode_bidi, "embed") == 0)
-      ss->unicode_bidi = GST_EBUTTD_UNICODE_BIDI_EMBED;
+      ss->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_EMBED;
     else if (g_strcmp0 (ess->unicode_bidi, "bidiOverride") == 0)
-      ss->unicode_bidi = GST_EBUTTD_UNICODE_BIDI_OVERRIDE;
+      ss->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_OVERRIDE;
     else
-      ss->unicode_bidi = GST_EBUTTD_UNICODE_BIDI_NORMAL;
+      ss->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;
   }
 
   if (ess->wrap_option) {
     if (g_strcmp0 (ess->wrap_option, "noWrap") == 0)
-      ss->wrap_option = GST_EBUTTD_WRAPPING_OFF;
+      ss->wrap_option = GST_SUBTITLE_WRAPPING_OFF;
     else
-      ss->wrap_option = GST_EBUTTD_WRAPPING_ON;
+      ss->wrap_option = GST_SUBTITLE_WRAPPING_ON;
   }
 
   if (ess->multi_row_align) {
     if (g_strcmp0 (ess->multi_row_align, "start") == 0)
-      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_START;
+      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_START;
     else if (g_strcmp0 (ess->multi_row_align, "center") == 0)
-      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_CENTER;
+      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_CENTER;
     else if (g_strcmp0 (ess->multi_row_align, "end") == 0)
-      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_END;
+      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_END;
     else
-      ss->multi_row_align = GST_EBUTTD_MULTI_ROW_ALIGN_AUTO;
+      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_AUTO;
   }
 
   if (ess->line_padding) {
@@ -2030,11 +2031,11 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
 
   if (ess->display_align) {
     if (g_strcmp0 (ess->display_align, "center") == 0)
-      ss->display_align = GST_EBUTTD_DISPLAY_ALIGN_CENTER;
+      ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_CENTER;
     else if (g_strcmp0 (ess->display_align, "after") == 0)
-      ss->display_align = GST_EBUTTD_DISPLAY_ALIGN_AFTER;
+      ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_AFTER;
     else
-      ss->display_align = GST_EBUTTD_DISPLAY_ALIGN_BEFORE;
+      ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_BEFORE;
     /*GST_CAT_DEBUG (ebuttdparse, "displayAlign: %d", ss->display_align);*/
   }
 
@@ -2085,30 +2086,30 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
 
   if (ess->writing_mode) {
     if (g_str_has_prefix (ess->writing_mode, "rl"))
-      ss->writing_mode = GST_EBUTTD_WRITING_MODE_RLTB;
+      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_RLTB;
     else if ((g_strcmp0 (ess->writing_mode, "tbrl") == 0)
         || (g_strcmp0 (ess->writing_mode, "tb") == 0))
-      ss->writing_mode = GST_EBUTTD_WRITING_MODE_TBRL;
+      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_TBRL;
     else if (g_strcmp0 (ess->writing_mode, "tblr") == 0)
-      ss->writing_mode = GST_EBUTTD_WRITING_MODE_TBLR;
+      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_TBLR;
     else
-      ss->writing_mode = GST_EBUTTD_WRITING_MODE_LRTB;
+      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_LRTB;
     /*GST_CAT_DEBUG (ebuttdparse, "writingMode: %d", ss->writing_mode);*/
   }
 
   if (ess->show_background) {
     if (g_strcmp0 (ess->show_background, "whenActive") == 0)
-      ss->show_background = GST_EBUTTD_BACKGROUND_MODE_WHEN_ACTIVE;
+      ss->show_background = GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE;
     else
-      ss->show_background = GST_EBUTTD_BACKGROUND_MODE_ALWAYS;
+      ss->show_background = GST_SUBTITLE_BACKGROUND_MODE_ALWAYS;
     /*GST_CAT_DEBUG (ebuttdparse, "showBackground: %d", ss->show_background);*/
   }
 
   if (ess->overflow) {
     if (g_strcmp0 (ess->overflow, "visible") == 0)
-      ss->overflow = GST_EBUTTD_OVERFLOW_MODE_VISIBLE;
+      ss->overflow = GST_SUBTITLE_OVERFLOW_MODE_VISIBLE;
     else
-      ss->overflow = GST_EBUTTD_OVERFLOW_MODE_HIDDEN;
+      ss->overflow = GST_SUBTITLE_OVERFLOW_MODE_HIDDEN;
     /*GST_CAT_DEBUG (ebuttdparse, "overflow: %d", ss->overflow);*/
   }
 }
