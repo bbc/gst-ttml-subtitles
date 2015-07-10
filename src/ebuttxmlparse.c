@@ -15,13 +15,6 @@ GST_DEBUG_CATEGORY_STATIC (ebuttdparse);
 gchar * get_xml_property (const xmlNode * node, const char * name);
 
 
-static gboolean
-media_time_is_valid (GstEbuttdMediaTime time)
-{
-  return (time.hours != G_MAXUINT);
-}
-
-
 static guint8
 hex_pair_to_byte (const gchar * hex_pair)
 {
@@ -116,34 +109,6 @@ _print_element (GstEbuttdElement * element)
   }
 }
 
-#if 1
-static void
-_print_style (GstEbuttdStyle * style)
-{
-  g_return_if_fail (style != NULL);
-
-  GST_CAT_LOG (ebuttdparse, "Style %p:", style);
-  GST_CAT_LOG (ebuttdparse, "\t\ttextDirection: %d", style->text_direction);
-  if (style->font_family)
-    GST_CAT_LOG (ebuttdparse, "\t\tfontFamily: %s", style->font_family);
-  GST_CAT_LOG (ebuttdparse, "\t\tfontSize: %g", style->font_size);
-  GST_CAT_LOG (ebuttdparse, "\t\tlineHeight: %g", style->line_height);
-  GST_CAT_LOG (ebuttdparse, "\t\ttextAlign: %d", style->text_align);
-  GST_CAT_LOG (ebuttdparse, "\t\tcolor: r:%g g:%g b:%g a: %g",
-      style->color.r, style->color.g, style->color.b, style->color.a);
-  GST_CAT_LOG (ebuttdparse, "\t\tbg_color: r:%g g:%g b:%g a: %g",
-      style->bg_color.r, style->bg_color.g, style->bg_color.b,
-      style->bg_color.a);
-  GST_CAT_LOG (ebuttdparse, "\t\tfontStyle: %d", style->font_style);
-  GST_CAT_LOG (ebuttdparse, "\t\tfontWeight: %d", style->font_weight);
-  GST_CAT_LOG (ebuttdparse, "\t\ttextDecoration: %d", style->text_decoration);
-  GST_CAT_LOG (ebuttdparse, "\t\tunicodeBidi: %d", style->unicode_bidi);
-  GST_CAT_LOG (ebuttdparse, "\t\twrapOption: %d", style->wrap_option);
-  GST_CAT_LOG (ebuttdparse, "\t\tmultiRowAlign: %d", style->multi_row_align);
-  GST_CAT_LOG (ebuttdparse, "\t\tlinePadding: %g", style->line_padding);
-}
-#endif
-
 
 static void
 _print_style_set (GstEbuttdStyleSet * set)
@@ -193,26 +158,6 @@ _print_style_set (GstEbuttdStyleSet * set)
     GST_CAT_LOG (ebuttdparse, "\t\twriting_mode: %s", set->writing_mode);
   if (set->show_background)
     GST_CAT_LOG (ebuttdparse, "\t\tshow_background: %s", set->show_background);
-}
-
-
-static void
-_print_region (GstEbuttdRegion * region)
-{
-  GST_CAT_LOG (ebuttdparse, "Region %p:", region);
-  GST_CAT_LOG (ebuttdparse, "\t\toriginX: %g", region->origin_x);
-  GST_CAT_LOG (ebuttdparse, "\t\toriginY: %g", region->origin_y);
-  GST_CAT_LOG (ebuttdparse, "\t\textentW: %g", region->extent_w);
-  GST_CAT_LOG (ebuttdparse, "\t\textentH: %g", region->extent_h);
-  /*GST_CAT_LOG (ebuttdparse, "\t\tstyle: %s", region->style);*/
-  GST_CAT_LOG (ebuttdparse, "\t\tdisplay_align: %d", region->display_align);
-  GST_CAT_LOG (ebuttdparse, "\t\tpadding_start: %g", region->padding_start);
-  GST_CAT_LOG (ebuttdparse, "\t\tpadding_end: %g", region->padding_end);
-  GST_CAT_LOG (ebuttdparse, "\t\tpadding_before: %g", region->padding_before);
-  GST_CAT_LOG (ebuttdparse, "\t\tpadding_after: %g", region->padding_after);
-  GST_CAT_LOG (ebuttdparse, "\t\twriting_mode: %d", region->writing_mode);
-  GST_CAT_LOG (ebuttdparse, "\t\tshow_background: %d", region->show_background);
-  GST_CAT_LOG (ebuttdparse, "\t\toverflow: %d", region->overflow);
 }
 
 
@@ -383,14 +328,6 @@ delete_element (GstEbuttdElement * element)
 {
   g_return_if_fail (element != NULL);
   GST_CAT_DEBUG (ebuttdparse, "Deleting element %p...", element);
-  gchar *id;
-  gchar **styles;
-  gchar *region;
-  GstClockTime begin;
-  GstClockTime end;
-  GstEbuttdStyleSet *style_set;
-  GstEbuttdStyle *style;
-  gchar *text;
 
   if (element->id) g_free ((gpointer) element->id);
   if (element->styles) g_strfreev (element->styles);
@@ -513,133 +450,6 @@ create_new_style (GstEbuttdStyleSet * desc)
   return s;
 }
 #endif
-
-
-static GstEbuttdRegion *
-create_new_region (const xmlNode * node)
-{
-  GstEbuttdRegion *r = g_new0 (GstEbuttdRegion, 1);
-  gchar *value = NULL;
-
-  if ((value = get_xml_property (node, "origin"))) {
-    gchar *c;
-    r->origin_x = g_ascii_strtod (value, &c);
-    while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
-    r->origin_y = g_ascii_strtod (c, NULL);
-    /*GST_CAT_DEBUG (ebuttdparse, "origin_x: %g   origin_y: %g", r->origin_x, r->origin_y);*/
-    g_free (value);
-  }
-
-  if ((value = get_xml_property (node, "extent"))) {
-    gchar *c;
-    r->extent_w = g_ascii_strtod (value, &c);
-    r->extent_w = (r->extent_w > 100.0) ? 100.0 : r->extent_w;
-    while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
-    r->extent_h = g_ascii_strtod (c, NULL);
-    r->extent_h = (r->extent_h > 100.0) ? 100.0 : r->extent_h;
-    /*GST_CAT_DEBUG (ebuttdparse, "extent_w: %g   extent_h: %g", r->extent_w, r->extent_h);*/
-    g_free (value);
-  }
-
-  if ((value = get_xml_property (node, "displayAlign"))) {
-    if (g_strcmp0 (value, "center") == 0)
-      r->display_align = GST_EBUTTD_DISPLAY_ALIGN_CENTER;
-    else if (g_strcmp0 (value, "after") == 0)
-      r->display_align = GST_EBUTTD_DISPLAY_ALIGN_AFTER;
-    else
-      r->display_align = GST_EBUTTD_DISPLAY_ALIGN_BEFORE;
-    /*GST_CAT_DEBUG (ebuttdparse, "displayAlign: %d", r->display_align);*/
-    g_free (value);
-  }
-
-  if ((value = get_xml_property (node, "padding"))) {
-    gchar **decimals;
-    guint n_decimals;
-    gint i;
-
-    decimals = g_strsplit (value, "%", 0);
-    n_decimals = g_strv_length (decimals) - 1;
-    for (i = 0; i < n_decimals; ++i) {
-      g_strstrip (decimals[i]);
-    }
-
-    switch (n_decimals) {
-      case 1:
-        r->padding_start = r->padding_end =
-          r->padding_before = r->padding_after =
-          g_ascii_strtod (decimals[0], NULL);
-        break;
-
-      case 2:
-        r->padding_before = r->padding_after =
-          g_ascii_strtod (decimals[0], NULL);
-        r->padding_start = r->padding_end =
-          g_ascii_strtod (decimals[1], NULL);
-        break;
-
-      case 3:
-        r->padding_before = g_ascii_strtod (decimals[0], NULL);
-        r->padding_start = r->padding_end =
-          g_ascii_strtod (decimals[1], NULL);
-        r->padding_after = g_ascii_strtod (decimals[2], NULL);
-        break;
-
-      case 4:
-        r->padding_before = g_ascii_strtod (decimals[0], NULL);
-        r->padding_end = g_ascii_strtod (decimals[1], NULL);
-        r->padding_after = g_ascii_strtod (decimals[2], NULL);
-        r->padding_start = g_ascii_strtod (decimals[3], NULL);
-        break;
-    }
-    /*g_print ("paddingStart: %g  padding_end: %g  padding_before: %g "
-        "padding_after: %g\n", r->padding_start, r->padding_end,
-        r->padding_before, r->padding_after);*/
-    g_strfreev (decimals);
-    g_free (value);
-  }
-
-  if ((value = get_xml_property (node, "writingMode"))) {
-    if (g_str_has_prefix (value, "rl"))
-      r->writing_mode = GST_EBUTTD_WRITING_MODE_RLTB;
-    else if ((g_strcmp0 (value, "tbrl") == 0) || (g_strcmp0 (value, "tb") == 0))
-      r->writing_mode = GST_EBUTTD_WRITING_MODE_TBRL;
-    else if (g_strcmp0 (value, "tblr") == 0)
-      r->writing_mode = GST_EBUTTD_WRITING_MODE_TBLR;
-    else
-      r->writing_mode = GST_EBUTTD_WRITING_MODE_LRTB;
-    /*GST_CAT_DEBUG (ebuttdparse, "writingMode: %d", r->writing_mode);*/
-    g_free (value);
-  }
-
-  if ((value = get_xml_property (node, "showBackground"))) {
-    if (g_strcmp0 (value, "whenActive") == 0)
-      r->show_background = GST_EBUTTD_BACKGROUND_MODE_WHEN_ACTIVE;
-    else
-      r->show_background = GST_EBUTTD_BACKGROUND_MODE_ALWAYS;
-    /*GST_CAT_DEBUG (ebuttdparse, "showBackground: %d", r->show_background);*/
-    g_free (value);
-  }
-
-  if ((value = get_xml_property (node, "overflow"))) {
-    if (g_strcmp0 (value, "visible") == 0)
-      r->overflow = GST_EBUTTD_OVERFLOW_MODE_VISIBLE;
-    else
-      r->overflow = GST_EBUTTD_OVERFLOW_MODE_HIDDEN;
-    /*GST_CAT_DEBUG (ebuttdparse, "overflow: %d", r->overflow);*/
-    g_free (value);
-  }
-
-  return r;
-}
-
-
-static void
-delete_region (GstEbuttdRegion * region)
-{
-  g_return_if_fail (region != NULL);
-  GST_CAT_DEBUG (ebuttdparse, "Deleting region %p...", region);
-  g_free ((gpointer) region);
-}
 
 
 gchar *
@@ -1343,123 +1153,8 @@ inherit_styles_iterator (gpointer g_style,
   style_props = (StyleProp *) g_hash_table_lookup (style_hash,
       (gconstpointer) style_id);
   GST_CAT_DEBUG (ebuttdparse, "## Style:");
-  /*_print_style (style_props);*/
   if (style_props)
     markup_style_add_if_null (markup_style, style_props);
-}
-
-
-static void
-_append_region_description (const gchar * region_name, RegionProp * properties,
-    gchar ** string)
-{
-  gchar str_store[512] = { '\0' };
-  gchar *s = str_store;
-
-  /*g_return_if_fail (region_name != NULL);*/
-  g_return_if_fail (properties != NULL);
-  g_return_if_fail (properties->id != NULL);
-
-  /*GST_CAT_DEBUG (ebuttdparse, "_append_region_description; string = %p", string);*/
-  /* Create initial string, `<region ` */
-  s = g_stpcpy (s, "<region ");
-
-  /* If a property is present, add it to string. */
-  if (properties->origin) {
-    s = g_stpcpy (s, "origin=\"");
-    s = g_stpcpy (s, properties->origin);
-    s = g_stpcpy (s, "\" ");
-  }
-  if (properties->extent) {
-    s = g_stpcpy (s, "extent=\"");
-    s = g_stpcpy (s, properties->extent);
-    s = g_stpcpy (s, "\" ");
-  }
-  if (properties->style) {
-    s = g_stpcpy (s, "style=\"");
-    s = g_stpcpy (s, properties->style);
-    s = g_stpcpy (s, "\" ");
-  }
-  if (properties->display_align) {
-    s = g_stpcpy (s, "display_align=\"");
-    s = g_stpcpy (s, properties->display_align);
-    s = g_stpcpy (s, "\" ");
-  }
-  if (properties->padding) {
-    s = g_stpcpy (s, "padding=\"");
-    s = g_stpcpy (s, properties->padding);
-    s = g_stpcpy (s, "\" ");
-  }
-  if (properties->writing_mode) {
-    s = g_stpcpy (s, "writing_mode=\"");
-    s = g_stpcpy (s, properties->writing_mode);
-    s = g_stpcpy (s, "\" ");
-  }
-  if (properties->show_background) {
-    s = g_stpcpy (s, "show_background=\"");
-    s = g_stpcpy (s, properties->show_background);
-    s = g_stpcpy (s, "\" ");
-  }
-  if (properties->overflow) {
-    s = g_stpcpy (s, "overflow=\"");
-    s = g_stpcpy (s, properties->overflow);
-    s = g_stpcpy (s, "\" ");
-  }
-
-  /* Terminate string, `>` */
-  s = g_stpcpy (s, ">");
-  s = g_strdup (str_store);
-
-  /* Replace input string with the created string. */
-  g_free (*string);
-  *string = s;
-}
-
-
-static void
-add_region_description (gchar ** string, RegionProp * region)
-{
-  gchar *combined_string = NULL;
-  gchar *region_string = g_strdup ("");
-
-  g_return_if_fail (string != NULL);
-  g_return_if_fail (*string != NULL);
-  g_return_if_fail (region != NULL);
-
-  _append_region_description (NULL, region, &region_string);
-
-  GST_CAT_DEBUG (ebuttdparse, "Region string: %s", region_string);
-
-  /* Add region string to start of marked-up subtitle string. */
-  combined_string = g_strconcat (region_string, "\n", *string, NULL);
-  GST_CAT_DEBUG (ebuttdparse, "Combined string: %s", combined_string);
-  g_free (region_string);
-  g_free (*string);
-  *string = combined_string;
-}
-
-
-static void
-add_region_descriptions (gchar ** string, GHashTable * region_hash)
-{
-  gchar *combined_string = NULL;
-  gchar *region_string = g_strdup ("");
-
-  g_return_if_fail (string != NULL);
-  g_return_if_fail (*string != NULL);
-  g_return_if_fail (region_hash != NULL);
-
-  g_hash_table_foreach (region_hash, (GHFunc) _append_region_description,
-      (gpointer) &region_string);
-
-  GST_CAT_DEBUG (ebuttdparse, "Region string: %s", region_string);
-
-  /* Add region string to start of marked-up subtitle string. */
-  combined_string = g_strconcat (region_string, "\n", *string, NULL);
-  GST_CAT_DEBUG (ebuttdparse, "Combined string: %s", combined_string);
-  g_free (region_string);
-  g_free (*string);
-  *string = combined_string;
 }
 
 
@@ -2433,20 +2128,6 @@ resolve_element_style (GNode * node, gpointer data)
 }
 
 
-#if 0
-static gboolean
-create_style (GNode * node, gpointer data)
-{
-  GstEbuttdElement *element;
-  element = node->data;
-  element->style = create_new_style (element->style_set);
-  GST_CAT_LOG (ebuttdparse, "created style for leaf node:");
-  _print_style (element->style);
-  return FALSE;
-}
-#endif
-
-
 static void
 resolve_body_styles (GNode * tree, GHashTable * style_hash)
 {
@@ -2866,7 +2547,7 @@ create_isd_tree (GNode * tree, GList * active_elements)
   GList *leaves;
   GstEbuttdElement *leaf, *e;
   GQueue *node_stack;
-  GNode *element_node, *foo, *junction, *sibling;
+  GNode *element_node, *foo, *junction = NULL;
   GNode *ret = NULL;
 
   g_return_val_if_fail (tree != NULL, NULL);
@@ -2968,7 +2649,6 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 {
   GstSubtitleArea *area;
   GstSubtitleStyleSet *region_style;
-  GstSubtitleColor body_colour;
   GstEbuttdElement *element;
   GNode *node;
 
@@ -2986,16 +2666,13 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
   g_assert (node->next == NULL);
   element = node->data;
   g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_BODY);
-  /*body_colour = parse_ebuttd_colorstring (element->style_set->bg_color);*/
 
   node = node->children;
   while (node) {
-    GstSubtitleColor div_color;
     GNode *p_node;
 
     element = node->data;
     g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_DIV);
-    /*div_color = parse_ebuttd_colorstring (element->style_set->bg_color);*/
 
     p_node = node->children;
     while (p_node) {
@@ -3143,7 +2820,6 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
     GHashTable *elements_by_region;
     GHashTableIter iter;
     gpointer key, value;
-    GList *l;
     GPtrArray *areas = g_ptr_array_new ();
 
     g_assert (scene != NULL);
@@ -3198,47 +2874,6 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
 }
 
 
-static void
-fill_buffers (GList * scenes)
-{
-  GstEbuttdScene *scene;
-  GList *elements;
-  GstEbuttdElement *element;
-
-  while (scenes) {
-    guint text_index = 0U;
-    scene = scenes->data;
-    elements = scene->elements;
-    scene->buf = gst_buffer_new ();
-    GST_BUFFER_PTS (scene->buf) = scene->begin;
-    GST_BUFFER_DURATION (scene->buf) = (scene->end - scene->begin);
-
-    while (elements) {
-      GstMemory *mem;
-      element = elements->data;
-
-      if (element->text) {
-        GstMapInfo map;
-
-        mem = gst_allocator_alloc (NULL, strlen (element->text) + 1, NULL);
-        if (!gst_memory_map (mem, &map, GST_MAP_READ | GST_MAP_WRITE))
-          GST_CAT_ERROR (ebuttdparse, "Failed to map memory.");
-
-        g_strlcpy ((gchar *)map.data, element->text, map.size);
-        GST_CAT_DEBUG (ebuttdparse, "Inserted following text into buffer: %s",
-            (gchar *)map.data);
-        gst_memory_unmap (mem, &map);
-
-        gst_buffer_insert_memory (scene->buf, -1, mem);
-        GST_CAT_DEBUG (ebuttdparse, "Inserted text at memory position %u in GstBuffer; GstBuffer now contains %u GstMemorys.", text_index, gst_buffer_n_memory (scene->buf));
-      }
-      elements = elements->next;
-    }
-    scenes = scenes->next;
-  }
-}
-
-
 GList * create_buffer_list (GList * scenes)
 {
   GList *ret = NULL;
@@ -3259,11 +2894,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   xmlDocPtr doc;                /* pointer for tree */
   xmlNodePtr cur;
 
-  InheritanceList *inherited_styles, *inherited_regions;
   GList *subtitle_list = NULL;
-
-  inherited_styles = NULL;
-  inherited_regions = NULL;
 
   GHashTable *style_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
