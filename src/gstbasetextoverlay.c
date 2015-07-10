@@ -4495,7 +4495,7 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * ranges,
           first_char_start, last_char_end);
 
       if ((cur_line == first_line) && (first_char_start != line_start)) {
-        area_start = first_char_start;
+        area_start = first_char_start + line_padding;
         GST_CAT_DEBUG (ebuttdrender,
             "First line, but there is preceding text in line.");
       } else {
@@ -4508,17 +4508,17 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * ranges,
       if ((cur_line == last_line) && (last_char_end != line_end)) {
         GST_CAT_DEBUG (ebuttdrender,
             "Last line, but there is following text in line.");
-        area_end = last_char_end;
+        area_end = last_char_end + line_padding;
       } else {
         GST_CAT_DEBUG (ebuttdrender,
             "Area contains last text on the line; adding padding...");
         ++padding;
-        area_end = line_end;
+        area_end = line_end + (2 * line_padding);
       }
 
       GST_CAT_DEBUG (ebuttdrender, "Element bg colour: %s",
           color_to_rgba_string (element->style.bg_color));
-      rect_width = (area_end - area_start) + (padding * line_padding);
+      rect_width = (area_end - area_start);
       if (rect_width > 0) { /* <br>s will result in zero-width rectangle */
         rectangle = draw_rectangle (rect_width, line_height,
             element->style.bg_color);
