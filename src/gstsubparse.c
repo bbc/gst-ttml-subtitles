@@ -1574,10 +1574,7 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
     /* use libxml2 instead of line by line parsing
      * TODO: remove duplicate code.
      */
-    GList *subtitle_list, *sub_obj = NULL;      /* todo g_list_free_full() */
-    ParserState *state;
-    guint subtitle_len;
-    subtitle_list = ebutt_xml_parse (self->textbuf->str);
+    GList *subtitle_list = ebutt_xml_parse (self->textbuf->str);
 
     while (subtitle_list) {
       GstBuffer *op_buffer = subtitle_list->data;
@@ -1596,61 +1593,6 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
     }
 
     g_list_free (subtitle_list);
-
-#if 0
-    for (sub_obj = subtitle_list; sub_obj != NULL; sub_obj = sub_obj->next) {
-      /* retrieve structure from gpointer */
-      SubStateObj *sub_n_state_ptr;
-      sub_n_state_ptr = (SubStateObj *) sub_obj->data;
-
-      subtitle = sub_n_state_ptr->text;
-      state = sub_n_state_ptr->state;
-      subtitle_len = strlen (subtitle);
-
-      printf ("\n next buffer: \n %s \n", subtitle);
-
-      /* +1 for terminating NUL character */
-      buf = gst_buffer_new_and_alloc (subtitle_len + 1);
-
-      /* copy terminating NULL character as well */
-      gst_buffer_fill (buf, 0, subtitle, subtitle_len + 1);
-      gst_buffer_set_size (buf, subtitle_len);
-
-      GST_BUFFER_TIMESTAMP (buf) = state->start_time;
-      GST_BUFFER_DURATION (buf) = state->duration;
-
-      /* in some cases (e.g. tmplayer) we can only determine the duration
-       * of a text chunk from the timestamp of the next text chunk; in those
-       * cases, we probably want to limit the duration to something
-       * reasonable, so we don't end up showing some text for e.g. 40 seconds
-       * just because nothing else is being said during that time */
-      if (state->max_duration > 0 && GST_BUFFER_DURATION_IS_VALID (buf)) {
-        if (GST_BUFFER_DURATION (buf) > state->max_duration)
-          GST_BUFFER_DURATION (buf) = state->max_duration;
-      }
-
-      self->segment.position = state->start_time;
-
-      GST_DEBUG_OBJECT (self, "Sending text '%s', %" GST_TIME_FORMAT " + %"
-          GST_TIME_FORMAT, subtitle, GST_TIME_ARGS (state->start_time),
-          GST_TIME_ARGS (state->duration));
-
-      ret = gst_pad_push (self->srcpad, buf);
-
-      /* move this forward (the tmplayer parser needs this) */
-      if (state->duration != GST_CLOCK_TIME_NONE)
-        state->start_time += state->duration;
-
-      g_free (subtitle);
-
-
-      subtitle = NULL;
-
-      if (ret != GST_FLOW_OK) {
-        GST_DEBUG_OBJECT (self, "flow: %s", gst_flow_get_name (ret));
-      }
-    }
-#endif
   } else {
     while (!self->flushing && (line = get_next_line (self))) {
       guint offset = 0;
