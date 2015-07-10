@@ -166,6 +166,7 @@ struct _GstSubtitleElement
 {
   GstMiniObject mini_object;
 
+  /* XXX: Should style be a pointer to GstSubtitleStyleSet instead? */
   GstSubtitleStyleSet style;
   guint text_index;
 
@@ -223,6 +224,7 @@ struct _GstSubtitleBlock
 {
   GstMiniObject mini_object;
 
+  /* XXX: Should style be a pointer to GstSubtitleStyleSet instead? */
   GstSubtitleStyleSet style;
 
   /*< private >*/
@@ -290,6 +292,7 @@ struct _GstSubtitleArea
 {
   GstMiniObject mini_object;
 
+  /* XXX: Should style be a pointer to GstSubtitleStyleSet instead? */
   GstSubtitleStyleSet style;
 
   /*< private >*/
