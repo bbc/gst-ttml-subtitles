@@ -4391,7 +4391,7 @@ is_wrapped (GPtrArray * elements)
 
   for (i = 0; i < elements->len; ++i) {
     element = g_ptr_array_index (elements, i);
-    if (element->style.wrap_option = GST_SUBTITLE_WRAPPING_ON)
+    if (element->style.wrap_option == GST_SUBTITLE_WRAPPING_ON)
       return TRUE;
   }
 
