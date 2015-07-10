@@ -4668,14 +4668,15 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
       (guint) (block->style.line_height * max_font_size),
       (guint) (block->style.line_padding * overlay->width));
 
+  /* XXX: Looks like we only really need to know the height of the rendered
+   * block. */
   block_extents = calculate_block_extents (layers);
 
   /* Render block background, if non-transparent. */
   if (!is_color_transparent (&block->style.bg_color)) {
-    block_bg_image = draw_rectangle (block_extents.width, block_extents.height,
-        block->style.bg_color);
-    bg_layer = create_located_image (block_bg_image, block_extents.x,
-        block_extents.y, block_extents.width, block_extents.height);
+    block_bg_image = draw_rectangle (width, height, block->style.bg_color);
+    bg_layer = create_located_image (block_bg_image, origin_x, origin_y, width,
+        block_extents.height);
     layers = g_slist_prepend (layers, bg_layer);
   }
 
@@ -4692,7 +4693,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   /*rendered_element = (g_list_first (elements))->data;*/
   ret->image = rendered_text->text_image;
   ret->layers = layers;
-  ret->width = block_extents.width;
+  ret->width = width;
   ret->height = block_extents.height;
   GST_CAT_DEBUG (ebuttdrender, "block width: %u   block height: %u",
       ret->width, ret->height);
