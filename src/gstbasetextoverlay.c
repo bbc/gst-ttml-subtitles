@@ -4266,6 +4266,7 @@ draw_text2 (const gchar * string, PangoContext * context, guint width, guint
   gint spacing = 0U;
   guint buf_width, buf_height;
   gdouble offset;
+  gdouble padding;
   guint i;
 
   ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedTextBlock);
@@ -4289,11 +4290,13 @@ draw_text2 (const gchar * string, PangoContext * context, guint width, guint
   cur_height = (gdouble)logical_rect.height
     / pango_layout_get_line_count (ret->layout);
   offset = cur_height - (gdouble)max_font_size;
+  padding = (line_height - max_font_size)/2.0;
+  ret->text_offset = (guint) round (padding - offset);
   spacing = (gint) lround ((gdouble)line_height - (gdouble)max_font_size
       - offset);
   GST_CAT_DEBUG (ebuttdrender, "offset: %g   spacing: %d", offset, spacing);
 
-  GST_CAT_DEBUG (ebuttdrender, "line_height: %g", line_height);
+  GST_CAT_DEBUG (ebuttdrender, "line_height: %u", line_height);
   GST_CAT_DEBUG (ebuttdrender, "Current line height is %g; changing to %g...",
       cur_height, cur_height + spacing);
   pango_layout_set_spacing (ret->layout, PANGO_SCALE * spacing);
@@ -4326,7 +4329,8 @@ draw_text2 (const gchar * string, PangoContext * context, guint width, guint
 
   /* XXX: Taking into account that pango doesn't place spacing before first
    * line or after last line by adding this space ourselves. */
-  spacing = MAX (spacing, 0);
+  /*spacing = MAX (spacing, 0);*/
+  spacing = 0;
   buf_width = logical_rect.width;
   buf_height = logical_rect.height + (2 * spacing);
   GST_CAT_DEBUG (ebuttdrender, "buf_width: %u  buf_height: %u", buf_width, buf_height);
@@ -4678,7 +4682,8 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   /* XXX:Need to check whether this is the correct way to calculate text vertical offset. */
   text_layer = create_located_image (rendered_text->text_image,
       origin_x + (guint) (block->style.line_padding * overlay->width),
-      origin_y, rendered_text->width, rendered_text->height);
+      origin_y + rendered_text->text_offset, rendered_text->width,
+      rendered_text->height);
 
   layers = g_slist_append (layers, text_layer);
 

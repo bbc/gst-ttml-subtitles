@@ -102,6 +102,7 @@ typedef struct {
   PangoLayout *layout;
   guint width;
   guint height;
+  guint text_offset;
 } GstBaseEbuttdOverlayRenderedTextBlock;
 
 
