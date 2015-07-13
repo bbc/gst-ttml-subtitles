@@ -29,18 +29,10 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GstEbuttdRegion GstEbuttdRegion;
-typedef struct _GstEbuttdStyle GstEbuttdStyle;
 typedef struct _GstEbuttdStyleSet GstEbuttdStyleSet;
-typedef struct _GstEbuttdColor GstEbuttdColor;
-typedef struct _GstEbuttdMediaTime GstEbuttdMediaTime;
 typedef struct _GstEbuttdElement GstEbuttdElement;
 typedef struct _GstEbuttdScene GstEbuttdScene;
 typedef struct _GstEbuttdTransition GstEbuttdTransition;
-typedef struct _GstEbuttdTree GstEbuttdTree;
-typedef struct _GstEbuttdTextElement GstEbuttdTextElement;
-typedef struct _GstEbuttdTextBlock GstEbuttdTextBlock;
-typedef struct _GstEbuttdTextArea GstEbuttdTextArea;
 
 
 struct _GstEbuttdStyleSet {
@@ -88,7 +80,6 @@ struct _GstEbuttdElement {
   GstClockTime begin;
   GstClockTime end;
   GstEbuttdStyleSet *style_set;
-  GstEbuttdStyle *style;
   gchar *text;
   guint text_index;
 };

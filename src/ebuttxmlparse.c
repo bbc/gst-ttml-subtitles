@@ -314,16 +314,6 @@ delete_style_set (GstEbuttdStyleSet * style)
 
 
 static void
-delete_style (GstEbuttdStyle * style)
-{
-  g_return_if_fail (style != NULL);
-  GST_CAT_DEBUG (ebuttdparse, "Deleting style %p...", style);
-  /* XXX: Don't we also need to free font name? */
-  g_free ((gpointer) style);
-}
-
-
-static void
 delete_element (GstEbuttdElement * element)
 {
   g_return_if_fail (element != NULL);
@@ -333,7 +323,6 @@ delete_element (GstEbuttdElement * element)
   if (element->styles) g_strfreev (element->styles);
   if (element->region) g_free ((gpointer) element->region);
   if (element->style_set) delete_style_set (element->style_set);
-  if (element->style) delete_style (element->style);
   if (element->text) g_free ((gpointer) element->text);
   g_free ((gpointer) element);
 }
