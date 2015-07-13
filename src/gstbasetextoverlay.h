@@ -102,7 +102,11 @@ typedef struct {
   PangoLayout *layout;
   guint width;
   guint height;
-  guint text_offset;
+  guint text_offset; /* Badly named; it's a vertical offset. */
+
+  /* To cope with the fact that pango positions text at a different horizontal
+   * location depending on whether wrapping is enabled or not. */
+  guint layout_x_offset;
 } GstBaseEbuttdOverlayRenderedTextBlock;
 
 
