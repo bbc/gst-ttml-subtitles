@@ -47,9 +47,6 @@ G_BEGIN_DECLS
 
 typedef struct _GstBaseEbuttdOverlay      GstBaseEbuttdOverlay;
 typedef struct _GstBaseEbuttdOverlayClass GstBaseEbuttdOverlayClass;
-typedef struct _GstBaseEbuttdOverlayRegion GstBaseEbuttdOverlayRegion;
-typedef struct _GstBaseEbuttdOverlayStyle GstBaseEbuttdOverlayStyle;
-typedef struct _GstBaseEbuttdOverlayColor GstBaseEbuttdOverlayColor;
 typedef struct _GstBaseEbuttdOverlayLayer GstBaseEbuttdOverlayLayer;
 
 typedef struct {
@@ -78,7 +75,7 @@ typedef struct {
 typedef struct {
   GstSubtitleBlock *block;
   GstBuffer *image;
-  GSList *layers;
+  GSList *locimages;
   guint width;
   guint height;
 } GstBaseEbuttdOverlayRenderedBlock;
@@ -176,160 +173,6 @@ typedef enum {
     GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_RIGHT = PANGO_ALIGN_RIGHT
 } GstBaseEbuttdOverlayLineAlign;
 
-/**
- * GstBaseEbuttdOverlayWritingMode:
- * @GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_LRTB: text is written left-to-right,
- * top-to-bottom.
- * @GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_RLTB: text is written right-to-left,
- * top-to-bottom.
- * @GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBRL: text is written top-to-bottom,
- * right-to-left.
- * @GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBLR: text is written top-to-bottom,
- * left-to-right.
- *
- * Writing mode of text content.
- */
-typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_LRTB,
-    GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_RLTB,
-    GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBRL,
-    GST_BASE_EBUTTD_OVERLAY_WRITING_MODE_TBLR
-} GstBaseEbuttdOverlayWritingMode; /* Or GstBaseEbuttdOverlayTextProgression? */
-
-typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_BEFORE,
-    GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_CENTER,
-    GST_BASE_EBUTTD_OVERLAY_DISPLAY_ALIGN_AFTER
-} GstBaseEbuttdOverlayDisplayAlign;
-
-typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_ALWAYS,
-    GST_BASE_EBUTTD_OVERLAY_BACKGROUND_MODE_WHEN_ACTIVE,
-} GstBaseEbuttdOverlayBackgroundMode;
-
-typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_HIDDEN,
-    GST_BASE_EBUTTD_OVERLAY_OVERFLOW_MODE_VISIBLE,
-} GstBaseEbuttdOverlayOverflowMode;
-
-struct _GstBaseEbuttdOverlayRegion {
-    /*
-     * Properties of region from EBU-TT-D spec:
-     *
-     *   origin - coordinates of region origin in % of width & height of root
-     *   container.
-     *
-     *   extent - size of region, again %age of width and height of root
-     *   container.
-     *
-     *   displayAlign - not quite sure I understand this one, but this seems to
-     *   be some kind of vertical aligment,
-     *
-     *   padding - padding to be applied on all sides of the region area.
-     *
-     *   writingMode - specifies the direction in which text progresses, both
-     *   horizontally and vertically.
-     *
-     *   showBackground - controls whether the background colour of the region
-     *   is always shown, or shown only when there is some text that is
-     *   rendered in the region.
-     *
-     *   overflow - determines whether or not content that overflows the region
-     *   area is clipped.
-     */
-    const gchar *id;
-    gdouble origin_x, origin_y;
-    gdouble extent_w, extent_h;
-    gint x_bk, y_bk;
-    gint width_bk, height_bk;
-    GstBaseEbuttdOverlayDisplayAlign display_align;
-    gdouble padding_start, padding_end, padding_before, padding_after;
-    GstBaseEbuttdOverlayWritingMode writing_mode;
-    GstBaseEbuttdOverlayBackgroundMode show_background;
-    GstBaseEbuttdOverlayOverflowMode overflow;
-    const gchar *bg_color;
-
-    /* Data objects needed to render a region of subtitles. */
-    PangoLayout *layout;   /* Pango layout that will handle text rendering. */
-    GstBuffer *text_image; /* Destination buffer into which text will be
-                              rendered.*/
-    GstBuffer *bg_image;   /* Destination buffer into which background
-                              rectangle will be rendered. */
-    GstBuffer *region_bg_image;
-    GstVideoOverlayComposition *composition;
-};
-
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_LTR,
-  GST_BASE_EBUTTD_OVERLAY_TEXT_DIRECTION_RTL
-} GstBaseEbuttdOverlayTextDirection;
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_START,
-  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_LEFT,
-  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_CENTER,
-  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_RIGHT,
-  GST_BASE_EBUTTD_OVERLAY_TEXT_ALIGN_END
-} GstBaseEbuttdOverlayTextAlign;
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_FONT_STYLE_NORMAL,
-  GST_BASE_EBUTTD_OVERLAY_FONT_STYLE_ITALIC
-} GstBaseEbuttdOverlayFontStyle;
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_FONT_WEIGHT_NORMAL,
-  GST_BASE_EBUTTD_OVERLAY_FONT_WEIGHT_BOLD,
-} GstBaseEbuttdOverlayFontWeight;
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_TEXT_DECORATION_NONE,
-  GST_BASE_EBUTTD_OVERLAY_TEXT_DECORATION_UNDERLINE
-} GstBaseEbuttdOverlayTextDecoration;
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_NORMAL,
-  GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_EMBED,
-  GST_BASE_EBUTTD_OVERLAY_UNICODE_BIDI_OVERRIDE
-} GstBaseEbuttdOverlayUnicodeBidi;
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_WRAPPING_ON,
-  GST_BASE_EBUTTD_OVERLAY_WRAPPING_OFF,
-} GstBaseEbuttdOverlayWrapping;
-
-typedef enum {
-  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_AUTO,
-  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_START,
-  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_CENTER,
-  GST_BASE_EBUTTD_OVERLAY_MULTI_ROW_ALIGN_END,
-} GstBaseEbuttdOverlayMultiRowAlign;
-
-struct _GstBaseEbuttdOverlayStyle {
-  GstBaseEbuttdOverlayTextDirection text_direction;
-  const gchar *font_family;
-  gdouble font_size;
-  gdouble line_height;
-  GstBaseEbuttdOverlayTextAlign text_align;
-  const gchar *color;
-  const gchar *bg_color;
-  GstBaseEbuttdOverlayFontStyle font_style;
-  GstBaseEbuttdOverlayFontWeight font_weight;
-  GstBaseEbuttdOverlayTextDirection text_decoration;
-  GstBaseEbuttdOverlayUnicodeBidi unicode_bidi;
-  GstBaseEbuttdOverlayWrapping wrap_option;
-  GstBaseEbuttdOverlayMultiRowAlign multi_row_align;
-  gdouble line_padding;
-  guint cellres_x, cellres_y;
-};
-
-struct _GstBaseEbuttdOverlayColor {
-  gdouble r;
-  gdouble g;
-  gdouble b;
-  gdouble a;
-};
 
 
 struct _GstBaseEbuttdOverlayLayer {
