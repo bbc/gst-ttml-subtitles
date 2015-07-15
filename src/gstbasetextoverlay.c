@@ -1690,88 +1690,6 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
 }
 
 
-static gchar *
-color_to_rgb_string (GstSubtitleColor color)
-{
-  gchar *ret = g_malloc0 (8U);
-  g_snprintf (ret, 8U, "#%02x%02x%02x", (gint) (color.r * 255.0),
-      (gint) (color.g * 255.0), (gint) (color.b * 255.0));
-  return ret;
-}
-
-static gchar *
-color_to_rgba_string (GstSubtitleColor color)
-{
-  gchar *ret = g_malloc0 (10U);
-  g_snprintf (ret, 10U, "#%02x%02x%02x%02x", (gint) (color.r * 255.0),
-      (gint) (color.g * 255.0), (gint) (color.b * 255.0),
-      (gint) (color.a * 255.0));
-  return ret;
-}
-
-
-static GstBuffer *
-draw_rectangle (guint width, guint height, GstSubtitleColor color)
-{
-  GstMapInfo map;
-  cairo_surface_t *surface;
-  cairo_t *cairo_state;
-  GstBuffer *buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
-
-  if (buffer) {
-    gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
-    surface = cairo_image_surface_create_for_data (map.data,
-        CAIRO_FORMAT_ARGB32, width, height, width * 4);
-    cairo_state = cairo_create (surface);
-
-    /* clear surface */
-    cairo_set_operator (cairo_state, CAIRO_OPERATOR_CLEAR);
-    cairo_paint (cairo_state);
-    cairo_set_operator (cairo_state, CAIRO_OPERATOR_OVER);
-
-    cairo_save (cairo_state);
-    cairo_set_source_rgba (cairo_state, color.r, color.g, color.b, color.a);
-    cairo_paint (cairo_state);
-    cairo_restore (cairo_state);
-    cairo_destroy (cairo_state);
-    cairo_surface_destroy (surface);
-    gst_buffer_unmap (buffer, &map);
-  } else {
-    GST_CAT_DEBUG (ebuttdrender, "Couldn't allocate memory to store rectangle.");
-  }
-
-  return buffer;
-}
-
-
-static GstBaseEbuttdOverlayLayer *
-create_new_layer (GstBuffer * image, guint xpos, guint ypos, guint width,
-    guint height)
-{
-  GstBaseEbuttdOverlayLayer *layer;
-
-  g_return_val_if_fail (image != NULL, NULL);
-
-  layer = g_new0 (GstBaseEbuttdOverlayLayer, 1);
-  layer->image = image;
-  layer->xpos = xpos;
-  layer->ypos = ypos;
-  layer->width = width;
-  layer->height = height;
-
-  GST_CAT_DEBUG (ebuttdrender, "Creating layer - x: %d  y: %d  w: %u  h: %u, buffer-size: %u",
-      xpos, ypos, width, height, gst_buffer_get_size (image));
-
-  gst_buffer_add_video_meta (image, GST_VIDEO_FRAME_FLAG_NONE,
-      GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB, width, height);
-
-  layer->rectangle = gst_video_overlay_rectangle_new_raw (image, xpos, ypos,
-      width, height, GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
-
-  return layer;
-}
-
-
 static inline void
 gst_base_ebuttd_overlay_shade_planar_Y (GstBaseEbuttdOverlay * overlay,
     GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
@@ -2556,6 +2474,88 @@ render_styled_text (const gchar * text, const GstSubtitleStyleSet * style,
   return ret;
 }
 #endif
+
+
+static gchar *
+color_to_rgb_string (GstSubtitleColor color)
+{
+  gchar *ret = g_malloc0 (8U);
+  g_snprintf (ret, 8U, "#%02x%02x%02x", (gint) (color.r * 255.0),
+      (gint) (color.g * 255.0), (gint) (color.b * 255.0));
+  return ret;
+}
+
+static gchar *
+color_to_rgba_string (GstSubtitleColor color)
+{
+  gchar *ret = g_malloc0 (10U);
+  g_snprintf (ret, 10U, "#%02x%02x%02x%02x", (gint) (color.r * 255.0),
+      (gint) (color.g * 255.0), (gint) (color.b * 255.0),
+      (gint) (color.a * 255.0));
+  return ret;
+}
+
+
+static GstBuffer *
+draw_rectangle (guint width, guint height, GstSubtitleColor color)
+{
+  GstMapInfo map;
+  cairo_surface_t *surface;
+  cairo_t *cairo_state;
+  GstBuffer *buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
+
+  if (buffer) {
+    gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
+    surface = cairo_image_surface_create_for_data (map.data,
+        CAIRO_FORMAT_ARGB32, width, height, width * 4);
+    cairo_state = cairo_create (surface);
+
+    /* clear surface */
+    cairo_set_operator (cairo_state, CAIRO_OPERATOR_CLEAR);
+    cairo_paint (cairo_state);
+    cairo_set_operator (cairo_state, CAIRO_OPERATOR_OVER);
+
+    cairo_save (cairo_state);
+    cairo_set_source_rgba (cairo_state, color.r, color.g, color.b, color.a);
+    cairo_paint (cairo_state);
+    cairo_restore (cairo_state);
+    cairo_destroy (cairo_state);
+    cairo_surface_destroy (surface);
+    gst_buffer_unmap (buffer, &map);
+  } else {
+    GST_CAT_DEBUG (ebuttdrender, "Couldn't allocate memory to store rectangle.");
+  }
+
+  return buffer;
+}
+
+
+static GstBaseEbuttdOverlayLayer *
+create_new_layer (GstBuffer * image, guint xpos, guint ypos, guint width,
+    guint height)
+{
+  GstBaseEbuttdOverlayLayer *layer;
+
+  g_return_val_if_fail (image != NULL, NULL);
+
+  layer = g_new0 (GstBaseEbuttdOverlayLayer, 1);
+  layer->image = image;
+  layer->xpos = xpos;
+  layer->ypos = ypos;
+  layer->width = width;
+  layer->height = height;
+
+  GST_CAT_DEBUG (ebuttdrender, "Creating layer - x: %d  y: %d  w: %u  h: %u, buffer-size: %u",
+      xpos, ypos, width, height, gst_buffer_get_size (image));
+
+  gst_buffer_add_video_meta (image, GST_VIDEO_FRAME_FLAG_NONE,
+      GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB, width, height);
+
+  layer->rectangle = gst_video_overlay_rectangle_new_raw (image, xpos, ypos,
+      width, height, GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
+
+  return layer;
+}
 
 
 typedef struct {
