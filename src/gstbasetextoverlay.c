@@ -2659,7 +2659,7 @@ draw_text2 (const gchar * string, PangoContext * context, guint width, guint
   GstMapInfo map;
   PangoRectangle ink_rect, logical_rect;
   gdouble cur_height;
-  gint spacing = 0U;
+  gint spacing = 0;
   guint buf_width, buf_height;
   gdouble offset;
   gdouble padding;
@@ -2688,9 +2688,14 @@ draw_text2 (const gchar * string, PangoContext * context, guint width, guint
     / pango_layout_get_line_count (ret->layout);
   offset = cur_height - (gdouble)max_font_size;
   padding = (line_height - max_font_size)/2.0;
-  ret->text_offset = (guint) round (padding - offset);
-  spacing = (gint) lround ((gdouble)line_height - (gdouble)max_font_size
-      - offset);
+
+  /* XXX: Fiddle factor of 0.1 * max_font_size is to ensure that text looks
+   * optically in the correct position relative to it's background box; without
+   * this downward shift, the text looks too high. */
+  ret->text_offset =
+    (guint) round ((padding - offset) + (0.1 * max_font_size));
+  spacing =
+    (gint) round ((gdouble)line_height - (gdouble)max_font_size - offset);
   GST_CAT_DEBUG (ebuttdrender, "offset: %g   spacing: %d", offset, spacing);
 
   GST_CAT_DEBUG (ebuttdrender, "line_height: %u", line_height);
