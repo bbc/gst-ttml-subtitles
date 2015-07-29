@@ -96,8 +96,6 @@ gst_buffer_add_subtitle_meta (GstBuffer * buffer, GPtrArray * areas)
   meta = (GstSubtitleMeta *) gst_buffer_add_meta (buffer,
       GST_SUBTITLE_META_INFO, NULL);
 
-  /*gst_subtitle_sample_areas_ref (areas);*/ /* XXX: Take ownership of areas array(?) */
-
-  meta->areas = areas;
+  meta->areas = g_ptr_array_ref (areas);
   return meta;
 }
