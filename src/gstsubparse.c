@@ -2,6 +2,7 @@
  * Copyright (C) <1999> Erik Walthinsen <omega@cse.ogi.edu>
  * Copyright (C) 2004 Ronald S. Bultje <rbultje@ronald.bitfreak.net>
  * Copyright (C) 2006 Tim-Philipp Müller <tim centricular net>
+ * Copyright (C) <2015> British Broadcasting Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -1580,7 +1581,7 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
       GstBuffer *op_buffer = subtitle_list->data;
       self->segment.position = GST_BUFFER_PTS (op_buffer);
 
-      GST_DEBUG_OBJECT (self, "Sending buffer %p, %u %u",
+      GST_DEBUG_OBJECT (self, "Sending buffer %p, %llu %llu",
           op_buffer, GST_BUFFER_PTS (op_buffer),
           GST_BUFFER_DURATION (op_buffer));
 
