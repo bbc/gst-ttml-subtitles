@@ -20,20 +20,8 @@
 
 /**
  * SECTION:gstsubtitlemeta
- * @short_description: Metadata class for ISOBMFF Common Encryption.
+ * @short_description:
  *
- * The GstSubtitleMeta class enables the information needed to decrypt a
- * subtitle-protected #GstBuffer to be attached to that buffer.
- *
- * Typically, an ISOBMFF demuxer element would attach GstSubtitleMeta objects to
- * the buffers that it pushes downstream. The demuxer would parse the
- * protection information for a video/audio frame from its input data and use
- * this information to populate #GstSubtitleSampleProperties and
- * #GstSubtitleSampleCryptoInfo objects, which are then encapsulated in a
- * GstSubtitleMeta object and attached to the corresponding output buffer using the
- * gst_buffer_add_subtitle_meta() function. The information in this attached
- * GstSubtitleMeta would be used by a downstream decrypter element to recover the
- * original unencrypted frame.
  */
 
 #include "gstsubtitlemeta.h"
@@ -88,17 +76,11 @@ gst_subtitle_meta_get_info (void)
 
 /**
  * gst_buffer_add_subtitle_meta:
- * @buffer: #GstBuffer holding a subtitle-protected sample, to which subtitle metadata
+ * @buffer: #GstBuffer holding subtitle text, to which subtitle metadata
  * should be added.
- * @areas: a #GstSubtitleSampleProperties describing the areas of the
- * sample contained in @buffer.
- * @crypto_info: (allow-none): a #GstSubtitleSampleCryptoInfo holding cryptographic
- * information relating to the sample contained in @buffer. If
- * @areas->is_encrypted is %FALSE, @crypto_info may be %NULL.
+ * @areas: a #GPtrArray of #GstSubtitleAreas.
  *
- * Attaches subtitle metadata to a #GstBuffer. If @areas->is_encrypted is
- * %TRUE, @crypto_info must point to a #GstSubtitleSampleCryptoInfo whose
- * initialization vector size equals @areas->iv_size.
+ * Attaches subtitle metadata to a #GstBuffer.
  *
  * Returns: a pointer to the added #GstSubtitleMeta if successful; %NULL if
  * unsuccessful.

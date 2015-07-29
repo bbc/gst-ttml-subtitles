@@ -158,10 +158,9 @@ void gst_subtitle_style_set_copy (const GstSubtitleStyleSet * src,
 /**
  * GstSubtitleElement:
  * @mini_object: the parent #GstMiniObject.
- * @n_bytes_clear: the number of clear (unencrypted) bytes in the subsample.
- * @n_bytes_encrypted: the number of encrypted bytes in the subsample.
+ * @style:
+ * @text_index:
  *
- * Holds information about a subsample of a subtitle-protected sample.
  */
 struct _GstSubtitleElement
 {
@@ -200,8 +199,8 @@ gst_subtitle_element_ref (GstSubtitleElement * element)
  * gst_subtitle_element_unref:
  * @element: (transfer full): a #GstSubtitleElement.
  *
- * Decrements the refcount of @element. If the refcount reaches 0, @element will be
- * freed.
+ * Decrements the refcount of @element. If the refcount reaches 0, @element
+ * will be freed.
  */
 static inline void
 gst_subtitle_element_unref (GstSubtitleElement * element)
@@ -213,13 +212,8 @@ gst_subtitle_element_unref (GstSubtitleElement * element)
 /**
  * GstSubtitleBlock:
  * @mini_object: the parent #GstMiniObject.
+ * @style:
  *
- * Holds cryptographic information about a single sample from a subtitle-protected
- * track.
- *
- * Specifically, a #GstSubtitleBlock holds the initialization vector for
- * the sample, and, if the sample is encrypted using subsample encryption, an
- * array containing one #GstSubtitleElement per subsample.
  */
 struct _GstSubtitleBlock
 {
@@ -278,16 +272,8 @@ gst_subtitle_block_unref (GstSubtitleBlock * block)
 /**
  * GstSubtitleArea:
  * @mini_object: the parent #GstMiniObject.
- * @is_encrypted: indicates whether or not the sample is encrypted.
- * @iv_size: the size in bytes of the initialization vector for the sample.
+ * @style:
  *
- * Describes properties of a single sample from a subtitle-protected track.
- *
- * Specifically, a #GstSubtitleArea contains a flag indicating whether
- * or not the sample is encrypted, the size in bytes of the sample's
- * initialization vector (if the sample is encrypted), and a key identifier
- * that uniquely identifies the key needed to decrypt the sample (if the sample
- * is encrypted).
  */
 struct _GstSubtitleArea
 {

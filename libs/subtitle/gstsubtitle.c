@@ -20,10 +20,8 @@
 
 /**
  * SECTION:gstsubtitle
- * @short_description: Support library for ISOBMFF Common Encryption.
+ * @short_description:
  *
- * This library includes data types and functions that enable support for
- * ISOBMFF content that is protected using Common Encryption (ISO/IEC 23001-7).
  */
 
 #include "gstsubtitle.h"
@@ -106,8 +104,8 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
 
 /**
  * gst_subtitle_element_new:
- * @n_bytes_clear: the number of clear (unencrypted) bytes in the subsample.
- * @n_bytes_encrypted: the number of encrypted bytes in the subsample.
+ * @style:
+ * @text_index:
  *
  * Allocates a new #GstSubtitleElement.
  *
@@ -144,13 +142,9 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleBlock, gst_subtitle_block);
 
 /**
  * gst_subtitle_block_new:
- * @iv_data: (transfer none): pointer to the start of the initialization vector
- * in memory.
- * @iv_size: size in bytes of the initialization vector pointed at by @iv_data;
- * only sizes of 8 or 16 bytes are allowed.
+ * @style:
  *
- * Allocates a new #GstSubtitleBlock, using the initialization vector
- * located at @iv_data; the function will take a copy of the data at @iv_data.
+ * Allocates a new #GstSubtitleBlock.
  *
  * Returns: (transfer full): a newly-allocated #GstSubtitleBlock. Unref
  * with gst_subtitle_block_unref() when no longer needed.
@@ -175,13 +169,9 @@ gst_subtitle_block_new (const GstSubtitleStyleSet * style)
 /**
  * gst_subtitle_block_add_element:
  * @block: a #GstSubtitleBlock.
- * @element: (transfer full): a #GstSubtitleElement which should be added
- * to @crypt's array of subsamples.
+ * @element:
  *
- * Adds a #GstSubtitleElement to the end of the array of subsamples held by
- * @block. @block will take ownership of @element, and will unref it when @block
- * is freed. A #GstSubtitleBlock may hold a maximum of 2^16 - 1
- * subsamples.
+ * Adds a #GstSubtitleElement to @block.
  */
 void
 gst_subtitle_block_add_element (GstSubtitleBlock * block,
@@ -199,10 +189,10 @@ gst_subtitle_block_add_element (GstSubtitleBlock * block,
 }
 
 /**
- * gst_subtitle_block_get_subsample_count:
+ * gst_subtitle_block_get_element_count:
  * @block: a #GstSubtitleBlock.
  *
- * Returns: the number of subsamples in the subsample array held by @block.
+ * Returns: the number of #GstSubtitleElements in @block.
  */
 guint
 gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
@@ -218,12 +208,13 @@ gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
 /**
  * gst_subtitle_block_get_element:
  * @block: a #GstSubtitleBlock.
- * @index: index of the subsample to get.
+ * @index: index of the element to get.
  *
- * Gets the subsample at @index in the array of subsamples held by @block.
+ * Gets the #GstSubtitleElement at @index in the array of elements held by
+ * @block.
  *
  * Returns: (transfer none): the #GstSubtitleElement at @index in the array of
- * subsamples held by @block, or %NULL if @index is out-of-bounds. The
+ * elements held by @block, or %NULL if @index is out-of-bounds. The
  * function does not return a reference; the caller should obtain a reference
  * using gst_subtitle_block_ref(), if needed.
  */
@@ -250,17 +241,9 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleArea, gst_subtitle_area);
 
 /**
  * gst_subtitle_area_new:
- * @is_encrypted: flag indicating whether the sample is encrypted (%TRUE) or not
- * (%FALSE).
- * @iv_size: size in bytes of the sample's initialization vector; only sizes of
- * 0, 8 or 16 are allowed. If @is_encrypted is %FALSE, @iv_size must be 0;
- * if it is %TRUE, @iv_size must be greater than 0.
- * @key_id_data: (transfer none)(allow-none): pointer to the start of the key
- * ID in memory. If @is_encrypted is %FALSE, @key_id_data must be %NULL;
- * if it is %TRUE, @key_id_data must be non-%NULL.
+ * @style:
  *
- * Allocates a new #GstSubtitleArea, using the key ID located at
- * @key_id_data; the function will take a copy of the data at @key_id_data.
+ * Allocates a new #GstSubtitleArea.
  *
  * Returns: (transfer full): a newly-allocated #GstSubtitleArea. Unref
  * with gst_subtitle_area_unref() when no longer needed.
@@ -286,12 +269,11 @@ gst_subtitle_area_new (const GstSubtitleStyleSet * style)
  * gst_subtitle_area_add_block:
  * @area: a #GstSubtitleArea.
  * @block: (transfer full): a #GstSubtitleBlock which should be added
- * to @crypt's array of subsamples.
+ * to @area's array of blocks.
  *
- * Adds a #GstSubtitleBlock to the end of the array of subsamples held by
+ * Adds a #GstSubtitleBlock to the end of the array of blocks held by
  * @area. @area will take ownership of @block, and will unref it when @area
- * is freed. A #GstSubtitleArea may hold a maximum of 2^16 - 1
- * subsamples.
+ * is freed.
  */
 void
 gst_subtitle_area_add_block (GstSubtitleArea * area, GstSubtitleBlock * block)
@@ -308,10 +290,10 @@ gst_subtitle_area_add_block (GstSubtitleArea * area, GstSubtitleBlock * block)
 }
 
 /**
- * gst_subtitle_area_get_subsample_count:
+ * gst_subtitle_area_get_block_count:
  * @area: a #GstSubtitleArea.
  *
- * Returns: the number of subsamples in the subsample array held by @area.
+ * Returns: the number of blocks in @area.
  */
 guint
 gst_subtitle_area_get_block_count (const GstSubtitleArea * area)
@@ -327,12 +309,12 @@ gst_subtitle_area_get_block_count (const GstSubtitleArea * area)
 /**
  * gst_subtitle_area_get_block:
  * @area: a #GstSubtitleArea.
- * @index: index of the subsample to get.
+ * @index: index of the block to get.
  *
- * Gets the subsample at @index in the array of subsamples held by @area.
+ * Gets the block at @index in the array of blocks held by @area.
  *
  * Returns: (transfer none): the #GstSubtitleBlock at @index in the array of
- * subsamples held by @area, or %NULL if @index is out-of-bounds. The
+ * blocks held by @area, or %NULL if @index is out-of-bounds. The
  * function does not return a reference; the caller should obtain a reference
  * using gst_subtitle_area_ref(), if needed.
  */

@@ -31,11 +31,8 @@ typedef struct _GstSubtitleMeta GstSubtitleMeta;
 /**
  * GstSubtitleMeta:
  * @meta: the parent #GstMeta.
- * @properties: the properties of the sample.
- * @crypto_info: the cryptographic information needed to decrypt the sample.
+ * @areas:
  *
- * Metadata type that holds information about a sample from a subtitle-protected
- * track, including the information needed to decrypt it (if it is encrypted).
  */
 struct _GstSubtitleMeta {
   GstMeta meta;
