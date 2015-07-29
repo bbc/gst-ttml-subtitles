@@ -180,10 +180,9 @@ gst_subtitle_block_add_element (GstSubtitleBlock * block,
   g_return_if_fail (block != NULL);
   g_return_if_fail (element != NULL);
 
-  if (!block->elements) {
+  if (!block->elements)
     block->elements = g_ptr_array_new_with_free_func (
         (GDestroyNotify) gst_subtitle_element_unref);
-  }
 
   g_ptr_array_add (block->elements, element);
 }
@@ -281,10 +280,9 @@ gst_subtitle_area_add_block (GstSubtitleArea * area, GstSubtitleBlock * block)
   g_return_if_fail (area != NULL);
   g_return_if_fail (block != NULL);
 
-  if (!area->blocks) {
+  if (!area->blocks)
     area->blocks = g_ptr_array_new_with_free_func (
         (GDestroyNotify) gst_subtitle_block_unref);
-  }
 
   g_ptr_array_add (area->blocks, block);
 }
