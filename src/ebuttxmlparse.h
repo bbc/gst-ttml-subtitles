@@ -1,5 +1,8 @@
-/* GStreamer SAMI subtitle parser
- * Copyright (c) 2006  Young-Ho Cha <ganadist chollian net>
+/* GStreamer EBU-TT-D subtitle parser
+ * Copyright (C) <2015> British Broadcasting Corporation
+ *   Authors:
+ *     Chris Bass <chrisb@rd.bbc.co.uk>
+ *     Peter Taylour <peter.taylour@bbc.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,8 +26,6 @@
 #include "gstsubparse.h"
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
-
-#define MAX_FONT_FAMILY_NAME_LENGTH 128
 
 
 G_BEGIN_DECLS
@@ -132,29 +133,6 @@ typedef struct
 } DocMetadata;
 
 GList *ebutt_xml_parse (const gchar * xml_file_buffer);
-
-/**
- * creates element tree from a string representation of an xml file
- * @param  xml_file_buffer string of xml
- * @param  doc             doc pointer to be filled
- * @param  cur             cursor p;ointer to be filled
- * @return                 0 for success
- */
-gint create_element_tree (const gchar * xml_file_buffer,
-    xmlDocPtr * doc, xmlNodePtr * cur);
-
-/**
- * pass head cursor and will do all the processing of the head portion
- * of the xml doc
- * @param cur         xmlNodePtr for the head element
- * @param style_hash  hash table containing the head data
- * @param region_hash hash table containing the region data
- */
-void xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
-    GHashTable * region_hash);
-
-DocMetadata *extract_tt_tag_properties (xmlNodePtr ttnode,
-    DocMetadata * document_metadata);
 
 G_END_DECLS
 #endif /* _EBU_PARSE_H_ */

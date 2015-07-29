@@ -167,10 +167,7 @@ parse_style_set (const xmlNode * node)
   GstEbuttdStyleSet *s = g_new0 (GstEbuttdStyleSet, 1);
   gchar *value = NULL;
 
-  if ((value = get_xml_property (node, "id"))) {
-    /*s->id = g_strdup (value);*/
-    g_free (value);
-  } else {
+  if ((!get_xml_property (node, "id"))) {
     GST_CAT_ERROR (ebuttdparse, "styles must have an ID.");
     return NULL;
   }
@@ -345,14 +342,14 @@ get_xml_property (const xmlNode * node, const char *name)
 }
 
 
-gint
+static gint
 create_element_tree (const gchar * xml_file_buffer,
     xmlDocPtr * doc_ptr, xmlNodePtr * cur_ptr)
 {
   xmlDocPtr doc;
   xmlNodePtr cur;
-  /* xmlReadMemory takes a char array and a fake file name */
 
+  /* xmlReadMemory takes a char array and a fake file name */
   doc = xmlReadMemory (xml_file_buffer,
       strlen (xml_file_buffer), "any_doc_name", NULL, 0);
 
@@ -366,23 +363,22 @@ create_element_tree (const gchar * xml_file_buffer,
   if (cur == NULL) {
     GST_DEBUG ("empty document");
     xmlFreeDoc (doc);
-    return 1;
+    return 2;
   }
 
   if (xmlStrcmp (cur->name, (const xmlChar *) "tt")) {
-    fprintf (stderr, "document of the wrong type, root node != tt");
+    GST_CAT_ERROR (ebuttdparse, "document of the wrong type; root node != tt");
     xmlFreeDoc (doc);
-    return 1;
+    return 3;
   }
 
   *doc_ptr = doc;
   *cur_ptr = cur;
-
   return 0;
 }
 
 
-DocMetadata *
+static DocMetadata *
 extract_tt_tag_properties (xmlNodePtr ttnode, DocMetadata * document_metadata)
 {
   gchar *prop;
@@ -441,12 +437,11 @@ static GstClockTime
 parse_timecode (const gchar * timestring)
 {
   gchar **strings;
-  const gchar *dec_point;
   guint64 hours = 0, minutes = 0, seconds = 0, milliseconds = 0;
   GstClockTime time = GST_CLOCK_TIME_NONE;
 
   g_return_val_if_fail (timestring != NULL, time);
-  /*GST_CAT_DEBUG (ebuttdparse, "parse_timecode (%s)", timestring);*/
+  GST_CAT_LOG (ebuttdparse, "time string: %s", timestring);
 
   strings = g_strsplit (timestring, ":", 3);
   if (g_strv_length (strings) != 3U) {
@@ -456,7 +451,7 @@ parse_timecode (const gchar * timestring)
 
   hours = g_ascii_strtoull (strings[0], NULL, 10U);
   minutes = g_ascii_strtoull (strings[1], NULL, 10U);
-  if ((dec_point = g_strstr_len (strings[2], strlen (strings[2]), "."))) {
+  if (g_strstr_len (strings[2], -1, ".")) {
     guint n_digits;
     char ** substrings = g_strsplit (strings[2], ".", 2);
     seconds = g_ascii_strtoull (substrings[0], NULL, 10U);
@@ -631,7 +626,6 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
   if (ess->font_size) {
     ss->font_size = g_ascii_strtod (ess->font_size, NULL) / 100.0;
     ss->font_size *= (1.0 / cellres_y);
-    GST_CAT_DEBUG (ebuttdparse, "Font size: %g", ss->font_size);
   }
 
   if (ess->line_height) {
@@ -713,7 +707,6 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
   if (ess->line_padding) {
     ss->line_padding = g_ascii_strtod (ess->line_padding, NULL);
     ss->line_padding *= (1.0 / cellres_x);
-    GST_CAT_DEBUG (ebuttdparse, "Line padding: %g", ss->line_padding);
   }
 
   if (ess->origin) {
@@ -721,23 +714,19 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
     ss->origin_x = g_ascii_strtod (ess->origin, &c) / 100.0;
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
     ss->origin_y = g_ascii_strtod (c, NULL) / 100.0;
-    /*GST_CAT_DEBUG (ebuttdparse, "origin_x: %g   origin_y: %g", ss->origin_x, ss->origin_y);*/
   }
 
   if (ess->extent) {
     gchar *c;
     ss->extent_w = g_ascii_strtod (ess->extent, &c) / 100.0;
     if ((ss->origin_x + ss->extent_w) > 1.0) {
-      GST_CAT_WARNING (ebuttdparse, "Specified region extends off screen in the X dimension; limiting it to the screen boundary.");
       ss->extent_w = 1.0 - ss->origin_x;
     }
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
     ss->extent_h = g_ascii_strtod (c, NULL) / 100.0;
     if ((ss->origin_y + ss->extent_h) > 1.0) {
-      GST_CAT_WARNING (ebuttdparse, "Specified region extends off screen in the Y dimension; limiting it to the screen boundary.");
       ss->extent_h = 1.0 - ss->origin_y;
     }
-    /*GST_CAT_DEBUG (ebuttdparse, "extent_w: %g   extent_h: %g", ss->extent_w, ss->extent_h);*/
   }
 
   if (ess->display_align) {
@@ -747,7 +736,6 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
       ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_AFTER;
     else
       ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_BEFORE;
-    /*GST_CAT_DEBUG (ebuttdparse, "displayAlign: %d", ss->display_align);*/
   }
 
   if (ess->padding) {
@@ -789,9 +777,6 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
         ss->padding_start = g_ascii_strtod (decimals[3], NULL) / 100.0;
         break;
     }
-    /*g_print ("paddingStart: %g  padding_end: %g  padding_before: %g "
-        "padding_after: %g\n", ss->padding_start, ss->padding_end,
-        ss->padding_before, ss->padding_after);*/
     g_strfreev (decimals);
   }
 
@@ -805,7 +790,6 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
       ss->writing_mode = GST_SUBTITLE_WRITING_MODE_TBLR;
     else
       ss->writing_mode = GST_SUBTITLE_WRITING_MODE_LRTB;
-    /*GST_CAT_DEBUG (ebuttdparse, "writingMode: %d", ss->writing_mode);*/
   }
 
   if (ess->show_background) {
@@ -813,7 +797,6 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
       ss->show_background = GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE;
     else
       ss->show_background = GST_SUBTITLE_BACKGROUND_MODE_ALWAYS;
-    /*GST_CAT_DEBUG (ebuttdparse, "showBackground: %d", ss->show_background);*/
   }
 
   if (ess->overflow) {
@@ -821,7 +804,6 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
       ss->overflow = GST_SUBTITLE_OVERFLOW_MODE_VISIBLE;
     else
       ss->overflow = GST_SUBTITLE_OVERFLOW_MODE_HIDDEN;
-    /*GST_CAT_DEBUG (ebuttdparse, "overflow: %d", ss->overflow);*/
   }
 }
 
@@ -1020,7 +1002,7 @@ merge_region_styles (gpointer key, gpointer value, gpointer user_data)
     g_free (tmp);
   }
 
-  GST_CAT_DEBUG (ebuttdparse, "Final style set:");
+  GST_CAT_LOG (ebuttdparse, "Final style set:");
   _print_style_set (region->style_set);
 }
 
@@ -1087,22 +1069,6 @@ resolve_element_style (GNode * node, gpointer data)
   GST_CAT_DEBUG (ebuttdparse, "Element type: %s", type_string);
   g_free (type_string);
 
-#if 0
-  g_print ("resolve_element_style: ");
-  if (node->parent) {
-    parent = node->parent->data;
-    g_print ("[parent]:%s ", parent->style_set->id);
-  } else {
-    g_print ("[parent]:NULL ");
-  }
-  if (element->styles) {
-    for (i = 0; i < g_strv_length (element->styles); ++i) {
-      g_print ("[%u]:%s ", i, element->styles[i]);
-    }
-  }
-  GST_CAT_DEBUG (ebuttdparse, "");
-#endif
-
   /* Merge referenced styles. */
   if (element->styles) {
     for (i = 0; i < g_strv_length (element->styles); ++i) {
@@ -1122,8 +1088,7 @@ resolve_element_style (GNode * node, gpointer data)
     if (parent->style_set) {
       tmp = element->style_set;
       if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
-        /* For anon spans, we want all style attributes to be inherited from
-         * parent. */
+        /* Anon spans should merge all style attributes from their parent. */
         element->style_set = merge_style_sets (parent->style_set,
             element->style_set);
       } else {
@@ -1149,29 +1114,6 @@ resolve_body_styles (GNode * tree, GHashTable * style_hash)
 {
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, resolve_element_style,
       style_hash);
-  /*g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, create_style,
-      NULL);*/
-}
-
-
-static gboolean
-remove_if_break (GNode * node, gpointer data)
-{
-  GstEbuttdElement *element;
-  element = node->data;
-  if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR) {
-    GST_CAT_LOG (ebuttdparse, "Stripping <br>...");
-    g_node_unlink (node);
-  }
-  return FALSE;
-}
-
-
-static void
-strip_breaks (GNode * tree)
-{
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, remove_if_break,
-      NULL);
 }
 
 
@@ -1182,20 +1124,17 @@ resolve_element_timings (GNode * node, gpointer data)
 
   g_return_val_if_fail (node != NULL, FALSE);
   leaf = element = node->data;
-  /*GST_CAT_DEBUG (ebuttdparse, "leaf_type: %u   leaf->begin: %llu   leaf->end: %llu",
-      element->type, element->begin, element->end);*/
 
   if (GST_CLOCK_TIME_IS_VALID (leaf->begin)
       && GST_CLOCK_TIME_IS_VALID (leaf->end)) {
-    GST_CAT_DEBUG (ebuttdparse, "Leaf node already has timing.");
+    GST_CAT_LOG (ebuttdparse, "Leaf node already has timing.");
     return FALSE;
   }
 
+  /* Inherit timings from ancestor. */
   while (node->parent && !GST_CLOCK_TIME_IS_VALID (element->begin)) {
     node = node->parent;
     element = node->data;
-    /*GST_CAT_DEBUG (ebuttdparse, "type: %u   element->begin: %llu   element->end: %llu",
-        element->type, element->begin, element->end);*/
   }
 
   if (!GST_CLOCK_TIME_IS_VALID (element->begin)) {
@@ -1271,11 +1210,11 @@ inherit_region_style (GNode * node, gpointer data)
   region = g_hash_table_lookup (region_hash, element->region);
   g_assert (region != NULL);
   g_assert (region->style_set != NULL);
-  GST_CAT_DEBUG (ebuttdparse, "Inheriting styling from region %s...",
+  GST_CAT_DEBUG (ebuttdparse, "Inheriting styling from region %s",
       element->region);
   tmp = element->style_set;
   element->style_set = inherit_styling (region->style_set, element->style_set);
-  if (tmp) g_free (tmp);
+  if (tmp) delete_style_set (tmp);
 
   GST_CAT_LOG (ebuttdparse, "Style is now as follows:");
   _print_style_set (element->style_set);
@@ -1308,21 +1247,21 @@ update_transition_time (GNode * node, gpointer data)
   element = node->data;
   state = (TrState *)data;
 
-  /*GST_CAT_DEBUG (ebuttdparse, "begin: %llu  end: %llu  start_time: %llu",
-      element->begin, element->end, state->start_time);*/
+  GST_CAT_LOG (ebuttdparse, "begin: %llu  end: %llu  start_time: %llu",
+      element->begin, element->end, state->start_time);
 
   if ((element->begin > state->start_time)
       && (element->begin < state->next_transition_time)) {
     state->next_transition_time = element->begin;
-    /*GST_CAT_DEBUG (ebuttdparse,
+    GST_CAT_LOG (ebuttdparse,
         "Updating next transition time to element begin time (%llu)",
-        state->next_transition_time);*/
+        state->next_transition_time);
   } else if ((element->end > state->start_time)
       && (element->end < state->next_transition_time)) {
     state->next_transition_time = element->end;
-    /*GST_CAT_DEBUG (ebuttdparse,
+    GST_CAT_LOG (ebuttdparse,
         "Updating next transition time to element end time (%llu)",
-        state->next_transition_time);*/
+        state->next_transition_time);
   }
 
   return FALSE;
@@ -1343,17 +1282,18 @@ find_transitioning_element (GNode * node, gpointer data)
   if (element->begin == transition->time) {
     transition->appearing_elements =
       g_list_append (transition->appearing_elements, element);
-    /*GST_CAT_DEBUG (ebuttdparse, "Found element appearing at time %llu",
-        transition->time);*/
+    GST_CAT_LOG (ebuttdparse, "Found element appearing at time %llu",
+        transition->time);
   } else if (element->end == transition->time) {
     transition->disappearing_elements =
       g_list_append (transition->disappearing_elements, element);
-    /*GST_CAT_DEBUG (ebuttdparse, "Found element disappearing at time %llu",
-        transition->time);*/
+    GST_CAT_LOG (ebuttdparse, "Found element disappearing at time %llu",
+        transition->time);
   }
 
   return FALSE;
 }
+
 
 /* Return details about the next transition after @time. */
 static GstEbuttdTransition *
@@ -1373,8 +1313,8 @@ find_next_transition (GNode * tree, GstClockTime time)
 
   transition = g_new0 (GstEbuttdTransition, 1);
   transition->time = state.next_transition_time;
-  /*GST_CAT_DEBUG (ebuttdparse, "Next transition is at %llu",
-      state.next_transition_time);*/
+  GST_CAT_LOG (ebuttdparse, "Next transition is at %llu",
+      state.next_transition_time);
 
   /* Find which elements start/end at the transition time. */
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
@@ -1428,12 +1368,13 @@ create_scenes (GNode * tree)
   g_return_val_if_fail (tree != NULL, NULL);
 
   while ((transition = find_next_transition (tree, timestamp))) {
-    GST_CAT_DEBUG (ebuttdparse, "Next transition found at time %llu",
+    GST_CAT_LOG (ebuttdparse, "Next transition found at time %llu",
         transition->time);
     if (cur_scene) cur_scene->end = transition->time;
 
     active_elements = update_active_element_list (active_elements, transition);
-    GST_CAT_DEBUG (ebuttdparse, "There will be %u active elements after transition", g_list_length (active_elements));
+    GST_CAT_LOG (ebuttdparse, "There will be %u active elements after"
+        "transition", g_list_length (active_elements));
 
     if (active_elements) {
       GstEbuttdScene * new_scene = g_new0 (GstEbuttdScene, 1);
@@ -1470,7 +1411,7 @@ strip_surrounding_whitespace (GNode * tree)
 }
 
 
-void
+static void
 xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
     GHashTable * region_hash)
 {
@@ -1500,7 +1441,6 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
         node_ptr = node_ptr->next;
       }
     }
-#if 1
     if (xmlStrcmp (head_child->name, (const xmlChar *) "layout") == 0) {
       GST_CAT_DEBUG (ebuttdparse, "parsing layout element...");
       node_ptr = head_child->children;
@@ -1524,7 +1464,6 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
       }
     }
     /* XXX: Add code to parse metadata. */
-#endif
     head_child = head_child->next;
   }
 }
@@ -1561,9 +1500,8 @@ static GNode *
 create_isd_tree (GNode * tree, GList * active_elements)
 {
   GList *leaves;
-  GstEbuttdElement *leaf, *e;
   GQueue *node_stack;
-  GNode *element_node, *foo, *junction = NULL;
+  GNode *element_node, *ancestor, *junction = NULL;
   GNode *ret = NULL;
 
   g_return_val_if_fail (tree != NULL, NULL);
@@ -1571,74 +1509,64 @@ create_isd_tree (GNode * tree, GList * active_elements)
 
   node_stack = g_queue_new ();
 
-  g_print ("\n");
   GST_CAT_DEBUG (ebuttdparse, "There are %u active elements",
       g_list_length (active_elements));
 
+  /* Create a new tree containing all active elements and their ancestors. */
   for (leaves = g_list_first (active_elements); leaves != NULL;
       leaves = leaves->next) {
     GNode * new_leaf;
-    leaf = leaves->data;
+    GstEbuttdElement *element = leaves->data;
     /* XXX: Revert to storing nodes in active_elements to avoid find
      * operation? */
-    element_node = g_node_find (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, leaf);
+    element_node = g_node_find (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, element);
     g_assert (element_node != NULL);
     GST_CAT_DEBUG (ebuttdparse, "Finding ancestors for following element:");
     _print_element (element_node->data);
 
-    for (foo = element_node->parent; foo; foo = foo->parent) {
+    for (ancestor = element_node->parent; ancestor;
+        ancestor = ancestor->parent) {
+      /* Don't include ancestors already in output tree. */
       if (ret && (junction = g_node_find (ret, G_PRE_ORDER,
-              G_TRAVERSE_ALL, foo->data))) {
+              G_TRAVERSE_ALL, ancestor->data))) {
           GST_CAT_DEBUG (ebuttdparse, "Element already exists in output tree:");
-          _print_element (foo->data);
+          _print_element (ancestor->data);
           break;
       } else {
-        g_queue_push_head (node_stack, foo->data);
+        g_queue_push_head (node_stack, ancestor->data);
         GST_CAT_DEBUG (ebuttdparse, "Added following element to stack:");
-        _print_element (foo->data);
+        _print_element (ancestor->data);
         GST_CAT_DEBUG (ebuttdparse, "Stack depth is now %u",
             g_queue_get_length (node_stack));
       }
     }
 
-    while ((e = g_queue_pop_head (node_stack))) {
-      GNode *n = g_node_new (e);
+    /* Graft nodes in queue onto output tree. */
+    while ((element = g_queue_pop_head (node_stack))) {
+      GNode *node = g_node_new (element);
       if (junction) {
-        junction = g_node_append (junction, n);
+        junction = g_node_append (junction, node);
         GST_CAT_DEBUG (ebuttdparse, "Appended following element to ret:");
         _print_element (junction->data);
       } else {
         GST_CAT_DEBUG (ebuttdparse,
             "Setting the following element at the head of ret:");
-        _print_element (n->data);
-        ret = junction = n;
+        _print_element (node->data);
+        ret = junction = node;
       }
     }
 
     /* Append active element to tip of branch. */
     new_leaf = g_node_new (element_node->data);
     junction = g_node_append (junction, new_leaf);
-
-    /* XXX: Possible optimisation for sibling elements: */
-#if 0
-    /* Check if any of this element's siblings are active; if so, remove them
-     * from list - we already have their ancestors in the output list. */
-    /* Remove the element and any siblings from the list of active elements. */
-    for (sibling = element_node->parent->children; sibling; sibling = sibling->next) {
-      if (g_list_find (active_elements, sibling->data)) {
-        g_list_remove (active_elements, sibling->data);
-        GST_CAT_DEBUG (ebuttdparse,"Removed sibling element from active_elements; there are now %u active elements.",
-            g_list_length (active_elements));
-      }
-    }
-#endif
   }
+
   return ret;
 }
 
 
 static guint
-append_text_to_buffer (GstBuffer * buf, const gchar * text)
+add_text_to_buffer (GstBuffer * buf, const gchar * text)
 {
   GstMemory *mem;
   GstMapInfo map;
@@ -1701,7 +1629,7 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
       block_style = gst_subtitle_style_set_new ();
       update_style_set (block_style, element->style_set, cellres_x, cellres_y);
 
-      /* XXX: blend bg colors from body, div and p here. */
+      /* TODO: blend bg colors from body, div and p here. */
 
       block = gst_subtitle_block_new (block_style);
       g_assert (block != NULL);
@@ -1719,7 +1647,8 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 
         /* XXX: A lot of code below is repetitive (the code that creates a
          * GstSubtitleElement and puts its text into the GstBuffer), and so
-         * should be moved into a separate function. */
+         * should be moved into a separate function, or this function should be
+         * made recursive. */
         if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR) {
           element_style = gst_subtitle_style_set_new ();
           update_style_set (element_style, element->style_set,
@@ -1729,13 +1658,15 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 
           /* Create new memory holding element text and append to scene's
            * buffer. */
-          buffer_index = append_text_to_buffer (scene->buf, "\n");
+          buffer_index = add_text_to_buffer (scene->buf, "\n");
           GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
               buffer_index);
           e = gst_subtitle_element_new (element_style, buffer_index);
 
           gst_subtitle_block_add_element (block, e);
-          GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+          GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u"
+              " elements in the block.",
+              gst_subtitle_block_get_element_count (block));
         } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
           element_style = gst_subtitle_style_set_new ();
           update_style_set (element_style, element->style_set,
@@ -1746,13 +1677,15 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
           /* Create new memory holding element text and append to scene's
            * buffer. */
           g_assert (element->text != NULL);
-          buffer_index = append_text_to_buffer (scene->buf, element->text);
+          buffer_index = add_text_to_buffer (scene->buf, element->text);
           GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
               buffer_index);
           e = gst_subtitle_element_new (element_style, buffer_index);
 
           gst_subtitle_block_add_element (block, e);
-          GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+          GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u"
+              " elements in the block.",
+              gst_subtitle_block_get_element_count (block));
         } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN) {
           /* Loop through anon-span children of this span. */
           anon_node = content_node->children;
@@ -1772,13 +1705,15 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 
               /* Create new memory holding element text and append to scene's
                * buffer. */
-              buffer_index = append_text_to_buffer (scene->buf, "\n");
-              GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
-                  buffer_index);
+              buffer_index = add_text_to_buffer (scene->buf, "\n");
+              GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in "
+                  "GstBuffer.", buffer_index);
               e = gst_subtitle_element_new (element_style, buffer_index);
 
               gst_subtitle_block_add_element (block, e);
-              GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+              GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are "
+                  "now %u elements in the block.",
+                  gst_subtitle_block_get_element_count (block));
             } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
               element_style = gst_subtitle_style_set_new ();
               update_style_set (element_style, element->style_set,
@@ -1789,13 +1724,15 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
               /* Create new memory holding element text and append to scene's
                * buffer. */
               g_assert (element->text != NULL);
-              buffer_index = append_text_to_buffer (scene->buf, element->text);
-              GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
-                  buffer_index);
+              buffer_index = add_text_to_buffer (scene->buf, element->text);
+              GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in "
+                  "GstBuffer.", buffer_index);
               e = gst_subtitle_element_new (element_style, buffer_index);
 
               gst_subtitle_block_add_element (block, e);
-              GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u elements in the block.", gst_subtitle_block_get_element_count (block));
+              GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are "
+                  "now %u elements in the block.",
+                  gst_subtitle_block_get_element_count (block));
             } else {
               GST_CAT_ERROR (ebuttdparse,
                   "Element type not allowed at this level of document.");
@@ -1811,7 +1748,8 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
       }
 
       gst_subtitle_area_add_block (area, block);
-      GST_CAT_DEBUG (ebuttdparse, "Added block to area; there are now %u blocks in the area.", gst_subtitle_area_get_block_count (area));
+      GST_CAT_DEBUG (ebuttdparse, "Added block to area; there are now %u blocks"
+          " in the area.", gst_subtitle_area_get_block_count (area));
       p_node = p_node->next;
     }
     node = node->next;
@@ -1822,14 +1760,12 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 
 
 static GNode *
-create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
-    guint cellres_x, guint cellres_y)
+create_and_attach_metadata (GNode * tree, GList * scenes,
+    GHashTable * region_hash, guint cellres_x, guint cellres_y)
 {
   g_return_if_fail (tree != NULL);
   g_return_if_fail (scenes != NULL);
   g_return_if_fail (region_hash != NULL);
-
-  GST_CAT_DEBUG (ebuttdparse, "About to create ISDs...");
 
   while (scenes) {
     GstEbuttdScene * scene = scenes->data;
@@ -1839,7 +1775,6 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
     GPtrArray *areas = g_ptr_array_new ();
 
     g_assert (scene != NULL);
-    GST_CAT_DEBUG (ebuttdparse, "\n\n==== Handling scene ====");
 
     scene->buf = gst_buffer_new ();
     GST_BUFFER_PTS (scene->buf) = scene->begin;
@@ -1862,11 +1797,11 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
       GstSubtitleArea *area;
 
       isd_tree = create_isd_tree (tree, region_elements);
-      GST_CAT_DEBUG (ebuttdparse, "Returned tree has %u nodes",
+      GST_CAT_LOG (ebuttdparse, "Returned tree has %u nodes",
           g_node_n_nodes (isd_tree, G_TRAVERSE_ALL));
 
       /* Retrieve region element and wrap in a node. */
-      GST_CAT_DEBUG (ebuttdparse, "About to retrieve %s from hash table %p",
+      GST_CAT_LOG (ebuttdparse, "About to retrieve %s from hash table %p",
           region_name, region_hash);
       region = g_hash_table_lookup (region_hash, region_name);
       g_assert (region != NULL);
@@ -1879,13 +1814,11 @@ create_isds (GNode * tree, GList * scenes, GHashTable * region_hash,
       g_ptr_array_add (areas, area);
       g_node_destroy (isd_tree);
     }
-    GST_CAT_DEBUG (ebuttdparse, "Finished handling scene...");
-    /*GST_CAT_DEBUG (ebuttdparse, "Have created %u areas", g_list_length (areas));*/
 
     gst_buffer_add_subtitle_meta (scene->buf, areas);
     scenes = g_list_next (scenes);
   }
-  GST_CAT_DEBUG (ebuttdparse, "Finished handling all scenes.");
+
   return NULL;
 }
 
@@ -1906,11 +1839,8 @@ GList * create_buffer_list (GList * scenes)
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer)
 {
-  gint element_tree;            /* 0 if successfully created */
   xmlDocPtr doc;                /* pointer for tree */
   xmlNodePtr cur;
-
-  GList *subtitle_list = NULL;
 
   GHashTable *style_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
@@ -1924,15 +1854,12 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
 
   GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
       "EBU-TT-D debug category");
-  GST_CAT_DEBUG (ebuttdparse, "Input file:\n%s", xml_file_buffer);
+  GST_CAT_LOG (ebuttdparse, "Input file:\n%s", xml_file_buffer);
 
   /* create element tree */
-  element_tree = create_element_tree (xml_file_buffer, &doc, &cur);
-
-  if (element_tree != 0) {
-    GST_CAT_ERROR (ebuttd_parse_debug,
-        "Failed to parse document, returning NULL Glist");
-    return subtitle_list;       /* failed to parse returning NULL list */
+  if (create_element_tree (xml_file_buffer, &doc, &cur)) {
+    GST_CAT_ERROR (ebuttd_parse_debug, "Failed to parse document.");
+    return NULL;
   }
 
   /* handle <tt tag namespace elements */
@@ -1977,26 +1904,26 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
     /* Process Body of xml doc */
     else if (xmlStrcmp (cur->name, (const xmlChar *) "body") == 0) {
       body = parse_tree (cur);
-      GST_CAT_DEBUG (ebuttdparse, "Body tree contains %u nodes.",
+      GST_CAT_LOG (ebuttdparse, "Body tree contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
-      GST_CAT_DEBUG (ebuttdparse, "Body tree height is %u",
+      GST_CAT_LOG (ebuttdparse, "Body tree height is %u",
           g_node_max_height (body));
 
       resolve_region_styles (region_hash, style_hash);
       resolve_body_styles (body, style_hash);
-      /*strip_breaks (body);*/
-      GST_CAT_DEBUG (ebuttdparse, "Body tree now contains %u nodes.",
+      GST_CAT_LOG (ebuttdparse, "Body tree now contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
       strip_surrounding_whitespace (body);
       resolve_timings (body);
       resolve_regions (body);
       inherit_region_styles (body, region_hash);
       scenes = create_scenes (body);
-      GST_CAT_DEBUG (ebuttdparse, "There are %u scenes in all.", g_list_length (scenes));
-      GST_CAT_DEBUG (ebuttdparse, "Region hash address: %p", region_hash);
-      create_isds (body, scenes, region_hash, cellres_x, cellres_y);
+      GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
+          g_list_length (scenes));
+      create_and_attach_metadata (body, scenes, region_hash, cellres_x,
+          cellres_y);
       buffer_list = create_buffer_list (scenes);
-      GST_CAT_DEBUG (ebuttdparse, "There are %u buffers in output list.",
+      GST_CAT_LOG (ebuttdparse, "There are %u buffers in output list.",
           g_list_length (buffer_list));
     }
     cur = cur->next;
