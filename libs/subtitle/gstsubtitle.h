@@ -134,7 +134,7 @@ struct _GstSubtitleStyleSet {
   GstSubtitleColor bg_color;
   GstSubtitleFontStyle font_style;
   GstSubtitleFontWeight font_weight;
-  GstSubtitleTextDirection text_decoration;
+  GstSubtitleTextDecoration text_decoration;
   GstSubtitleUnicodeBidi unicode_bidi;
   GstSubtitleWrapping wrap_option;
   GstSubtitleMultiRowAlign multi_row_align;
