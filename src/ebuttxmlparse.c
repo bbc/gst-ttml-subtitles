@@ -164,7 +164,7 @@ _print_style_set (GstEbuttdStyleSet * set)
 static GstEbuttdStyleSet *
 parse_style_set (const xmlNode * node)
 {
-  GstEbuttdStyleSet *s = g_new0 (GstEbuttdStyleSet, 1);
+  GstEbuttdStyleSet *s = g_slice_new0 (GstEbuttdStyleSet);
   gchar *value = NULL;
 
   if ((!get_xml_property (node, "id"))) {
@@ -306,7 +306,7 @@ delete_style_set (GstEbuttdStyleSet * style)
   if (style->padding) g_free ((gpointer) style->padding);
   if (style->writing_mode) g_free ((gpointer) style->writing_mode);
   if (style->show_background) g_free ((gpointer) style->show_background);
-  g_free ((gpointer) style);
+  g_slice_free (GstEbuttdStyleSet, style);
 }
 
 
@@ -321,7 +321,7 @@ delete_element (GstEbuttdElement * element)
   if (element->region) g_free ((gpointer) element->region);
   if (element->style_set) delete_style_set (element->style_set);
   if (element->text) g_free ((gpointer) element->text);
-  g_free ((gpointer) element);
+  g_slice_free (GstEbuttdElement, element);
 }
 
 
@@ -387,7 +387,7 @@ extract_tt_tag_properties (xmlNodePtr ttnode, DocMetadata * document_metadata)
   xmlAttrPtr prop_node;
 
   if (!document_metadata)
-    document_metadata = g_new0 (DocMetadata, 1);
+    document_metadata = g_slice_new0 (DocMetadata);
 
 #if 0
   prop = (gchar *) xmlNodeGetContent (ttnode);
@@ -496,7 +496,7 @@ parse_element (const xmlNode * node)
 
   g_return_val_if_fail (node != NULL, NULL);
 
-  element = g_new0 (GstEbuttdElement, 1);
+  element = g_slice_new0 (GstEbuttdElement);
   GST_CAT_DEBUG (ebuttdparse, "Element name: %s", (const char*) node->name);
   if ((g_strcmp0 ((const char*) node->name, "style") == 0)) {
     element->type = GST_EBUTTD_ELEMENT_TYPE_STYLE;
@@ -814,7 +814,7 @@ copy_style_set (GstEbuttdStyleSet * style)
   GstEbuttdStyleSet *ret;
 
   g_return_val_if_fail (style != NULL, NULL);
-  ret = g_new0 (GstEbuttdStyleSet, 1);
+  ret = g_slice_new0 (GstEbuttdStyleSet);
 
   if (style->text_direction)
     ret->text_direction = g_strdup (style->text_direction);
@@ -945,7 +945,7 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
   if (child) {
     ret = copy_style_set (child);
   } else {
-    ret = g_new0 (GstEbuttdStyleSet, 1);
+    ret = g_slice_new0 (GstEbuttdStyleSet);
   }
 
   if (parent) {
@@ -999,7 +999,7 @@ merge_region_styles (gpointer key, gpointer value, gpointer user_data)
     style = g_hash_table_lookup (style_hash, region->styles[i]);
     g_assert (style != NULL);
     region->style_set = merge_style_sets (region->style_set, style->style_set);
-    g_free (tmp);
+    delete_style_set (tmp);
   }
 
   GST_CAT_LOG (ebuttdparse, "Final style set:");
@@ -1078,7 +1078,7 @@ resolve_element_style (GNode * node, gpointer data)
       g_assert (style != NULL);
       element->style_set = merge_style_sets (element->style_set,
           style->style_set);
-      g_free (tmp);
+      if (tmp) delete_style_set (tmp);
     }
   }
 
@@ -1096,7 +1096,7 @@ resolve_element_style (GNode * node, gpointer data)
             element->style_set);
       }
       _print_style_set (element->style_set);
-      if (tmp) g_free (tmp);
+      if (tmp) delete_style_set (tmp);
     }
   }
 
@@ -1311,7 +1311,7 @@ find_next_transition (GNode * tree, GstClockTime time)
   if (state.next_transition_time == GST_CLOCK_TIME_NONE)
     return NULL;
 
-  transition = g_new0 (GstEbuttdTransition, 1);
+  transition = g_slice_new0 (GstEbuttdTransition);
   transition->time = state.next_transition_time;
   GST_CAT_LOG (ebuttdparse, "Next transition is at %llu",
       state.next_transition_time);
@@ -1377,7 +1377,7 @@ create_scenes (GNode * tree)
         "transition", g_list_length (active_elements));
 
     if (active_elements) {
-      GstEbuttdScene * new_scene = g_new0 (GstEbuttdScene, 1);
+      GstEbuttdScene * new_scene = g_slice_new0 (GstEbuttdScene);
       new_scene->begin = transition->time;
       new_scene->elements = g_list_copy (active_elements);
       output_scenes = g_list_append (output_scenes, new_scene);
@@ -1386,6 +1386,7 @@ create_scenes (GNode * tree)
       cur_scene = NULL;
     }
     timestamp = transition->time;
+    g_slice_free (GstEbuttdTransition, transition);
   }
 
   return output_scenes;
@@ -1836,6 +1837,31 @@ GList * create_buffer_list (GList * scenes)
 }
 
 
+static gboolean
+free_node_data (GNode * node, gpointer data)
+{
+  GstEbuttdElement *element;
+  element = node->data;
+  delete_element (element);
+  return FALSE;
+}
+
+
+static void
+delete_tree (GNode * tree)
+{
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, free_node_data, NULL);
+  g_node_destroy (tree);
+}
+
+
+static void
+delete_scene (GstEbuttdScene * scene)
+{
+  g_slice_free (GstEbuttdScene, scene);
+}
+
+
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer)
 {
@@ -1876,33 +1902,17 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
     document_metadata = extract_tt_tag_properties (cur, document_metadata);
   }
 
-  /* handle <tt tag namespace elements */
-  if (xmlStrcmp (cur->name, (const xmlChar *) "tt") == 0) {
-    /**
-     * Go cur->ns->href for the url of xmlns
-     * and cur->ns->next->href etc for the xmlns properties
-     *
-     * For the other properties, go:
-     * cur->properties->children->content for xml:lang
-     * and use next to get to cellResolution etc.
-     *
-     */
-    document_metadata = extract_tt_tag_properties (cur, document_metadata);
-  }
-
   cellres_x = (guint) g_ascii_strtoull (document_metadata->cell_resolution_x,
       NULL, 10U);
   cellres_y = (guint) g_ascii_strtoull (document_metadata->cell_resolution_y,
       NULL, 10U);
 
   cur = cur->children;
-  while (cur != NULL) {
-    /* Process head of xml doc */
+  while (cur) {
     if (xmlStrcmp (cur->name, (const xmlChar *) "head") == 0) {
       xml_process_head (cur, style_hash, region_hash);
-    }
-    /* Process Body of xml doc */
-    else if (xmlStrcmp (cur->name, (const xmlChar *) "body") == 0) {
+    } else if (xmlStrcmp (cur->name, (const xmlChar *) "body") == 0) {
+      /* Process Body of xml doc */
       body = parse_tree (cur);
       GST_CAT_LOG (ebuttdparse, "Body tree contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
@@ -1925,6 +1935,9 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       buffer_list = create_buffer_list (scenes);
       GST_CAT_LOG (ebuttdparse, "There are %u buffers in output list.",
           g_list_length (buffer_list));
+
+      g_list_free_full (scenes, (GDestroyNotify) delete_scene);
+      delete_tree (body);
     }
     cur = cur->next;
   }
@@ -1932,7 +1945,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
   xmlFreeDoc (doc);
   g_hash_table_destroy (style_hash);
   g_hash_table_destroy (region_hash);
-  if (document_metadata) g_free (document_metadata);
+  if (document_metadata) g_slice_free (DocMetadata, document_metadata);
 
   return buffer_list;
 }
