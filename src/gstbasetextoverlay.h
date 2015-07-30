@@ -63,49 +63,23 @@ typedef struct {
 } GstBaseEbuttdOverlayLocatedImage;
 
 typedef struct {
-  GstBuffer *text_image;
-  GstBuffer *background_image;
-  guint width;
-  guint height;
-  guint text_offset_x;
-  guint text_offset_y;
-  gboolean newline;
-  GSList *line_extents;
-} GstBaseEbuttdOverlayRenderedElement;
-
-typedef struct {
   GstSubtitleBlock *block;
-  GstBuffer *image;
-  GSList *locimages;
+  GSList *images;
   guint width;
   guint height;
 } GstBaseEbuttdOverlayRenderedBlock;
 
 typedef struct {
-  guint first_pixel;
-  guint last_pixel;
-} GstBaseEbuttdOverlayWordBounds;
-
-typedef struct {
-  cairo_t *state;
-  cairo_surface_t *surface;
-  guint width;
-  guint height;
-  GArray *word_bounds;
-} GstBaseEbuttdOverlayGlyphString;
-
-typedef struct {
   GstBuffer *text_image;
-  GSList *line_extents;
   PangoLayout *layout;
   guint width;
   guint height;
-  guint text_offset; /* Badly named; it's a vertical offset. */
+  guint vert_offset;
 
   /* To cope with the fact that pango positions text at a different horizontal
    * location depending on whether wrapping is enabled or not. */
-  guint layout_x_offset;
-} GstBaseEbuttdOverlayRenderedTextBlock;
+  guint horiz_offset;
+} GstBaseEbuttdOverlayRenderedText;
 
 
 /**
@@ -239,11 +213,8 @@ struct _GstBaseEbuttdOverlay {
     gdouble                  shadow_offset;
     gdouble                  outline_offset;
     GstBuffer               *text_image;
-    GstBuffer               *background_image; /* P Taylour added */
     gint                     image_width;
     gint                     image_height;
-    gint                     image_height_bk; /* P Taylour added */
-    gint                     image_width_bk; /* P Taylour added */
     gint                     baseline_y;
     gint                     text_height_px;
 
@@ -259,13 +230,6 @@ struct _GstBaseEbuttdOverlay {
 
     GstVideoOverlayComposition *composition;
 
-    gint                     line_padding; /* P Taylour added */
-    gint64                   cell_resolution_x; /*not the most appropriate place for these */
-    gint64                   cell_resolution_y;
-    gint                     background_ypad;
-    gchar                   *background_color; /* for overwriting pangos background */
-
-    GSList *layers;
     GList * compositions;
 };
 
