@@ -2463,9 +2463,11 @@ generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
   guint i;
 
   joined_text = g_strdup ("");
-  if (*text_ranges == NULL)
-    *text_ranges = g_ptr_array_new_full (elements->len,
-        (GDestroyNotify) text_range_free);
+
+  if (*text_ranges != NULL)
+    g_ptr_array_unref (*text_ranges);
+  *text_ranges = g_ptr_array_new_full (elements->len,
+      (GDestroyNotify) text_range_free);
 
   for (i = 0; i < elements->len; ++i) {
     TextRange *range = g_slice_new0 (TextRange);
