@@ -2418,7 +2418,7 @@ create_new_layer (GstBuffer * image, guint xpos, guint ypos, guint width,
 {
   GstBaseEbuttdOverlayLayer *layer;
 
-  layer = g_new0 (GstBaseEbuttdOverlayLayer, 1);
+  layer = g_slice_new0 (GstBaseEbuttdOverlayLayer);
   layer->image = image;
   layer->xpos = xpos;
   layer->ypos = ypos;
@@ -2444,6 +2444,12 @@ typedef struct {
   guint last_char;
 } TextRange;
 
+static void
+text_range_free (TextRange * range)
+{
+  g_slice_free (TextRange, range);
+}
+
 static gchar *
 generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
     guint screen_height, GPtrArray ** text_ranges)
@@ -2458,7 +2464,8 @@ generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
 
   joined_text = g_strdup ("");
   if (*text_ranges == NULL)
-    *text_ranges = g_ptr_array_sized_new (elements->len);
+    *text_ranges = g_ptr_array_new_full (elements->len,
+        (GDestroyNotify) text_range_free);
 
   for (i = 0; i < elements->len; ++i) {
     TextRange *range = g_slice_new0 (TextRange);
@@ -2688,7 +2695,7 @@ create_located_image (GstBuffer * image, gint x, gint y, guint width,
 {
   GstBaseEbuttdOverlayLocatedImage *ret;
 
-  ret = g_new0 (GstBaseEbuttdOverlayLocatedImage, 1);
+  ret = g_slice_new0 (GstBaseEbuttdOverlayLocatedImage);
 
   ret->image = image;
   ret->extents.x = x;
@@ -2971,6 +2978,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   GST_CAT_DEBUG (ebuttdrender, "%u layers created.",
       g_slist_length (locimages));
 
+  g_ptr_array_unref (char_ranges);
   ret->images = locimages;
   ret->width = width;
   ret->height = block_extents.height;
@@ -3004,6 +3012,35 @@ create_layers (GstBaseEbuttdOverlayRenderedBlock * block, guint offset_x,
   }
 
   return ret;
+}
+
+
+static void
+free_located_image (GstBaseEbuttdOverlayLocatedImage * image)
+{
+  if (image->image)
+    gst_buffer_unref (image->image);
+  g_slice_free (GstBaseEbuttdOverlayLocatedImage, image);
+}
+
+
+static void
+free_layer (GstBaseEbuttdOverlayLayer * layer)
+{
+  if (layer->image)
+    gst_buffer_unref (layer->image);
+  if (layer->rectangle)
+    gst_video_overlay_rectangle_unref (layer->rectangle);
+  g_slice_free (GstBaseEbuttdOverlayLayer, layer);
+}
+
+
+static void
+free_rendered_block (GstBaseEbuttdOverlayRenderedBlock * block)
+{
+  if (block->images)
+    g_slist_free_full (block->images, (GDestroyNotify) free_located_image);
+  g_slice_free (GstBaseEbuttdOverlayRenderedBlock, block);
 }
 
 
@@ -3100,6 +3137,8 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   }
 
   ret = gst_base_ebuttd_overlay_compose_layers (layers);
+  g_slist_free_full (layers, (GDestroyNotify) free_layer);
+  g_list_free_full (blocks, (GDestroyNotify) free_rendered_block);
   return ret;
 }
 
