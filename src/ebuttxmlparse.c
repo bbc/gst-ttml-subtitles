@@ -1805,8 +1805,7 @@ create_and_attach_metadata (GNode * tree, GList * scenes,
     GST_BUFFER_PTS (scene->buf) = scene->begin;
     GST_BUFFER_DURATION (scene->buf) = (scene->end - scene->begin);
 
-    /* Split the active nodes by region. XXX: Remember to free hash table after
-     * use. */
+    /* Split the active nodes by region. */
     elements_by_region = split_scenes_by_region (scene->elements);
 
     GST_CAT_DEBUG (ebuttdparse, "Hash table has %u entries.",
@@ -1842,6 +1841,7 @@ create_and_attach_metadata (GNode * tree, GList * scenes,
 
     gst_buffer_add_subtitle_meta (scene->buf, areas);
     scenes = g_list_next (scenes);
+    g_hash_table_destroy (elements_by_region);
   }
 
   return NULL;
