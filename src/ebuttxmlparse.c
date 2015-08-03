@@ -186,13 +186,15 @@ _print_style_set (GstEbuttdStyleSet * set)
 static GstEbuttdStyleSet *
 parse_style_set (const xmlNode * node)
 {
-  GstEbuttdStyleSet *s = g_slice_new0 (GstEbuttdStyleSet);
+  GstEbuttdStyleSet *s;
   gchar *value = NULL;
 
   if ((!get_xml_property (node, "id"))) {
     GST_CAT_ERROR (ebuttdparse, "styles must have an ID.");
     return NULL;
   }
+
+  s = g_slice_new0 (GstEbuttdStyleSet);
 
   if ((value = get_xml_property (node, "direction"))) {
     s->text_direction = g_strdup (value);
