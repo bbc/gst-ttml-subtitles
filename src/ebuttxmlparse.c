@@ -649,8 +649,8 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
 
   if (ess->font_size) {
     ss->font_size = g_ascii_strtod (ess->font_size, NULL) / 100.0;
-    ss->font_size *= (1.0 / cellres_y);
   }
+  ss->font_size *= (1.0 / cellres_y);
 
   if (ess->line_height) {
     if (g_strcmp0 (ess->line_height, "normal") == 0)
