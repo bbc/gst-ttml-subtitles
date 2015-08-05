@@ -1736,7 +1736,8 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 
         element = content_node->data;
         g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN
-            || element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN);
+            || element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
+            || element->type == GST_EBUTTD_ELEMENT_TYPE_BR);
 
         /* XXX: A lot of code below is repetitive (the code that creates a
          * GstSubtitleElement and puts its text into the GstBuffer), and so
