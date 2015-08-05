@@ -1522,6 +1522,74 @@ split_scenes_by_region (GList * active_elements)
 
 
 static GNode *
+remove_nodes_by_region (GNode * node, const gchar *region)
+{
+  GNode *child, *next_child;
+  GstEbuttdElement *element;
+  element = node->data;
+
+  child = node->children;
+  next_child = child ? child->next : NULL;
+  while (child) {
+    remove_nodes_by_region (child, region);
+    child = next_child;
+    next_child = child ? child->next : NULL;
+  }
+
+  if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
+      && element->region && (g_strcmp0 (element->region, region) != 0)) {
+    g_node_destroy (node);
+    node = NULL;
+  }
+  if (element->type != GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
+      && !node->children) {
+    g_node_destroy (node);
+    node = NULL;
+  }
+
+  return node;
+}
+
+
+/* Split the body tree into elements that belong to each region. Returns a list
+ * of trees, each with a region element at its root. */
+static GList *
+split_body_by_region (GNode * body, GHashTable * regions)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+  GList *ret = NULL;
+
+  g_hash_table_iter_init (&iter, regions);
+  while (g_hash_table_iter_next (&iter, &key, &value)) {
+    gchar *region_name = (gchar *)key;
+    GstEbuttdElement *region = (GstEbuttdElement *)value;
+    GNode *region_node = g_node_new (region);
+    GNode *body_copy = g_node_copy (body);
+
+    GST_CAT_DEBUG (ebuttdparse, "Creating tree for region %s", region_name);
+    GST_CAT_DEBUG (ebuttdparse, "Copy of body has %u nodes.",
+        g_node_n_nodes (body_copy, G_TRAVERSE_ALL));
+
+    body_copy = remove_nodes_by_region (body_copy, region_name);
+    if (body_copy) {
+      GST_CAT_DEBUG (ebuttdparse, "Copy of body now has %u nodes.",
+          g_node_n_nodes (body_copy, G_TRAVERSE_ALL));
+
+      /* Reparent tree to region node. */
+      g_node_prepend (region_node, body_copy);
+    }
+    GST_CAT_DEBUG (ebuttdparse, "Final tree has %u nodes.",
+        g_node_n_nodes (region_node, G_TRAVERSE_ALL));
+    ret = g_list_append (ret, region_node);
+  }
+
+  GST_CAT_DEBUG (ebuttdparse, "Returning %u trees.", g_list_length (ret));
+  return ret;
+}
+
+
+static GNode *
 create_isd_tree (GNode * tree, GList * active_elements)
 {
   GList *leaves;
@@ -1950,6 +2018,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer)
       strip_surrounding_whitespace (body);
       resolve_timings (body);
       resolve_regions (body);
+      split_body_by_region (body, region_hash);
       inherit_region_styles (body, region_hash);
       scenes = create_scenes (body);
       GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
