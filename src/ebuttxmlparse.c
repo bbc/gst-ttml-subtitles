@@ -1996,10 +1996,17 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
     document_metadata = extract_tt_tag_properties (cur, document_metadata);
   }
 
-  cellres_x = (guint) g_ascii_strtoull (document_metadata->cell_resolution_x,
-      NULL, 10U);
-  cellres_y = (guint) g_ascii_strtoull (document_metadata->cell_resolution_y,
-      NULL, 10U);
+  if (document_metadata->cell_resolution_x)
+    cellres_x = (guint) g_ascii_strtoull (document_metadata->cell_resolution_x,
+        NULL, 10U);
+  else
+    cellres_x = 32;
+
+  if (document_metadata->cell_resolution_y)
+    cellres_y = (guint) g_ascii_strtoull (document_metadata->cell_resolution_y,
+        NULL, 10U);
+  else
+    cellres_y = 15;
 
   cur = cur->children;
   while (cur) {
