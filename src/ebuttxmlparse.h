@@ -132,7 +132,8 @@ typedef struct
 
 } DocMetadata;
 
-GList *ebutt_xml_parse (const gchar * xml_file_buffer);
+GList *ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime doc_begin,
+    GstClockTime doc_duration);
 
 G_END_DECLS
 #endif /* _EBU_PARSE_H_ */

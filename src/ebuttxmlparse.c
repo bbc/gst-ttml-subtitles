@@ -1955,7 +1955,8 @@ delete_scene (GstEbuttdScene * scene)
 
 
 GList *
-ebutt_xml_parse (const gchar * xml_file_buffer)
+ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
+    GstClockTime buffer_duration)
 {
   xmlDocPtr doc;                /* pointer for tree */
   xmlNodePtr cur;

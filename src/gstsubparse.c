@@ -1575,7 +1575,8 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
     /* use libxml2 instead of line by line parsing
      * TODO: remove duplicate code.
      */
-    GList *subtitle_list = ebutt_xml_parse (self->textbuf->str);
+    GList *subtitle_list = ebutt_xml_parse (self->textbuf->str,
+        GST_BUFFER_PTS (buf), GST_BUFFER_DURATION (buf));
 
     while (subtitle_list) {
       GstBuffer *op_buffer = subtitle_list->data;
