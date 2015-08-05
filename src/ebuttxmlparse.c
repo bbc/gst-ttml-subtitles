@@ -56,7 +56,7 @@ parse_ebuttd_colorstring (const gchar * color)
 {
   guint length;
   const gchar *c = NULL;
-  GstSubtitleColor ret = { 0, 0, 0, 0 };
+  GstSubtitleColor ret = { 1.0, 1.0, 1.0, 1.0 };
 
   g_return_val_if_fail (color != NULL, ret);
 
