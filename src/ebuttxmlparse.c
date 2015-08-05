@@ -79,7 +79,7 @@ parse_ebuttd_colorstring (const gchar * color)
   } else if (g_strcmp0 (color, "yellow") == 0) { /* XXX:Hack for test stream. */
     ret = parse_ebuttd_colorstring ("#ffff00");
   } else {
-    GST_CAT_ERROR (ebuttdparse, "Invalid color string.");
+    GST_CAT_ERROR (ebuttdparse, "Invalid color string: %s", color);
   }
 
   return ret;
