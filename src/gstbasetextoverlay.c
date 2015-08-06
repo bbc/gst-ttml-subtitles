@@ -2458,7 +2458,8 @@ generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
   GstMemory *mem;
   GstMapInfo map;
   gchar *buf_text, *joined_text, *old_text;
-  gchar *fgcolor, *font_size, *font_style, *font_weight, *underline;
+  gchar *fgcolor, *font_size, *font_family, *font_style, *font_weight,
+        *underline;
   guint total_text_length = 0U;
   guint i;
 
@@ -2490,6 +2491,8 @@ generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
     /* XXX: Should we round the pixel font size? */
     font_size = g_strdup_printf ("%u",
         (guint) (element->style.font_size * screen_height));
+    font_family = (g_strcmp0 (element->style.font_family, "default") == 0) ?
+      "Monospace" : element->style.font_family;
     font_style = (element->style.font_style == GST_SUBTITLE_FONT_STYLE_NORMAL) ?
       "normal" : "italic";
     font_weight =
@@ -2503,7 +2506,7 @@ generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
         "<span "
           "fgcolor=\"", fgcolor, "\" ",
           "font=\"", font_size, "px\" ",
-          "font_family=\"", element->style.font_family, "\" ",
+          "font_family=\"", font_family, "\" ",
           "font_style=\"", font_style, "\" ",
           "font_weight=\"", font_weight, "\" ",
           "underline=\"", underline, "\" ",
