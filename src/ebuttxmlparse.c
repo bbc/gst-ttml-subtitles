@@ -122,9 +122,10 @@ _print_element (GstEbuttdElement * element)
   if (element->region)
     GST_CAT_DEBUG (ebuttdparse, "Element region: %s", element->region);
   if (element->begin != GST_CLOCK_TIME_NONE)
-    GST_CAT_DEBUG (ebuttdparse, "Element begin: %llu", element->begin);
+    GST_CAT_DEBUG (ebuttdparse, "Element begin: %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (element->begin));
   if (element->end != GST_CLOCK_TIME_NONE)
-    GST_CAT_DEBUG (ebuttdparse, "Element end: %llu", element->end);
+    GST_CAT_DEBUG (ebuttdparse, "Element end: %" GST_TIME_FORMAT, GST_TIME_ARGS (element->end));
   if (element->text) {
     GST_CAT_DEBUG (ebuttdparse, "Element text: %s", element->text);
     GST_CAT_DEBUG (ebuttdparse, "Element text index: %u", element->text_index);
@@ -501,7 +502,7 @@ parse_timecode (const gchar * timestring)
   g_strfreev (strings);
   GST_CAT_LOG (ebuttdparse,
       "hours: %llu  minutes: %llu  seconds: %llu  milliseconds: %llu",
-      hours, minutes, seconds, milliseconds);
+      hours,  minutes,  seconds,  milliseconds);
 
   time = hours * GST_SECOND * 3600
        + minutes * GST_SECOND * 60
@@ -568,7 +569,6 @@ parse_element (const xmlNode * node)
     else
       GST_CAT_WARNING (ebuttdparse,
           "Style or Region contains no styling attributes.");
-    return element;
   }
 
   if ((string = xmlGetProp (node, (const xmlChar*) "region"))) {
@@ -589,8 +589,8 @@ parse_element (const xmlNode * node)
   } else {
     element->end = GST_CLOCK_TIME_NONE;
   }
-  /*GST_CAT_DEBUG (ebuttdparse, "element->begin: %llu   element->end: %llu",
-      element->begin, element->end);*/
+  /*GST_CAT_DEBUG (ebuttdparse, "element->begin: %" GST_TIME_FORMAT "   element->end: %" GST_TIME_FORMAT,
+      GST_TIME_ARGS (element->begin), GST_TIME_ARGS (element->end));*/
 
   if (node->content) {
     GST_CAT_LOG (ebuttdparse, "Node content: %s", node->content);
@@ -1168,8 +1168,10 @@ resolve_element_timings (GNode * node, gpointer data)
   } else {
     leaf->begin = element->begin;
     leaf->end = element->end;
-    GST_CAT_LOG (ebuttdparse, "Leaf begin: %llu", leaf->begin);
-    GST_CAT_LOG (ebuttdparse, "Leaf end: %llu", leaf->end);
+    GST_CAT_LOG (ebuttdparse, "Leaf begin: %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (leaf->begin));
+    GST_CAT_LOG (ebuttdparse, "Leaf end: %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (leaf->end));
   }
 
   return FALSE;
@@ -1264,28 +1266,29 @@ typedef struct {
 static gboolean
 update_transition_time (GNode * node, gpointer data)
 {
-  GstEbuttdElement *element;
-  TrState *state;
+  GstEbuttdElement *element = node->data;
+  TrState *state = (TrState *)data;
 
-  g_return_val_if_fail (node != NULL, FALSE);
-  element = node->data;
-  state = (TrState *)data;
+  GST_CAT_LOG (ebuttdparse, "begin: %" GST_TIME_FORMAT "  end: %"
+      GST_TIME_FORMAT "  start_time: %" GST_TIME_FORMAT,
+      GST_TIME_ARGS (element->begin), GST_TIME_ARGS (element->end),
+      GST_TIME_ARGS (state->start_time));
 
-  GST_CAT_LOG (ebuttdparse, "begin: %llu  end: %llu  start_time: %llu",
-      element->begin, element->end, state->start_time);
-
-  if ((element->begin > state->start_time)
-      && (element->begin < state->next_transition_time)) {
+  if ((element->begin < state->next_transition_time)
+      && (element->begin > state->start_time)) {
     state->next_transition_time = element->begin;
     GST_CAT_LOG (ebuttdparse,
-        "Updating next transition time to element begin time (%llu)",
-        state->next_transition_time);
-  } else if ((element->end > state->start_time)
-      && (element->end < state->next_transition_time)) {
+        "Updating next transition time to element begin time (%"
+        GST_TIME_FORMAT ")", GST_TIME_ARGS (state->next_transition_time));
+    return FALSE;
+  }
+
+  if ((element->end < state->next_transition_time)
+      && (element->end > state->start_time)) {
     state->next_transition_time = element->end;
     GST_CAT_LOG (ebuttdparse,
-        "Updating next transition time to element end time (%llu)",
-        state->next_transition_time);
+        "Updating next transition time to element end time (%"
+        GST_TIME_FORMAT ")", GST_TIME_ARGS (state->next_transition_time));
   }
 
   return FALSE;
@@ -1295,24 +1298,19 @@ update_transition_time (GNode * node, gpointer data)
 static gboolean
 find_transitioning_element (GNode * node, gpointer data)
 {
-  GstEbuttdElement *element;
-  GstEbuttdTransition *transition;
-
-  g_return_val_if_fail (node != NULL, FALSE);
-  g_return_val_if_fail (data != NULL, FALSE);
-  element = node->data;
-  transition = (GstEbuttdTransition *)data;
+  GstEbuttdElement *element = node->data;
+  GstEbuttdTransition *transition = (GstEbuttdTransition *)data;
 
   if (element->begin == transition->time) {
     transition->appearing_elements =
       g_list_append (transition->appearing_elements, element);
-    GST_CAT_LOG (ebuttdparse, "Found element appearing at time %llu",
-        transition->time);
+    GST_CAT_LOG (ebuttdparse, "Found element appearing at time %"
+        GST_TIME_FORMAT, GST_TIME_ARGS (transition->time));
   } else if (element->end == transition->time) {
     transition->disappearing_elements =
       g_list_append (transition->disappearing_elements, element);
-    GST_CAT_LOG (ebuttdparse, "Found element disappearing at time %llu",
-        transition->time);
+    GST_CAT_LOG (ebuttdparse, "Found element disappearing at time %"
+        GST_TIME_FORMAT, GST_TIME_ARGS (transition->time));
   }
 
   return FALSE;
@@ -1337,14 +1335,35 @@ find_next_transition (GNode * tree, GstClockTime time)
 
   transition = g_slice_new0 (GstEbuttdTransition);
   transition->time = state.next_transition_time;
-  GST_CAT_LOG (ebuttdparse, "Next transition is at %llu",
-      state.next_transition_time);
+  GST_CAT_LOG (ebuttdparse, "Next transition is at %" GST_TIME_FORMAT,
+      GST_TIME_ARGS (state.next_transition_time));
 
   /* Find which elements start/end at the transition time. */
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
       find_transitioning_element, transition);
 
   return transition;
+}
+
+
+/* Return details about the next transition after @time. */
+static GstClockTime
+find_next_transition2 (GList * trees, GstClockTime time)
+{
+  TrState state;
+  state.start_time = time;
+  state.next_transition_time = GST_CLOCK_TIME_NONE;
+
+  for (trees = g_list_first (trees); trees; trees = trees->next) {
+    GNode *tree = (GNode *)trees->data;
+    g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
+        update_transition_time, &state);
+  }
+
+  GST_CAT_LOG (ebuttdparse, "Next transition is at %" GST_TIME_FORMAT,
+      GST_TIME_ARGS (state.next_transition_time));
+
+  return state.next_transition_time;
 }
 
 
@@ -1380,39 +1399,92 @@ update_active_element_list (GList * active_elements,
 }
 
 
+static GNode *
+remove_nodes_by_time (GNode * node, GstClockTime time)
+{
+  GNode *child, *next_child;
+  GstEbuttdElement *element;
+  element = node->data;
+
+  child = node->children;
+  next_child = child ? child->next : NULL;
+  while (child) {
+    remove_nodes_by_time (child, time);
+    child = next_child;
+    next_child = child ? child->next : NULL;
+  }
+
+  /* XXX: Should we be relying on GST_CLOCK_TIME-NONE being MAX_UINT64? 
+   * Or should we have explicit tests for validity of begin & end? */
+  if (!node->children && ((element->begin > time) || (element->end <= time))) {
+    g_node_destroy (node);
+    node = NULL;
+  }
+
+  return node;
+}
+
+
+/* Return a list of trees containing the elements and their ancestors that are
+ * visible at @time. */
 static GList *
-create_scenes (GNode * tree)
+get_active_elements (GList * element_trees, GstClockTime time)
+{
+  GList *tree;
+  GList *ret = NULL;
+
+  for (tree = g_list_first (element_trees); tree; tree = tree->next) {
+    GNode *root = g_node_copy ((GNode *)tree->data);
+    GST_CAT_DEBUG (ebuttdparse, "There are %u nodes in tree.",
+        g_node_n_nodes (root, G_TRAVERSE_ALL));
+    root = remove_nodes_by_time (root, time);
+    if (root) {
+      GST_CAT_DEBUG (ebuttdparse, "After filtering there are %u nodes in tree.",
+          g_node_n_nodes (root, G_TRAVERSE_ALL));
+
+      ret = g_list_append (ret, root);
+    } else {
+      GST_CAT_DEBUG (ebuttdparse, "All elements have been filtered from tree.");
+    }
+  }
+
+  GST_CAT_DEBUG (ebuttdparse, "There are %u trees in returned list.",
+      g_list_length (ret));
+  return ret;
+}
+
+
+static GList *
+create_scenes (GList * region_trees)
 {
   GstEbuttdScene *cur_scene = NULL;
   GList *output_scenes = NULL;
   GList *active_elements = NULL;
-  GstClockTime timestamp = GST_CLOCK_TIME_NONE;
-  GstEbuttdTransition *transition;
+  GstClockTime timestamp = 0;
 
-  g_return_val_if_fail (tree != NULL, NULL);
+  while ((timestamp = find_next_transition2 (region_trees, timestamp))
+      != GST_CLOCK_TIME_NONE) {
+    GST_CAT_LOG (ebuttdparse, "Next transition found at time %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (timestamp));
+    if (cur_scene) {
+      cur_scene->end = timestamp;
+      output_scenes = g_list_append (output_scenes, cur_scene);
+    }
 
-  while ((transition = find_next_transition (tree, timestamp))) {
-    GST_CAT_LOG (ebuttdparse, "Next transition found at time %llu",
-        transition->time);
-    if (cur_scene) cur_scene->end = transition->time;
-
-    active_elements = update_active_element_list (active_elements, transition);
-    GST_CAT_LOG (ebuttdparse, "There will be %u active elements after"
+    active_elements = get_active_elements (region_trees, timestamp);
+    GST_CAT_LOG (ebuttdparse, "There will be %u active areas after "
         "transition", g_list_length (active_elements));
 
     if (active_elements) {
-      GstEbuttdScene * new_scene = g_slice_new0 (GstEbuttdScene);
-      new_scene->begin = transition->time;
-      new_scene->elements = g_list_copy (active_elements);
-      output_scenes = g_list_append (output_scenes, new_scene);
-      cur_scene = new_scene;
+      cur_scene = g_slice_new0 (GstEbuttdScene);
+      cur_scene->begin = timestamp;
+      cur_scene->elements = active_elements;
     } else {
       cur_scene = NULL;
     }
-    timestamp = transition->time;
-    g_slice_free (GstEbuttdTransition, transition);
   }
 
+  g_assert (cur_scene == NULL);
   return output_scenes;
 }
 
@@ -1552,7 +1624,8 @@ remove_nodes_by_region (GNode * node, const gchar *region)
 
 
 /* Split the body tree into elements that belong to each region. Returns a list
- * of trees, each with a region element at its root. */
+ * of trees, one per region, each with the corresponding region element at its
+ * root. */
 static GList *
 split_body_by_region (GNode * body, GHashTable * regions)
 {
@@ -1857,10 +1930,6 @@ static GNode *
 create_and_attach_metadata (GNode * tree, GList * scenes,
     GHashTable * region_hash, guint cellres_x, guint cellres_y)
 {
-  g_return_if_fail (tree != NULL);
-  g_return_if_fail (scenes != NULL);
-  g_return_if_fail (region_hash != NULL);
-
   while (scenes) {
     GstEbuttdScene * scene = scenes->data;
     GHashTable *elements_by_region;
@@ -1905,10 +1974,12 @@ create_and_attach_metadata (GNode * tree, GList * scenes,
 
       area = create_subtitle_area (scene, region_node, cellres_x, cellres_y);
       g_ptr_array_add (areas, area);
-      g_node_destroy (isd_tree);
+      g_node_destroy (region_node);
     }
 
     gst_buffer_add_subtitle_meta (scene->buf, areas);
+    /* XXX: unref areas? If gst_buffer_add_subtitle_meta refs areas, then we
+     * should unref here. */
     scenes = g_list_next (scenes);
     g_hash_table_destroy (elements_by_region);
   }
@@ -1951,7 +2022,49 @@ delete_tree (GNode * tree)
 static void
 delete_scene (GstEbuttdScene * scene)
 {
+  if (scene->elements)
+    g_list_free_full (scene->elements, (GDestroyNotify) g_node_destroy);
+  if (scene->buf)
+    gst_buffer_unref (scene->buf);
   g_slice_free (GstEbuttdScene, scene);
+}
+
+
+static gboolean
+color_is_transparent (const GstSubtitleColor *color)
+{
+    if (!color)
+      return FALSE;
+    else
+      return ((guint)(color->a * 255) == 0);
+}
+
+
+/* XXX: Should we be using GstClockTimeDiffs for durations? */
+static void
+assign_region_times (GList *region_trees, GstClockTime doc_begin,
+    GstClockTime doc_duration)
+{
+  GList *tree;
+
+  for (tree = g_list_first (region_trees); tree; tree = tree->next) {
+    GNode *region_node = (GNode *)tree->data;
+    GstEbuttdElement *region = (GstEbuttdElement *)region_node->data;
+    gboolean always_visible = !region->style_set->show_background
+      || (g_strcmp0 (region->style_set->show_background, "always") == 0);
+
+    GstSubtitleColor region_color = { 0, 0, 0, 0 };
+    if (region->style_set->bg_color)
+      region_color = parse_ebuttd_colorstring (region->style_set->bg_color);
+
+    if (always_visible && !color_is_transparent (&region_color)) {
+      GST_CAT_DEBUG (ebuttdparse, "Assigning times to region.");
+      region->begin = (doc_begin != GST_CLOCK_TIME_NONE) ?
+        doc_begin : 40 * GST_MSECOND;
+      region->end = (doc_duration != GST_CLOCK_TIME_NONE) ?
+        region->begin + doc_duration : 24 * 3600 * GST_SECOND;
+    }
+  }
 }
 
 
@@ -2013,6 +2126,8 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
     if (xmlStrcmp (cur->name, (const xmlChar *) "head") == 0) {
       xml_process_head (cur, style_hash, region_hash);
     } else if (xmlStrcmp (cur->name, (const xmlChar *) "body") == 0) {
+      GList *region_trees;
+
       /* Process Body of xml doc */
       body = parse_tree (cur);
       GST_CAT_LOG (ebuttdparse, "Body tree contains %u nodes.",
@@ -2027,18 +2142,19 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
       strip_surrounding_whitespace (body);
       resolve_timings (body);
       resolve_regions (body);
-      split_body_by_region (body, region_hash);
+      region_trees = split_body_by_region (body, region_hash);
+      assign_region_times (region_trees, buffer_pts, buffer_duration);
       inherit_region_styles (body, region_hash);
-      scenes = create_scenes (body);
+      scenes = create_scenes (region_trees);
       GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
           g_list_length (scenes));
-      create_and_attach_metadata (body, scenes, region_hash, cellres_x,
+      /*create_and_attach_metadata (body, scenes, region_hash, cellres_x,
           cellres_y);
       buffer_list = create_buffer_list (scenes);
       GST_CAT_LOG (ebuttdparse, "There are %u buffers in output list.",
-          g_list_length (buffer_list));
+          g_list_length (buffer_list));*/
 
-      g_list_free_full (scenes, (GDestroyNotify) delete_scene);
+      /*g_list_free_full (scenes, (GDestroyNotify) delete_scene);*/
       delete_tree (body);
     }
     cur = cur->next;
