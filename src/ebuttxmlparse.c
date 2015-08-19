@@ -1702,8 +1702,7 @@ create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_y)
     }
 
     gst_buffer_add_subtitle_meta (scene->buf, areas);
-    /* XXX: unref areas? If gst_buffer_add_subtitle_meta refs areas, then we
-     * should unref here. */
+    g_ptr_array_unref (areas);
   }
 
   return NULL;
