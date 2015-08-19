@@ -121,7 +121,8 @@ _print_element (GstEbuttdElement * element)
     GST_CAT_DEBUG (ebuttdparse, "Element begin: %" GST_TIME_FORMAT,
         GST_TIME_ARGS (element->begin));
   if (element->end != GST_CLOCK_TIME_NONE)
-    GST_CAT_DEBUG (ebuttdparse, "Element end: %" GST_TIME_FORMAT, GST_TIME_ARGS (element->end));
+    GST_CAT_DEBUG (ebuttdparse, "Element end: %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (element->end));
   if (element->text) {
     GST_CAT_DEBUG (ebuttdparse, "Element text: %s", element->text);
     GST_CAT_DEBUG (ebuttdparse, "Element text index: %u", element->text_index);
@@ -559,8 +560,9 @@ parse_element (const xmlNode * node)
   } else {
     element->end = GST_CLOCK_TIME_NONE;
   }
-  /*GST_CAT_DEBUG (ebuttdparse, "element->begin: %" GST_TIME_FORMAT "   element->end: %" GST_TIME_FORMAT,
-      GST_TIME_ARGS (element->begin), GST_TIME_ARGS (element->end));*/
+  /*GST_CAT_DEBUG (ebuttdparse, "element->begin: %" GST_TIME_FORMAT "   "
+      "element->end: %" GST_TIME_FORMAT, GST_TIME_ARGS (element->begin),
+      GST_TIME_ARGS (element->end));*/
 
   if (node->content) {
     GST_CAT_LOG (ebuttdparse, "Node content: %s", node->content);
