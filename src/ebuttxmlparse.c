@@ -42,9 +42,6 @@ hex_pair_to_byte (const gchar * hex_pair)
 {
   gint hi_digit, lo_digit;
 
-  g_return_val_if_fail (hex_pair != NULL, 0U);
-  g_return_val_if_fail (strlen (hex_pair) >= 2, 0U);
-
   hi_digit = g_ascii_xdigit_value (*hex_pair);
   lo_digit = g_ascii_xdigit_value (*(hex_pair + 1));
   return (hi_digit << 4) + lo_digit;
@@ -58,7 +55,8 @@ parse_ebuttd_colorstring (const gchar * color)
   const gchar *c = NULL;
   GstSubtitleColor ret = { 1.0, 1.0, 1.0, 1.0 };
 
-  g_return_val_if_fail (color != NULL, ret);
+  if (!color)
+    return ret;
 
   /* Color strings in EBU-TT-D can have the form "#RRBBGG" or "#RRBBGGAA". */
   length = strlen (color);
@@ -89,8 +87,6 @@ parse_ebuttd_colorstring (const gchar * color)
 static void
 _print_element (GstEbuttdElement * element)
 {
-  g_return_if_fail (element != NULL);
-
   if (element->id)
     GST_CAT_DEBUG (ebuttdparse, "Element ID: %s", element->id);
   switch (element->type) {
@@ -136,8 +132,6 @@ _print_element (GstEbuttdElement * element)
 static void
 _print_style_set (GstEbuttdStyleSet * set)
 {
-  g_return_if_fail (set != NULL);
-
   GST_CAT_LOG (ebuttdparse, "Style set %p:", set);
   if (set->text_direction)
     GST_CAT_LOG (ebuttdparse, "\t\ttext_direction: %s", set->text_direction);
@@ -305,10 +299,10 @@ parse_style_set (const xmlNode * node)
   return s;
 }
 
+
 static void
 delete_style_set (GstEbuttdStyleSet * style)
 {
-  g_return_if_fail (style != NULL);
   GST_CAT_DEBUG (ebuttdparse, "Deleting style set %p...", style);
   if (style->text_direction) g_free ((gpointer) style->text_direction);
   if (style->font_family) g_free ((gpointer) style->font_family);
@@ -338,7 +332,6 @@ delete_style_set (GstEbuttdStyleSet * style)
 static void
 delete_element (GstEbuttdElement * element)
 {
-  g_return_if_fail (element != NULL);
   GST_CAT_DEBUG (ebuttdparse, "Deleting element %p...", element);
 
   if (element->id) g_free ((gpointer) element->id);
@@ -465,7 +458,6 @@ parse_timecode (const gchar * timestring)
   guint64 hours = 0, minutes = 0, seconds = 0, milliseconds = 0;
   GstClockTime time = GST_CLOCK_TIME_NONE;
 
-  g_return_val_if_fail (timestring != NULL, time);
   GST_CAT_LOG (ebuttdparse, "time string: %s", timestring);
 
   strings = g_strsplit (timestring, ":", 3);
@@ -518,8 +510,6 @@ parse_element (const xmlNode * node)
 {
   GstEbuttdElement *element;
   xmlChar *string;
-
-  g_return_val_if_fail (node != NULL, NULL);
 
   element = g_slice_new0 (GstEbuttdElement);
   GST_CAT_DEBUG (ebuttdparse, "Element name: %s", (const char*) node->name);
@@ -607,7 +597,6 @@ parse_tree (const xmlNode * node)
   GNode *ret;
   GstEbuttdElement *element;
 
-  g_return_val_if_fail (node != NULL, NULL);
   GST_CAT_LOG (ebuttdparse, "parsing node %s", node->name);
   element = parse_element (node);
   ret = g_node_new (element);
@@ -627,10 +616,7 @@ static void
 update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
     guint cellres_x, guint cellres_y)
 {
-  g_return_val_if_fail (ss != NULL, NULL);
-  g_return_val_if_fail (ess != NULL, NULL);
-
-  GST_CAT_DEBUG (ebuttdparse, "cellres_x: %u  cellres_y: %u", cellres_x,
+  GST_CAT_LOG (ebuttdparse, "cellres_x: %u  cellres_y: %u", cellres_x,
       cellres_y);
 
   if (ess->text_direction) {
@@ -837,7 +823,6 @@ copy_style_set (GstEbuttdStyleSet * style)
 {
   GstEbuttdStyleSet *ret;
 
-  g_return_val_if_fail (style != NULL, NULL);
   ret = g_slice_new0 (GstEbuttdStyleSet);
 
   if (style->text_direction)
@@ -1138,13 +1123,11 @@ inherit_element_styles (GList * trees)
 }
 
 
-
 static gboolean
 resolve_element_timings (GNode * node, gpointer data)
 {
   GstEbuttdElement *element, *leaf;
 
-  g_return_val_if_fail (node != NULL, FALSE);
   leaf = element = node->data;
 
   if (GST_CLOCK_TIME_IS_VALID (leaf->begin)
@@ -1189,7 +1172,6 @@ resolve_leaf_region (GNode * node, gpointer data)
 {
   GstEbuttdElement *element, *leaf;
 
-  g_return_val_if_fail (node != NULL, FALSE);
   leaf = element = node->data;
 
   while (node->parent && !element->region) {
@@ -1380,7 +1362,6 @@ strip_whitespace (GNode * node, gpointer data)
 static void
 strip_surrounding_whitespace (GNode * tree)
 {
-  g_return_if_fail (tree != NULL);
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, strip_whitespace,
       NULL);
 }
@@ -1546,7 +1527,6 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
   GstEbuttdElement *element;
   GNode *node;
 
-  g_return_val_if_fail (tree != NULL, NULL);
   element = tree->data;
   g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_REGION);
 
