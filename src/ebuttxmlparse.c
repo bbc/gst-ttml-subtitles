@@ -195,102 +195,82 @@ parse_style_set (const xmlNode * node)
     s->text_direction = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "fontFamily"))) {
     s->font_family = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "fontSize"))) {
     s->font_size = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "lineHeight"))) {
     s->line_height = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "textAlign"))) {
     s->text_align = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "color"))) {
     s->color = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "backgroundColor"))) {
     s->bg_color = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "fontStyle"))) {
     s->font_style = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "fontWeight"))) {
     s->font_weight = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "textDecoration"))) {
     s->text_decoration = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "unicodeBidi"))) {
     s->unicode_bidi = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "wrapOption"))) {
     s->wrap_option = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "multiRowAlign"))) {
     s->multi_row_align = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "linePadding"))) {
     s->line_padding = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "origin"))) {
     s->origin = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "extent"))) {
     s->extent = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "displayAlign"))) {
     s->display_align = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "overflow"))) {
     s->overflow = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "padding"))) {
     s->padding = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "writingMode"))) {
     s->writing_mode = g_strdup (value);
     g_free (value);
   }
-
   if ((value = get_xml_property (node, "showBackground"))) {
     s->show_background = g_strdup (value);
     g_free (value);
