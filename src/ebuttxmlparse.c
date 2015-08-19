@@ -1003,43 +1003,6 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
 }
 
 
-static void
-merge_region_styles (gpointer key, gpointer value, gpointer user_data)
-{
-  GstEbuttdStyleSet *tmp = NULL;
-  gchar *id = (gchar *)key;
-  GstEbuttdElement *region = (GstEbuttdElement *)value;
-  GstEbuttdElement *style = NULL;
-  GHashTable *style_hash = (GHashTable *)user_data;
-  gint i;
-
-  if (!region->styles)
-    return;
-
-  GST_CAT_DEBUG (ebuttdparse, "Resolving styles for region %s", id);
-  for (i = 0; i < g_strv_length (region->styles); ++i) {
-    tmp = region->style_set;
-    GST_CAT_DEBUG (ebuttdparse, "Merging style %s...", region->styles[i]);
-    style = g_hash_table_lookup (style_hash, region->styles[i]);
-    g_assert (style != NULL);
-    region->style_set = merge_style_sets (region->style_set, style->style_set);
-    delete_style_set (tmp);
-  }
-
-  GST_CAT_LOG (ebuttdparse, "Final style set:");
-  _print_style_set (region->style_set);
-}
-
-
-static void
-resolve_region_styles (GHashTable * region_hash, GHashTable * style_hash)
-{
-  g_return_if_fail (region_hash != NULL);
-  g_return_if_fail (style_hash != NULL);
-  g_hash_table_foreach (region_hash, merge_region_styles, style_hash);
-}
-
-
 static gchar *
 get_element_type_string (GstEbuttdElement * element)
 {
@@ -1075,38 +1038,70 @@ get_element_type_string (GstEbuttdElement * element)
 }
 
 
+/* Merge styles referenced by an element. */
 gboolean
-resolve_element_style (GNode * node, gpointer data)
+resolve_styles (GNode * node, gpointer data)
 {
   GstEbuttdStyleSet *tmp = NULL;
-  GstEbuttdElement *element, *parent, *style;
+  GstEbuttdElement *element, *style;
   GHashTable *style_hash;
   gchar *type_string;
   gint i;
 
-  g_return_val_if_fail (node != NULL, FALSE);
-  g_return_val_if_fail (data != NULL, FALSE);
   style_hash = (GHashTable *)data;
   element = node->data;
 
   type_string = get_element_type_string (element);
-  GST_CAT_DEBUG (ebuttdparse, "Element type: %s", type_string);
+  GST_CAT_LOG (ebuttdparse, "Element type: %s", type_string);
   g_free (type_string);
 
-  /* Merge referenced styles. */
-  if (element->styles) {
-    for (i = 0; i < g_strv_length (element->styles); ++i) {
-      tmp = element->style_set;
-      GST_CAT_DEBUG (ebuttdparse, "Merging style %s...", element->styles[i]);
-      style = g_hash_table_lookup (style_hash, element->styles[i]);
-      g_assert (style != NULL);
-      element->style_set = merge_style_sets (element->style_set,
-          style->style_set);
-      if (tmp) delete_style_set (tmp);
-    }
+  if (!element->styles)
+    return FALSE;
+
+  for (i = 0; i < g_strv_length (element->styles); ++i) {
+    tmp = element->style_set;
+    GST_CAT_DEBUG (ebuttdparse, "Merging style %s...", element->styles[i]);
+    style = g_hash_table_lookup (style_hash, element->styles[i]);
+    g_assert (style != NULL);
+    element->style_set = merge_style_sets (element->style_set,
+        style->style_set);
+    if (tmp) delete_style_set (tmp);
   }
 
-  /* Inherit styling attributes from parent. */
+  GST_CAT_LOG (ebuttdparse, "Merged style:");
+  _print_style_set (element->style_set);
+
+  return FALSE;
+}
+
+
+static void
+resolve_referenced_styles (GList * trees, GHashTable * style_hash)
+{
+  GList * tree;
+
+  for (tree = g_list_first (trees); tree; tree = tree->next) {
+    GNode *root = (GNode *)tree->data;
+    g_node_traverse (root, G_PRE_ORDER, G_TRAVERSE_ALL, -1, resolve_styles,
+        style_hash);
+  }
+}
+
+
+/* Inherit styling attributes from parent. */
+gboolean
+inherit_styles (GNode * node, gpointer data)
+{
+  GstEbuttdStyleSet *tmp = NULL;
+  GstEbuttdElement *element, *parent;
+  gchar *type_string;
+
+  element = node->data;
+
+  type_string = get_element_type_string (element);
+  GST_CAT_LOG (ebuttdparse, "Element type: %s", type_string);
+  g_free (type_string);
+
   if (node->parent) {
     parent = node->parent->data;
     if (parent->style_set) {
@@ -1119,26 +1114,29 @@ resolve_element_style (GNode * node, gpointer data)
         element->style_set = inherit_styling (parent->style_set,
             element->style_set);
       }
-      _print_style_set (element->style_set);
       if (tmp) delete_style_set (tmp);
     }
   }
 
-  if (element->style_set) {
-    GST_CAT_DEBUG (ebuttdparse, "Resolved style:");
-    _print_style_set (element->style_set);
-  }
+  GST_CAT_LOG (ebuttdparse, "Merged style:");
+  _print_style_set (element->style_set);
 
   return FALSE;
 }
 
 
 static void
-resolve_body_styles (GNode * tree, GHashTable * style_hash)
+inherit_element_styles (GList * trees)
 {
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, resolve_element_style,
-      style_hash);
+  GList * tree;
+
+  for (tree = g_list_first (trees); tree; tree = tree->next) {
+    GNode *root = (GNode *)tree->data;
+    g_node_traverse (root, G_PRE_ORDER, G_TRAVERSE_ALL, -1, inherit_styles,
+        NULL);
+  }
 }
+
 
 
 static gboolean
@@ -1217,43 +1215,6 @@ resolve_regions (GNode * tree)
 {
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
       resolve_leaf_region, NULL);
-}
-
-
-static gboolean
-inherit_region_style (GNode * node, gpointer data)
-{
-  GstEbuttdElement *element, *region;
-  GHashTable *region_hash;
-  GstEbuttdStyleSet *tmp = NULL;
-
-  g_return_val_if_fail (node != NULL, FALSE);
-  g_return_val_if_fail (data != NULL, FALSE);
-  element = node->data;
-  region_hash = (GHashTable *)data;
-
-  g_assert (element->region != NULL);
-  region = g_hash_table_lookup (region_hash, element->region);
-  g_assert (region != NULL);
-  g_assert (region->style_set != NULL);
-  GST_CAT_DEBUG (ebuttdparse, "Inheriting styling from region %s",
-      element->region);
-  tmp = element->style_set;
-  element->style_set = inherit_styling (region->style_set, element->style_set);
-  if (tmp) delete_style_set (tmp);
-
-  GST_CAT_LOG (ebuttdparse, "Style is now as follows:");
-  _print_style_set (element->style_set);
-
-  return FALSE;
-}
-
-
-static void
-inherit_region_styles (GNode * tree, GHashTable * region_hash)
-{
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
-      inherit_region_style, region_hash);
 }
 
 
@@ -1483,6 +1444,8 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
 }
 
 
+/* Remove nodes that do not belong to @region, or are not an ancestor of a node
+ * belonging to @region. */
 static GNode *
 remove_nodes_by_region (GNode * node, const gchar *region)
 {
@@ -1830,10 +1793,10 @@ delete_scene (GstEbuttdScene * scene)
 static gboolean
 color_is_transparent (const GstSubtitleColor *color)
 {
-    if (!color)
-      return FALSE;
-    else
-      return ((guint)(color->a * 255) == 0);
+  if (!color)
+    return FALSE;
+  else
+    return ((guint)(color->a * 255) == 0);
 }
 
 
@@ -1869,7 +1832,6 @@ assign_region_times (GList *region_trees, GstClockTime doc_begin,
     }
   }
 }
-
 
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
@@ -1938,16 +1900,15 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
       GST_CAT_LOG (ebuttdparse, "Body tree height is %u",
           g_node_max_height (body));
 
-      resolve_region_styles (region_hash, style_hash);
-      resolve_body_styles (body, style_hash);
       GST_CAT_LOG (ebuttdparse, "Body tree now contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
       strip_surrounding_whitespace (body);
       resolve_timings (body);
       resolve_regions (body);
       region_trees = split_body_by_region (body, region_hash);
+      resolve_referenced_styles (region_trees, style_hash);
+      inherit_element_styles (region_trees);
       assign_region_times (region_trees, buffer_pts, buffer_duration);
-      inherit_region_styles (body, region_hash);
       scenes = create_scenes (region_trees);
       GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
           g_list_length (scenes));
