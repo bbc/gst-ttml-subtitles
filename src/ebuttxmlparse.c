@@ -1295,60 +1295,9 @@ update_transition_time (GNode * node, gpointer data)
 }
 
 
-static gboolean
-find_transitioning_element (GNode * node, gpointer data)
-{
-  GstEbuttdElement *element = node->data;
-  GstEbuttdTransition *transition = (GstEbuttdTransition *)data;
-
-  if (element->begin == transition->time) {
-    transition->appearing_elements =
-      g_list_append (transition->appearing_elements, element);
-    GST_CAT_LOG (ebuttdparse, "Found element appearing at time %"
-        GST_TIME_FORMAT, GST_TIME_ARGS (transition->time));
-  } else if (element->end == transition->time) {
-    transition->disappearing_elements =
-      g_list_append (transition->disappearing_elements, element);
-    GST_CAT_LOG (ebuttdparse, "Found element disappearing at time %"
-        GST_TIME_FORMAT, GST_TIME_ARGS (transition->time));
-  }
-
-  return FALSE;
-}
-
-
-/* Return details about the next transition after @time. */
-static GstEbuttdTransition *
-find_next_transition (GNode * tree, GstClockTime time)
-{
-  GstEbuttdTransition * transition;
-  TrState state;
-
-  g_return_val_if_fail (tree != NULL, NULL);
-  state.start_time = GST_CLOCK_TIME_IS_VALID (time) ? time : 0;
-  state.next_transition_time = GST_CLOCK_TIME_NONE;
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
-      update_transition_time, &state);
-
-  if (state.next_transition_time == GST_CLOCK_TIME_NONE)
-    return NULL;
-
-  transition = g_slice_new0 (GstEbuttdTransition);
-  transition->time = state.next_transition_time;
-  GST_CAT_LOG (ebuttdparse, "Next transition is at %" GST_TIME_FORMAT,
-      GST_TIME_ARGS (state.next_transition_time));
-
-  /* Find which elements start/end at the transition time. */
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
-      find_transitioning_element, transition);
-
-  return transition;
-}
-
-
 /* Return details about the next transition after @time. */
 static GstClockTime
-find_next_transition2 (GList * trees, GstClockTime time)
+find_next_transition (GList * trees, GstClockTime time)
 {
   TrState state;
   state.start_time = time;
@@ -1364,38 +1313,6 @@ find_next_transition2 (GList * trees, GstClockTime time)
       GST_TIME_ARGS (state.next_transition_time));
 
   return state.next_transition_time;
-}
-
-
-static GList *
-update_active_element_list (GList * active_elements,
-    GstEbuttdTransition * transition)
-{
-  GList *disappearing_element;
-  GList *appearing_element;
-
-  g_return_val_if_fail (transition != NULL, NULL);
-
-  disappearing_element = g_list_first (transition->disappearing_elements);
-  appearing_element = g_list_first (transition->appearing_elements);
-
-  /* If elements in transition->disappearing_elements are in active_elements,
-   * remove them. */
-  while (disappearing_element) {
-    active_elements =
-      g_list_remove (active_elements, disappearing_element->data);
-    disappearing_element = disappearing_element->next;
-  }
-
-  /* If elements in transition->appearing_elements are not in active_elements,
-   * add them. */
-  while (appearing_element) {
-    active_elements =
-      g_list_append (active_elements, appearing_element->data);
-    appearing_element = appearing_element->next;
-  }
-
-  return active_elements;
 }
 
 
@@ -1462,7 +1379,7 @@ create_scenes (GList * region_trees)
   GList *active_elements = NULL;
   GstClockTime timestamp = 0;
 
-  while ((timestamp = find_next_transition2 (region_trees, timestamp))
+  while ((timestamp = find_next_transition (region_trees, timestamp))
       != GST_CLOCK_TIME_NONE) {
     GST_CAT_LOG (ebuttdparse, "Next transition found at time %" GST_TIME_FORMAT,
         GST_TIME_ARGS (timestamp));
@@ -1566,33 +1483,6 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
 }
 
 
-static GHashTable *
-split_scenes_by_region (GList * active_elements)
-{
-  GHashTable *ret = NULL;
-
-  g_return_val_if_fail (active_elements != NULL, NULL);
-
-  ret = g_hash_table_new (g_str_hash, g_str_equal);
-
-  while (active_elements) {
-    GstEbuttdElement *element = active_elements->data;
-    _print_element (element);
-    GList *list = g_hash_table_lookup (ret, element->region);
-    list = g_list_append (list, element);
-    GST_CAT_DEBUG (ebuttdparse, "Inserting list under the following key: %s",
-        element->region);
-    g_hash_table_insert (ret, element->region, list);
-    active_elements = active_elements->next;
-  }
-
-  GST_CAT_DEBUG (ebuttdparse, "Active elements have been split into %u regions",
-      g_hash_table_size (ret));
-
-    return ret;
-}
-
-
 static GNode *
 remove_nodes_by_region (GNode * node, const gchar *region)
 {
@@ -1658,75 +1548,6 @@ split_body_by_region (GNode * body, GHashTable * regions)
   }
 
   GST_CAT_DEBUG (ebuttdparse, "Returning %u trees.", g_list_length (ret));
-  return ret;
-}
-
-
-static GNode *
-create_isd_tree (GNode * tree, GList * active_elements)
-{
-  GList *leaves;
-  GQueue *node_stack;
-  GNode *element_node, *ancestor, *junction = NULL;
-  GNode *ret = NULL;
-
-  g_return_val_if_fail (tree != NULL, NULL);
-  g_return_val_if_fail (active_elements != NULL, NULL);
-
-  node_stack = g_queue_new ();
-
-  GST_CAT_DEBUG (ebuttdparse, "There are %u active elements",
-      g_list_length (active_elements));
-
-  /* Create a new tree containing all active elements and their ancestors. */
-  for (leaves = g_list_first (active_elements); leaves != NULL;
-      leaves = leaves->next) {
-    GNode * new_leaf;
-    GstEbuttdElement *element = leaves->data;
-    /* XXX: Revert to storing nodes in active_elements to avoid find
-     * operation? */
-    element_node = g_node_find (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, element);
-    g_assert (element_node != NULL);
-    GST_CAT_DEBUG (ebuttdparse, "Finding ancestors for following element:");
-    _print_element (element_node->data);
-
-    for (ancestor = element_node->parent; ancestor;
-        ancestor = ancestor->parent) {
-      /* Don't include ancestors already in output tree. */
-      if (ret && (junction = g_node_find (ret, G_PRE_ORDER,
-              G_TRAVERSE_ALL, ancestor->data))) {
-          GST_CAT_DEBUG (ebuttdparse, "Element already exists in output tree:");
-          _print_element (ancestor->data);
-          break;
-      } else {
-        g_queue_push_head (node_stack, ancestor->data);
-        GST_CAT_DEBUG (ebuttdparse, "Added following element to stack:");
-        _print_element (ancestor->data);
-        GST_CAT_DEBUG (ebuttdparse, "Stack depth is now %u",
-            g_queue_get_length (node_stack));
-      }
-    }
-
-    /* Graft nodes in queue onto output tree. */
-    while ((element = g_queue_pop_head (node_stack))) {
-      GNode *node = g_node_new (element);
-      if (junction) {
-        junction = g_node_append (junction, node);
-        GST_CAT_DEBUG (ebuttdparse, "Appended following element to ret:");
-        _print_element (junction->data);
-      } else {
-        GST_CAT_DEBUG (ebuttdparse,
-            "Setting the following element at the head of ret:");
-        _print_element (node->data);
-        ret = junction = node;
-      }
-    }
-
-    /* Append active element to tip of branch. */
-    new_leaf = g_node_new (element_node->data);
-    junction = g_node_append (junction, new_leaf);
-  }
-
   return ret;
 }
 
@@ -1930,7 +1751,7 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 
 
 static GNode *
-create_and_attach_metadata2 (GList * scenes, guint cellres_x, guint cellres_y)
+create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_y)
 {
   GList *scene_entry;
 
@@ -1958,67 +1779,6 @@ create_and_attach_metadata2 (GList * scenes, guint cellres_x, guint cellres_y)
     gst_buffer_add_subtitle_meta (scene->buf, areas);
     /* XXX: unref areas? If gst_buffer_add_subtitle_meta refs areas, then we
      * should unref here. */
-  }
-
-  return NULL;
-}
-
-static GNode *
-create_and_attach_metadata (GNode * tree, GList * scenes,
-    GHashTable * region_hash, guint cellres_x, guint cellres_y)
-{
-  while (scenes) {
-    GstEbuttdScene * scene = scenes->data;
-    GHashTable *elements_by_region;
-    GHashTableIter iter;
-    gpointer key, value;
-    GPtrArray *areas = g_ptr_array_new ();
-
-    g_assert (scene != NULL);
-
-    scene->buf = gst_buffer_new ();
-    GST_BUFFER_PTS (scene->buf) = scene->begin;
-    GST_BUFFER_DURATION (scene->buf) = (scene->end - scene->begin);
-
-    /* Split the active nodes by region. */
-    elements_by_region = split_scenes_by_region (scene->elements);
-
-    GST_CAT_DEBUG (ebuttdparse, "Hash table has %u entries.",
-        g_hash_table_size (elements_by_region));
-
-    g_hash_table_iter_init (&iter, elements_by_region);
-    while (g_hash_table_iter_next (&iter, &key, &value)) {
-      GstEbuttdElement *region;
-      GNode *region_node;
-      GNode *isd_tree;
-      gchar *region_name = (gchar *)key;
-      GList *region_elements = (GList *)value;
-      GstSubtitleArea *area;
-
-      isd_tree = create_isd_tree (tree, region_elements);
-      GST_CAT_LOG (ebuttdparse, "Returned tree has %u nodes",
-          g_node_n_nodes (isd_tree, G_TRAVERSE_ALL));
-
-      /* Retrieve region element and wrap in a node. */
-      GST_CAT_LOG (ebuttdparse, "About to retrieve %s from hash table %p",
-          region_name, region_hash);
-      region = g_hash_table_lookup (region_hash, region_name);
-      g_assert (region != NULL);
-      region_node = g_node_new (region);
-
-      /* Reparent tree to region node. */
-      g_node_prepend (region_node, isd_tree);
-
-      area = create_subtitle_area (scene, region_node, cellres_x, cellres_y);
-      g_ptr_array_add (areas, area);
-      g_node_destroy (region_node);
-    }
-
-    gst_buffer_add_subtitle_meta (scene->buf, areas);
-    /* XXX: unref areas? If gst_buffer_add_subtitle_meta refs areas, then we
-     * should unref here. */
-    scenes = g_list_next (scenes);
-    g_hash_table_destroy (elements_by_region);
   }
 
   return NULL;
@@ -2191,7 +1951,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
       scenes = create_scenes (region_trees);
       GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
           g_list_length (scenes));
-      create_and_attach_metadata2 (scenes, cellres_x, cellres_y);
+      create_and_attach_metadata (scenes, cellres_x, cellres_y);
       buffer_list = create_buffer_list (scenes);
 
       g_list_free_full (scenes, (GDestroyNotify) delete_scene);

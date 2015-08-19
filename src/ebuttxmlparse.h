@@ -33,7 +33,6 @@ G_BEGIN_DECLS
 typedef struct _GstEbuttdStyleSet GstEbuttdStyleSet;
 typedef struct _GstEbuttdElement GstEbuttdElement;
 typedef struct _GstEbuttdScene GstEbuttdScene;
-typedef struct _GstEbuttdTransition GstEbuttdTransition;
 
 
 struct _GstEbuttdStyleSet {
@@ -94,16 +93,6 @@ struct _GstEbuttdScene {
   GList *elements;
   GstBuffer *buf;
 };
-
-
-/* Represents a transition, i.e., a point in time where one or more elements
- * change from being visible to invisible (and/or vice-versa). */
-struct _GstEbuttdTransition {
-  GstClockTime time;
-  GList *appearing_elements;
-  GList *disappearing_elements;
-};
-
 
 
 /* struct to hold metadata before the head metadata
