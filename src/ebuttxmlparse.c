@@ -1773,6 +1773,9 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
   g_assert (area != NULL);
 
   node = tree->children;
+
+  if (!node) return area;
+
   g_assert (node->next == NULL);
   element = node->data;
   g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_BODY);
@@ -1927,6 +1930,40 @@ create_subtitle_area (GstEbuttdScene * scene, GNode * tree, guint cellres_x,
 
 
 static GNode *
+create_and_attach_metadata2 (GList * scenes, guint cellres_x, guint cellres_y)
+{
+  GList *scene_entry;
+
+  for (scene_entry = g_list_first (scenes); scene_entry;
+      scene_entry = scene_entry->next) {
+    GstEbuttdScene * scene = scene_entry->data;
+    GPtrArray *areas = g_ptr_array_new ();
+    GList *region_tree;
+
+    g_assert (scene != NULL);
+
+    scene->buf = gst_buffer_new ();
+    GST_BUFFER_PTS (scene->buf) = scene->begin;
+    GST_BUFFER_DURATION (scene->buf) = (scene->end - scene->begin);
+
+    for (region_tree = g_list_first (scene->elements); region_tree;
+        region_tree = region_tree->next) {
+      GNode *tree = (GNode *)region_tree->data;
+      GstSubtitleArea *area;
+
+      area = create_subtitle_area (scene, tree, cellres_x, cellres_y);
+      g_ptr_array_add (areas, area);
+    }
+
+    gst_buffer_add_subtitle_meta (scene->buf, areas);
+    /* XXX: unref areas? If gst_buffer_add_subtitle_meta refs areas, then we
+     * should unref here. */
+  }
+
+  return NULL;
+}
+
+static GNode *
 create_and_attach_metadata (GNode * tree, GList * scenes,
     GHashTable * region_hash, guint cellres_x, guint cellres_y)
 {
@@ -1994,7 +2031,7 @@ GList * create_buffer_list (GList * scenes)
 
   while (scenes) {
     GstEbuttdScene *scene = scenes->data;
-    ret = g_list_prepend (ret, scene->buf);
+    ret = g_list_prepend (ret, gst_buffer_ref (scene->buf));
     scenes = scenes->next;
   }
   return g_list_reverse (ret);
@@ -2059,6 +2096,12 @@ assign_region_times (GList *region_trees, GstClockTime doc_begin,
 
     if (always_visible && !color_is_transparent (&region_color)) {
       GST_CAT_DEBUG (ebuttdparse, "Assigning times to region.");
+      /* If the input XML document was not encapsulated in a container that
+       * provides timing information for that document as a whole (i.e., PTS
+       * and duration), set region start times to 40ms and end times to 24
+       * hours. This allows the transition finding logic to work cleanly and
+       * ensures that the regions are visible for virtually all of any
+       * real-world stream. */
       region->begin = (doc_begin != GST_CLOCK_TIME_NONE) ?
         doc_begin : 40 * GST_MSECOND;
       region->end = (doc_duration != GST_CLOCK_TIME_NONE) ?
@@ -2148,13 +2191,10 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
       scenes = create_scenes (region_trees);
       GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
           g_list_length (scenes));
-      /*create_and_attach_metadata (body, scenes, region_hash, cellres_x,
-          cellres_y);
+      create_and_attach_metadata2 (scenes, cellres_x, cellres_y);
       buffer_list = create_buffer_list (scenes);
-      GST_CAT_LOG (ebuttdparse, "There are %u buffers in output list.",
-          g_list_length (buffer_list));*/
 
-      /*g_list_free_full (scenes, (GDestroyNotify) delete_scene);*/
+      g_list_free_full (scenes, (GDestroyNotify) delete_scene);
       delete_tree (body);
     }
     cur = cur->next;
