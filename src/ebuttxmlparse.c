@@ -1794,6 +1794,7 @@ assign_region_times (GList *region_trees, GstClockTime doc_begin,
   }
 }
 
+
 GList *
 ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
     GstClockTime buffer_duration)
