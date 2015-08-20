@@ -1256,7 +1256,7 @@ remove_nodes_by_time (GNode * node, GstClockTime time)
     next_child = child ? child->next : NULL;
   }
 
-  /* XXX: Should we be relying on GST_CLOCK_TIME-NONE being MAX_UINT64? 
+  /* XXX: Should we be relying on GST_CLOCK_TIME-NONE being MAX_UINT64?
    * Or should we have explicit tests for validity of begin & end? */
   if (!node->children && ((element->begin > time) || (element->end <= time))) {
     g_node_destroy (node);
