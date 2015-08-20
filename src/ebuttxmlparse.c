@@ -1550,22 +1550,20 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
   g_assert (area != NULL);
 
   node = tree->children;
-
-  if (!node) return area;
+  if (!node)
+    return area;
 
   g_assert (node->next == NULL);
   element = node->data;
   g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_BODY);
 
-  node = node->children;
-  while (node) {
+  for (node = node->children; node; node = node->next) {
     GNode *p_node;
 
     element = node->data;
     g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_DIV);
 
-    p_node = node->children;
-    while (p_node) {
+    for (p_node = node->children; p_node; p_node = p_node->next) {
       GstSubtitleBlock *block;
       GstSubtitleStyleSet *block_style;
       GNode *content_node;
@@ -1580,8 +1578,8 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
       block = gst_subtitle_block_new (block_style);
       g_assert (block != NULL);
 
-      content_node = p_node->children;
-      while (content_node) {
+      for (content_node = p_node->children; content_node;
+          content_node = content_node->next) {
         GNode *anon_node;
         element = content_node->data;
 
@@ -1590,8 +1588,8 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
           add_element (block, element, buf, cellres_x, cellres_y);
         } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN) {
           /* Loop through anon-span children of this span. */
-          anon_node = content_node->children;
-          while (anon_node) {
+          for (anon_node = content_node->children; anon_node;
+              anon_node = anon_node->next) {
             element = anon_node->data;
 
             if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR
@@ -1601,21 +1599,17 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
               GST_CAT_ERROR (ebuttdparse,
                   "Element type not allowed at this level of document.");
             }
-            anon_node = anon_node->next;
           }
         } else {
           GST_CAT_ERROR (ebuttdparse,
               "Element type not allowed at this level of document.");
         }
-        content_node = content_node->next;
       }
 
       gst_subtitle_area_add_block (area, block);
       GST_CAT_DEBUG (ebuttdparse, "Added block to area; there are now %u blocks"
           " in the area.", gst_subtitle_area_get_block_count (area));
-      p_node = p_node->next;
     }
-    node = node->next;
   }
 
   return area;
