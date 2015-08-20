@@ -284,7 +284,7 @@ parse_style_set (const xmlNode * node)
 static void
 delete_style_set (GstEbuttdStyleSet * style)
 {
-  GST_CAT_DEBUG (ebuttdparse, "Deleting style set %p...", style);
+  GST_CAT_LOG (ebuttdparse, "Deleting style set %p...", style);
   if (style->text_direction) g_free ((gpointer) style->text_direction);
   if (style->font_family) g_free ((gpointer) style->font_family);
   if (style->font_size) g_free ((gpointer) style->font_size);
@@ -313,7 +313,7 @@ delete_style_set (GstEbuttdStyleSet * style)
 static void
 delete_element (GstEbuttdElement * element)
 {
-  GST_CAT_DEBUG (ebuttdparse, "Deleting element %p...", element);
+  GST_CAT_LOG (ebuttdparse, "Deleting element %p...", element);
 
   if (element->id) g_free ((gpointer) element->id);
   if (element->styles) g_strfreev (element->styles);
@@ -1027,7 +1027,7 @@ resolve_styles (GNode * node, gpointer data)
 
   for (i = 0; i < g_strv_length (element->styles); ++i) {
     tmp = element->style_set;
-    GST_CAT_DEBUG (ebuttdparse, "Merging style %s...", element->styles[i]);
+    GST_CAT_LOG (ebuttdparse, "Merging style %s...", element->styles[i]);
     style = g_hash_table_lookup (style_hash, element->styles[i]);
     g_assert (style != NULL);
     element->style_set = merge_style_sets (element->style_set,
@@ -1277,16 +1277,16 @@ get_active_elements (GList * element_trees, GstClockTime time)
 
   for (tree = g_list_first (element_trees); tree; tree = tree->next) {
     GNode *root = g_node_copy ((GNode *)tree->data);
-    GST_CAT_DEBUG (ebuttdparse, "There are %u nodes in tree.",
+    GST_CAT_LOG (ebuttdparse, "There are %u nodes in tree.",
         g_node_n_nodes (root, G_TRAVERSE_ALL));
     root = remove_nodes_by_time (root, time);
     if (root) {
-      GST_CAT_DEBUG (ebuttdparse, "After filtering there are %u nodes in tree.",
+      GST_CAT_LOG (ebuttdparse, "After filtering there are %u nodes in tree.",
           g_node_n_nodes (root, G_TRAVERSE_ALL));
 
       ret = g_list_append (ret, root);
     } else {
-      GST_CAT_DEBUG (ebuttdparse, "All elements have been filtered from tree.");
+      GST_CAT_LOG (ebuttdparse, "All elements have been filtered from tree.");
     }
   }
 
@@ -1371,7 +1371,7 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
             /* XXX: should check that style ID is unique. */
             g_hash_table_insert (style_hash,
                 (gpointer) (element->id), (gpointer) element);
-            GST_CAT_DEBUG (ebuttdparse, "added style %s to style_hash",
+            GST_CAT_LOG (ebuttdparse, "added style %s to style_hash",
                 element->id);
             _print_style_set (element->style_set);
           }
@@ -1393,7 +1393,7 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
               /* XXX: should check that region ID is unique. */
             g_hash_table_insert (region_hash,
                 (gpointer) (element->id), (gpointer) element);
-            GST_CAT_DEBUG (ebuttdparse, "added region %s to region_hash",
+            GST_CAT_LOG (ebuttdparse, "added region %s to region_hash",
                 element->id);
             _print_style_set (element->style_set);
           }
@@ -1457,18 +1457,18 @@ split_body_by_region (GNode * body, GHashTable * regions)
     GNode *body_copy = g_node_copy (body);
 
     GST_CAT_DEBUG (ebuttdparse, "Creating tree for region %s", region_name);
-    GST_CAT_DEBUG (ebuttdparse, "Copy of body has %u nodes.",
+    GST_CAT_LOG (ebuttdparse, "Copy of body has %u nodes.",
         g_node_n_nodes (body_copy, G_TRAVERSE_ALL));
 
     body_copy = remove_nodes_by_region (body_copy, region_name);
     if (body_copy) {
-      GST_CAT_DEBUG (ebuttdparse, "Copy of body now has %u nodes.",
+      GST_CAT_LOG (ebuttdparse, "Copy of body now has %u nodes.",
           g_node_n_nodes (body_copy, G_TRAVERSE_ALL));
 
       /* Reparent tree to region node. */
       g_node_prepend (region_node, body_copy);
     }
-    GST_CAT_DEBUG (ebuttdparse, "Final tree has %u nodes.",
+    GST_CAT_LOG (ebuttdparse, "Final tree has %u nodes.",
         g_node_n_nodes (region_node, G_TRAVERSE_ALL));
     ret = g_list_append (ret, region_node);
   }
