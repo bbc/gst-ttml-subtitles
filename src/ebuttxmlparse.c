@@ -1500,6 +1500,8 @@ add_text_to_buffer (GstBuffer * buf, const gchar * text)
 }
 
 
+/* Create a GstSubtitleElement from @element, add it to @block, and insert it's
+ * associated text in @buf. */
 static void
 add_element (GstSubtitleBlock * block, GstEbuttdElement * element,
     GstBuffer * buf, guint cellres_x, guint cellres_y)
