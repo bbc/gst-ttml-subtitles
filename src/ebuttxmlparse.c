@@ -1728,11 +1728,12 @@ assign_region_times (GList *region_trees, GstClockTime doc_begin,
     if (always_visible && !color_is_transparent (&region_color)) {
       GST_CAT_DEBUG (ebuttdparse, "Assigning times to region.");
       /* If the input XML document was not encapsulated in a container that
-       * provides timing information for that document as a whole (i.e., its
-       * PTS and duration), set region start times to 40ms and end times to 24
-       * hours. This allows the transition finding logic to work cleanly and
-       * ensures that the regions with showBackground="always" are visible for
-       * [virtually] all of any real-world stream. */
+       * provides timing information for the document as a whole (i.e., its
+       * PTS and duration) and the region background should be always visible,
+       * set region start times to 40ms and end times to 24 hours. This allows
+       * the transition finding logic to work cleanly and ensures that the
+       * regions with showBackground="always" are visible for [virtually] the
+       * entirety of any real-world stream. */
       region->begin = (doc_begin != GST_CLOCK_TIME_NONE) ?
         doc_begin : 40 * GST_MSECOND;
       region->end = (doc_duration != GST_CLOCK_TIME_NONE) ?
