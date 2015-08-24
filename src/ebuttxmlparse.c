@@ -1062,7 +1062,7 @@ resolve_styles (GNode * node, gpointer data)
     if (tmp) delete_style_set (tmp);
   }
 
-  GST_CAT_LOG (ebuttdparse, "Merged style:");
+  GST_CAT_LOG (ebuttdparse, "Styleset after merging:");
   _print_style_set (element->style_set);
 
   return FALSE;
@@ -1112,7 +1112,7 @@ inherit_styles (GNode * node, gpointer data)
     }
   }
 
-  GST_CAT_LOG (ebuttdparse, "Merged style:");
+  GST_CAT_LOG (ebuttdparse, "Styleset after inheriting:");
   _print_style_set (element->style_set);
 
   return FALSE;
