@@ -1751,6 +1751,7 @@ delete_scene (GstEbuttdScene * scene)
 }
 
 
+/* Returns TRUE if @color is totally transparent. */
 static gboolean
 color_is_transparent (const GstSubtitleColor *color)
 {
