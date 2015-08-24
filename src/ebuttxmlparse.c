@@ -913,6 +913,17 @@ merge_style_sets (GstEbuttdStyleSet * set1, GstEbuttdStyleSet * set2)
 }
 
 
+static const gchar *
+get_relative_font_size (const gchar * parent_size,
+    const gchar * child_size)
+{
+  guint psize = (guint) g_ascii_strtoull (parent_size, NULL, 10U);
+  guint csize = (guint) g_ascii_strtoull (child_size, NULL, 10U);
+  csize = (csize * psize) / 100U;
+  return g_strdup_printf ("%u%%", csize);
+}
+
+
 static GstEbuttdStyleSet *
 inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
 {
@@ -942,8 +953,26 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
       ret->text_direction = g_strdup (parent->text_direction);
     if (parent->font_family && !ret->font_family)
       ret->font_family = g_strdup (parent->font_family);
-    if (parent->font_size && !ret->font_size)
-      ret->font_size = g_strdup (parent->font_size);
+
+    /* In TTML, if an element which has a defined fontSize is the child of an
+     * element that also has a defined fontSize, the child's font size is
+     * relative to that of its parent. If its parent doesn't have a defined
+     * fontSize, then the child's fontSize is relative to the document's cell
+     * size. Therefore, if the former is true, we calculate the value of
+     * font_size based on the parent's font_size; otherwise, we simply keep the
+     * value defined in the child's styleset. */
+    if (parent->font_size) {
+      if (!ret->font_size) {
+        ret->font_size = g_strdup (parent->font_size);
+      } else {
+        const gchar *tmp = ret->font_size;
+        ret->font_size = get_relative_font_size (parent->font_size,
+            child->font_size);
+        GST_CAT_ERROR (ebuttdparse, "Calculated font size: %s", ret->font_size);
+        g_free ((gpointer) tmp);
+      }
+    }
+
     if (parent->line_height && !ret->line_height)
       ret->line_height = g_strdup (parent->line_height);
     if (parent->text_align && !ret->text_align)
@@ -1437,6 +1466,36 @@ remove_nodes_by_region (GNode * node, const gchar *region)
 }
 
 
+static GstEbuttdElement *
+copy_element (const GstEbuttdElement * element)
+{
+  GstEbuttdElement *ret = g_slice_new0 (GstEbuttdElement);
+
+  ret->type = element->type;
+  if (element->id)
+    ret->id = g_strdup (element->id);
+  if (element->styles)
+    ret->styles  = g_strdupv (element->styles);
+  if (element->region)
+    ret->region = g_strdup (element->region);
+  ret->begin = element->begin;
+  ret->end = element->end;
+  if (element->style_set)
+    ret->style_set = copy_style_set (element->style_set);
+  if (element->text)
+    ret->text = g_strdup (element->text);
+  ret->text_index = element->text_index;
+
+  return ret;
+}
+
+static gpointer
+copy_tree_element (gconstpointer src, gpointer data)
+{
+  return copy_element ((GstEbuttdElement *)src);
+}
+
+
 /* Split the body tree into elements that belong to each region. Returns a list
  * of trees, one per region, each with the corresponding region element at its
  * root. */
@@ -1451,8 +1510,8 @@ split_body_by_region (GNode * body, GHashTable * regions)
   while (g_hash_table_iter_next (&iter, &key, &value)) {
     gchar *region_name = (gchar *)key;
     GstEbuttdElement *region = (GstEbuttdElement *)value;
-    GNode *region_node = g_node_new (region);
-    GNode *body_copy = g_node_copy (body);
+    GNode *region_node = g_node_new (copy_element (region));
+    GNode *body_copy = g_node_copy_deep (body, copy_tree_element, NULL);
 
     GST_CAT_DEBUG (ebuttdparse, "Creating tree for region %s", region_name);
     GST_CAT_LOG (ebuttdparse, "Copy of body has %u nodes.",
@@ -1820,6 +1879,7 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
       buffer_list = create_buffer_list (scenes);
 
       g_list_free_full (scenes, (GDestroyNotify) delete_scene);
+      g_list_free_full (region_trees, (GDestroyNotify) delete_tree);
       delete_tree (body);
     }
     cur = cur->next;
