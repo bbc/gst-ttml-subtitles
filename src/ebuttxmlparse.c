@@ -1187,7 +1187,6 @@ static gboolean
 resolve_leaf_region (GNode * node, gpointer data)
 {
   GstEbuttdElement *element, *leaf;
-
   leaf = element = node->data;
 
   while (node->parent && !element->region) {
@@ -1585,6 +1584,7 @@ add_element (GstSubtitleBlock * block, GstEbuttdElement * element,
     buffer_index = add_text_to_buffer (buf, element->text);
   else
     buffer_index = add_text_to_buffer (buf, "\n");
+
   GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
       buffer_index);
   sub_element = gst_subtitle_element_new (element_style, buffer_index);
