@@ -1195,13 +1195,11 @@ resolve_leaf_region (GNode * node, gpointer data)
     element = node->data;
   }
 
-  if (!element->region) {
-    GST_CAT_WARNING (ebuttdparse,
-        "No region found above leaf element. Removing from tree...");
-    g_node_unlink (node);
-  } else {
+  if (element->region) {
     leaf->region = g_strdup (element->region);
     GST_CAT_LOG (ebuttdparse, "Leaf region: %s", leaf->region);
+  } else {
+    GST_CAT_WARNING (ebuttdparse, "No region found above leaf element.");
   }
 
   return FALSE;
