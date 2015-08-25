@@ -1458,15 +1458,18 @@ remove_nodes_by_region (GNode * node, const gchar *region)
     next_child = child ? child->next : NULL;
   }
 
-  if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
+  if ((element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
+        || element->type != GST_EBUTTD_ELEMENT_TYPE_BR)
       && element->region && (g_strcmp0 (element->region, region) != 0)) {
+    delete_element (element);
     g_node_destroy (node);
-    node = NULL;
+    return NULL;
   }
   if (element->type != GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
-      && !node->children) {
+        && element->type != GST_EBUTTD_ELEMENT_TYPE_BR && !node->children) {
+    delete_element (element);
     g_node_destroy (node);
-    node = NULL;
+    return NULL;
   }
 
   return node;
