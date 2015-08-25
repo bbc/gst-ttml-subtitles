@@ -1872,8 +1872,6 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
       GST_CAT_LOG (ebuttdparse, "Body tree height is %u",
           g_node_max_height (body));
 
-      GST_CAT_LOG (ebuttdparse, "Body tree now contains %u nodes.",
-          g_node_n_nodes (body, G_TRAVERSE_ALL));
       strip_surrounding_whitespace (body);
       resolve_timings (body);
       resolve_regions (body);
