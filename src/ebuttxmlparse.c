@@ -768,6 +768,13 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
         break;
     }
     g_strfreev (decimals);
+
+    /* Padding values are relative to the region size; make them relative to
+     * the overall display size like all other dimensions. */
+    ss->padding_before *= ss->extent_h;
+    ss->padding_after *= ss->extent_h;
+    ss->padding_end *= ss->extent_w;
+    ss->padding_start *= ss->extent_w;
   }
 
   if (ess->writing_mode) {
