@@ -3067,15 +3067,16 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
 
   GST_CAT_DEBUG (ebuttdrender, "Rendering text area %p", area);
 
-  width = (guint) (area->style.extent_w * overlay->width);
-  height = (guint) (area->style.extent_h * overlay->height);
-  x = (guint) (area->style.origin_x * overlay->width);
-  y = (guint) (area->style.origin_y * overlay->height);
+  width = (guint) (round (area->style.extent_w * overlay->width));
+  height = (guint) (round (area->style.extent_h * overlay->height));
+  x = (guint) (round (area->style.origin_x * overlay->width));
+  y = (guint) (round (area->style.origin_y * overlay->height));
 
-  padding_start = (guint) (area->style.padding_start * width);
-  padding_end = (guint) (area->style.padding_end * width);
-  padding_before = (guint) (area->style.padding_before * width);
-  padding_after = (guint) (area->style.padding_after * width);
+  padding_start = (guint) (round (area->style.padding_start * overlay->width));
+  padding_end = (guint) (round (area->style.padding_end * overlay->width));
+  padding_before =
+    (guint) (round (area->style.padding_before * overlay->height));
+  padding_after = (guint) (round (area->style.padding_after * overlay->height));
 
   GST_CAT_DEBUG (ebuttdrender,
       "Padding start: %u  end: %u  before: %u  after: %u",
