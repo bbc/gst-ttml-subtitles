@@ -95,32 +95,6 @@ struct _GstEbuttdScene {
 };
 
 
-/* struct to hold metadata before the head metadata
-* TODO: Rename Namespaces or something more descriptive
-* TODO: This only records the namespaces if the recommend names
-* are used. These prefixes are not required by the ebuttd
-*/
-typedef struct
-{
-  gchar *xmlns;
-  gchar *ttp;
-  gchar *tts;
-  gchar *ttm;
-  gchar *ebuttm;
-  gchar *ebutts;
-  gchar *lang;
-  gchar *space;
-  gchar *timeBase;
-  gchar *cellResolution;        /* "<#col> <#row>"  eg "32 15" */
-
-  gchar *cell_resolution_x;     /*"32" */
-  gchar *cell_resolution_y;     /*"15" */
-
-  gboolean sent_document_metadata;
-
-
-} DocMetadata;
-
 GList *ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime doc_begin,
     GstClockTime doc_duration);
 

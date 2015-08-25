@@ -339,97 +339,6 @@ get_xml_property (const xmlNode * node, const char *name)
 }
 
 
-static gint
-create_element_tree (const gchar * xml_file_buffer,
-    xmlDocPtr * doc_ptr, xmlNodePtr * cur_ptr)
-{
-  xmlDocPtr doc;
-  xmlNodePtr cur;
-
-  /* xmlReadMemory takes a char array and a fake file name */
-  doc = xmlReadMemory (xml_file_buffer,
-      strlen (xml_file_buffer), "any_doc_name", NULL, 0);
-
-  if (doc == NULL) {
-    GST_DEBUG ("Document not parsed successfully");        /* error */
-    return 1;
-  }
-
-  cur = xmlDocGetRootElement (doc);
-
-  if (cur == NULL) {
-    GST_DEBUG ("empty document");
-    xmlFreeDoc (doc);
-    return 2;
-  }
-
-  if (xmlStrcmp (cur->name, (const xmlChar *) "tt")) {
-    GST_CAT_ERROR (ebuttdparse, "document of the wrong type; root node != tt");
-    xmlFreeDoc (doc);
-    return 3;
-  }
-
-  *doc_ptr = doc;
-  *cur_ptr = cur;
-  return 0;
-}
-
-
-static DocMetadata *
-extract_tt_tag_properties (xmlNodePtr ttnode, DocMetadata * document_metadata)
-{
-  gchar *prop;
-  const xmlChar *node_name;
-  /*xmlNodePtr prop_node, xmlns_node;*/
-  xmlAttrPtr prop_node;
-
-  if (!document_metadata)
-    document_metadata = g_slice_new0 (DocMetadata);
-
-#if 0
-  prop = (gchar *) xmlNodeGetContent (ttnode);
-  document_metadata->xmlns = prop;
-  prop = (gchar *) xmlNodeGetContent (ttnode);
-  document_metadata->ttp = prop;
-  prop = (gchar *) xmlNodeGetContent (ttnode);
-  document_metadata->tts = prop;
-  prop = (gchar *) xmlNodeGetContent (ttnode);
-  document_metadata->ttm = prop;
-  prop = (gchar *) xmlNodeGetContent (ttnode);
-  document_metadata->ebuttm = prop;
-  prop = (gchar *) xmlNodeGetContent (ttnode);
-  document_metadata->ebutts = prop;
-#endif
-
-  prop_node = ttnode->properties;       /* ->name will give lang etc */
-
-  while (prop_node != NULL) {
-    node_name = prop_node->name;
-    prop = (gchar *) xmlNodeGetContent (prop_node->children);   /* use first child as the namespace can only have one value */
-
-    if (xmlStrcmp (node_name, (const xmlChar *) "lang") == 0)
-      document_metadata->lang = prop;
-    if (xmlStrcmp (node_name, (const xmlChar *) "space") == 0)
-      document_metadata->space = prop;
-    if (xmlStrcmp (node_name, (const xmlChar *) "timeBase") == 0)
-      document_metadata->timeBase = prop;
-    if (xmlStrcmp (node_name, (const xmlChar *) "cellResolution") == 0) {
-      gchar *end_x, *cell_x, *cell_y;
-      document_metadata->cellResolution = prop; /* looks like "40 24" */
-
-      end_x = g_strstr_len (prop, -1, " ");     /* pointer between two the values */
-      cell_x = g_strndup (prop, (end_x - prop));        /*cut x off */
-      cell_y = end_x + 1;
-
-      document_metadata->cell_resolution_x = cell_x;
-      document_metadata->cell_resolution_y = cell_y;
-    }
-    prop_node = prop_node->next;
-  }
-  return document_metadata;
-}
-
-
 static GstClockTime
 parse_timecode (const gchar * timestring)
 {
@@ -1806,60 +1715,59 @@ assign_region_times (GList *region_trees, GstClockTime doc_begin,
 
 
 GList *
-ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
+ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
     GstClockTime buffer_duration)
 {
-  xmlDocPtr doc;                /* pointer for tree */
+  xmlDocPtr doc;
   xmlNodePtr cur;
 
   GHashTable *style_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
   GHashTable *region_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
-  DocMetadata *document_metadata = NULL;
   GNode *body = NULL;
   GList *scenes = NULL;
-  GList *buffer_list = NULL;
+  GList *output_buffers = NULL;
+  gchar *string;
   guint cellres_x, cellres_y;
 
   GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
       "EBU-TT-D debug category");
-  GST_CAT_LOG (ebuttdparse, "Input file:\n%s", xml_file_buffer);
+  GST_CAT_LOG (ebuttdparse, "Input:\n%s", input);
 
-  /* create element tree */
-  if (create_element_tree (xml_file_buffer, &doc, &cur)) {
+  /* Parse input. */
+  doc = xmlReadMemory (input, strlen (input), "any_doc_name", NULL, 0);
+  if (!doc) {
     GST_CAT_ERROR (ebuttd_parse_debug, "Failed to parse document.");
     return NULL;
   }
+  cur = xmlDocGetRootElement (doc);
 
-  /* handle <tt tag namespace elements */
-  if (xmlStrcmp (cur->name, (const xmlChar *) "tt") == 0) {
-    /**
-     * Go cur->ns->href for the url of xmlns
-     * and cur->ns->next->href etc for the xmlns properties
-     *
-     * For the other properties, go:
-     * cur->properties->children->content for xml:lang
-     * and use next to get to cellResolution etc.
-     *
-     */
-    document_metadata = extract_tt_tag_properties (cur, document_metadata);
+  /* XXX: Should we create our own element tree from the whole document, or
+   * only for the body? */
+
+  /* Check root element is tt:tt. */
+  if (xmlStrcmp (cur->name, (const xmlChar *) "tt") != 0) {
+    GST_CAT_ERROR (ebuttdparse, "Root element of document is not tt:tt.");
+    xmlFreeDoc (doc);
+    return NULL;
   }
 
-  if (document_metadata->cell_resolution_x)
-    cellres_x = (guint) g_ascii_strtoull (document_metadata->cell_resolution_x,
-        NULL, 10U);
-  else
+  if ((string = get_xml_property (cur, "cellResolution"))) {
+    gchar *ptr = string;
+    cellres_x = (guint) g_ascii_strtoull (ptr, &ptr, 10U);
+    while (!g_ascii_isspace (*ptr)) ++ptr;
+    cellres_y = (guint) g_ascii_strtoull (ptr, NULL, 10U);
+    g_free (string);
+  } else {
     cellres_x = 32;
-
-  if (document_metadata->cell_resolution_y)
-    cellres_y = (guint) g_ascii_strtoull (document_metadata->cell_resolution_y,
-        NULL, 10U);
-  else
     cellres_y = 15;
+  }
 
-  cur = cur->children;
-  while (cur) {
+  GST_CAT_DEBUG (ebuttdparse, "cellres_x: %u   cellres_y: %u", cellres_x,
+      cellres_y);
+
+  for (cur = cur->children; cur; cur = cur->next) {
     if (xmlStrcmp (cur->name, (const xmlChar *) "head") == 0) {
       xml_process_head (cur, style_hash, region_hash);
     } else if (xmlStrcmp (cur->name, (const xmlChar *) "body") == 0) {
@@ -1883,19 +1791,17 @@ ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime buffer_pts,
       GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
           g_list_length (scenes));
       create_and_attach_metadata (scenes, cellres_x, cellres_y);
-      buffer_list = create_buffer_list (scenes);
+      output_buffers = create_buffer_list (scenes);
 
       g_list_free_full (scenes, (GDestroyNotify) delete_scene);
       g_list_free_full (region_trees, (GDestroyNotify) delete_tree);
       delete_tree (body);
     }
-    cur = cur->next;
   }
 
   xmlFreeDoc (doc);
   g_hash_table_destroy (style_hash);
   g_hash_table_destroy (region_hash);
-  if (document_metadata) g_slice_free (DocMetadata, document_metadata);
 
-  return buffer_list;
+  return output_buffers;
 }
