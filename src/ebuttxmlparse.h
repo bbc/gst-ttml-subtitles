@@ -1,8 +1,8 @@
 /* GStreamer EBU-TT-D subtitle parser
  * Copyright (C) <2015> British Broadcasting Corporation
  *   Authors:
- *     Chris Bass <chrisb@rd.bbc.co.uk>
- *     Peter Taylour <peter.taylour@bbc.co.uk>
+ *     Chris Bass <dash@rd.bbc.co.uk>
+ *     Peter Taylour <dash@rd.bbc.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public

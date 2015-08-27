@@ -1,8 +1,8 @@
-/*2 GStreamer
+/* GStreamer
  * Copyright (C) <1999> Erik Walthinsen <omega@cse.ogi.edu>
  * Copyright (C) 2004 Ronald S. Bultje <rbultje@ronald.bitfreak.net>
  * Copyright (C) 2006 Tim-Philipp Müller <tim centricular net>
- * Copyright (C) <2015> British Broadcasting Corporation
+ * Copyright (C) <2015> British Broadcasting Corporation <dash@rd.bbc.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
