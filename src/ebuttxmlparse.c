@@ -1763,36 +1763,44 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
   GST_CAT_DEBUG (ebuttdparse, "cellres_x: %u   cellres_y: %u", cellres_x,
       cellres_y);
 
-  for (node = node->children; node; node = node->next) {
-    if (xmlStrcmp (node->name, (const xmlChar *) "head") == 0) {
-      parse_head (node, styles_table, regions_table);
-    } else if (xmlStrcmp (node->name, (const xmlChar *) "body") == 0) {
-      GList *region_trees;
+  node = node->children;
+  if (xmlStrcmp (node->name, (const xmlChar *) "head") != 0) {
+    GST_CAT_ERROR (ebuttdparse, "First element is not <head>.");
+    xmlFreeDoc (doc);
+    return NULL;
+  }
+  parse_head (node, styles_table, regions_table);
+  node = node->next;
 
-      /* Process Body of xml doc */
-      body = parse_body (node);
-      GST_CAT_LOG (ebuttdparse, "Body tree contains %u nodes.",
-          g_node_n_nodes (body, G_TRAVERSE_ALL));
-      GST_CAT_LOG (ebuttdparse, "Body tree height is %u",
-          g_node_max_height (body));
+  if (xmlStrcmp (node->name, (const xmlChar *) "body") == 0) {
+    GNode *body_tree;
+    GList *region_trees = NULL;
+    GList *scenes = NULL;
 
-      strip_surrounding_whitespace (body);
-      resolve_timings (body);
-      resolve_regions (body);
-      region_trees = split_body_by_region (body, regions_table);
-      resolve_referenced_styles (region_trees, styles_table);
-      inherit_element_styles (region_trees);
-      assign_region_times (region_trees, buffer_pts, buffer_duration);
-      scenes = create_scenes (region_trees);
-      GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
-          g_list_length (scenes));
-      create_and_attach_metadata (scenes, cellres_x, cellres_y);
-      output_buffers = create_buffer_list (scenes);
+    /* Process body_tree of xml doc */
+    body_tree = parse_body (node);
+    GST_CAT_LOG (ebuttdparse, "body_tree tree contains %u nodes.",
+        g_node_n_nodes (body_tree, G_TRAVERSE_ALL));
+    GST_CAT_LOG (ebuttdparse, "body_tree tree height is %u",
+        g_node_max_height (body_tree));
 
-      g_list_free_full (scenes, (GDestroyNotify) delete_scene);
-      g_list_free_full (region_trees, (GDestroyNotify) delete_tree);
-      delete_tree (body);
-    }
+    strip_surrounding_whitespace (body_tree);
+    resolve_timings (body_tree);
+    resolve_regions (body_tree);
+    region_trees = split_body_by_region (body_tree, regions_table);
+    resolve_referenced_styles (region_trees, styles_table);
+    inherit_element_styles (region_trees);
+    assign_region_times (region_trees, buffer_pts, buffer_duration);
+    scenes = create_scenes (region_trees);
+    GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
+        g_list_length (scenes));
+    /* XXX: Might this be confusing, as input docs can contain metadata...? */
+    create_and_attach_metadata (scenes, cellres_x, cellres_y);
+    output_buffers = create_buffer_list (scenes);
+
+    g_list_free_full (scenes, (GDestroyNotify) delete_scene);
+    g_list_free_full (region_trees, (GDestroyNotify) delete_tree);
+    delete_tree (body_tree);
   }
 
   xmlFreeDoc (doc);
