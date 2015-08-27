@@ -1727,10 +1727,8 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
       NULL, (GDestroyNotify) delete_element);
   GHashTable *regions_table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
-  GNode *body = NULL;
-  GList *scenes = NULL;
   GList *output_buffers = NULL;
-  gchar *string;
+  gchar *value;
   guint cellres_x, cellres_y;
 
   GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
@@ -1752,11 +1750,11 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
     return NULL;
   }
 
-  if ((string = get_xml_property (node, "cellResolution"))) {
-    gchar *ptr = string;
+  if ((value = get_xml_property (node, "cellResolution"))) {
+    gchar *ptr = value;
     cellres_x = (guint) g_ascii_strtoull (ptr, &ptr, 10U);
     cellres_y = (guint) g_ascii_strtoull (ptr, NULL, 10U);
-    g_free (string);
+    g_free (value);
   } else {
     cellres_x = DEFAULT_CELLRES_X;
     cellres_y = DEFAULT_CELLRES_Y;
