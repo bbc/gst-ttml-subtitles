@@ -31,8 +31,10 @@
 
 #include "ebuttxmlparse.h"
 
-GST_DEBUG_CATEGORY_STATIC (ebuttdparse);
+#define DEFAULT_CELLRES_X 32
+#define DEFAULT_CELLRES_Y 15
 
+GST_DEBUG_CATEGORY_STATIC (ebuttdparse);
 
 gchar * get_xml_property (const xmlNode * node, const char * name);
 
@@ -1760,8 +1762,8 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
     cellres_y = (guint) g_ascii_strtoull (ptr, NULL, 10U);
     g_free (string);
   } else {
-    cellres_x = 32;
-    cellres_y = 15;
+    cellres_x = DEFAULT_CELLRES_X;
+    cellres_y = DEFAULT_CELLRES_Y;
   }
 
   GST_CAT_DEBUG (ebuttdparse, "cellres_x: %u   cellres_y: %u", cellres_x,
