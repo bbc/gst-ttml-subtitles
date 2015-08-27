@@ -483,7 +483,7 @@ parse_element (const xmlNode * node)
 
 
 static GNode *
-parse_tree (const xmlNode * node)
+parse_body (const xmlNode * node)
 {
   GNode *ret;
   GstEbuttdElement *element;
@@ -494,7 +494,7 @@ parse_tree (const xmlNode * node)
 
   for (node = node->children; node != NULL; node = node->next) {
     GNode *descendants = NULL;
-    if (!xmlIsBlankNode (node) && (descendants = parse_tree (node)))
+    if (!xmlIsBlankNode (node) && (descendants = parse_body (node)))
         g_node_append (ret, descendants);
   }
 
@@ -956,11 +956,11 @@ resolve_styles (GNode * node, gpointer data)
 {
   GstEbuttdStyleSet *tmp = NULL;
   GstEbuttdElement *element, *style;
-  GHashTable *style_hash;
+  GHashTable *styles_table;
   gchar *type_string;
   gint i;
 
-  style_hash = (GHashTable *)data;
+  styles_table = (GHashTable *)data;
   element = node->data;
 
   type_string = get_element_type_string (element);
@@ -973,7 +973,7 @@ resolve_styles (GNode * node, gpointer data)
   for (i = 0; i < g_strv_length (element->styles); ++i) {
     tmp = element->style_set;
     GST_CAT_LOG (ebuttdparse, "Merging style %s...", element->styles[i]);
-    style = g_hash_table_lookup (style_hash, element->styles[i]);
+    style = g_hash_table_lookup (styles_table, element->styles[i]);
     g_assert (style != NULL);
     element->style_set = merge_style_sets (element->style_set,
         style->style_set);
@@ -988,14 +988,14 @@ resolve_styles (GNode * node, gpointer data)
 
 
 static void
-resolve_referenced_styles (GList * trees, GHashTable * style_hash)
+resolve_referenced_styles (GList * trees, GHashTable * styles_table)
 {
   GList * tree;
 
   for (tree = g_list_first (trees); tree; tree = tree->next) {
     GNode *root = (GNode *)tree->data;
     g_node_traverse (root, G_PRE_ORDER, G_TRAVERSE_ALL, -1, resolve_styles,
-        style_hash);
+        styles_table);
   }
 }
 
@@ -1292,8 +1292,8 @@ strip_surrounding_whitespace (GNode * tree)
 
 
 static void
-xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
-    GHashTable * region_hash)
+parse_head (xmlNodePtr head_cur, GHashTable * styles_table,
+    GHashTable * regions_table)
 {
   xmlNodePtr head_child, node_ptr; /* pointers to different levels */
 
@@ -1311,9 +1311,9 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
           if (element) {
             g_assert (element->id != NULL);
             /* XXX: should check that style ID is unique. */
-            g_hash_table_insert (style_hash,
+            g_hash_table_insert (styles_table,
                 (gpointer) (element->id), (gpointer) element);
-            GST_CAT_LOG (ebuttdparse, "added style %s to style_hash",
+            GST_CAT_LOG (ebuttdparse, "added style %s to styles_table",
                 element->id);
             _print_style_set (element->style_set);
           }
@@ -1333,9 +1333,9 @@ xml_process_head (xmlNodePtr head_cur, GHashTable * style_hash,
           if (element) {
             g_assert (element->id != NULL);
               /* XXX: should check that region ID is unique. */
-            g_hash_table_insert (region_hash,
+            g_hash_table_insert (regions_table,
                 (gpointer) (element->id), (gpointer) element);
-            GST_CAT_LOG (ebuttdparse, "added region %s to region_hash",
+            GST_CAT_LOG (ebuttdparse, "added region %s to regions_table",
                 element->id);
             _print_style_set (element->style_set);
           }
@@ -1721,11 +1721,11 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
     GstClockTime buffer_duration)
 {
   xmlDocPtr doc;
-  xmlNodePtr cur;
+  xmlNodePtr node;
 
-  GHashTable *style_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
+  GHashTable *styles_table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
-  GHashTable *region_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
+  GHashTable *regions_table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) delete_element);
   GNode *body = NULL;
   GList *scenes = NULL;
@@ -1743,19 +1743,15 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
     GST_CAT_ERROR (ebuttd_parse_debug, "Failed to parse document.");
     return NULL;
   }
-  cur = xmlDocGetRootElement (doc);
+  node = xmlDocGetRootElement (doc);
 
-  /* XXX: Should we create our own element tree from the whole document, or
-   * only for the body? */
-
-  /* Check root element is tt:tt. */
-  if (xmlStrcmp (cur->name, (const xmlChar *) "tt") != 0) {
+  if (xmlStrcmp (node->name, (const xmlChar *) "tt") != 0) {
     GST_CAT_ERROR (ebuttdparse, "Root element of document is not tt:tt.");
     xmlFreeDoc (doc);
     return NULL;
   }
 
-  if ((string = get_xml_property (cur, "cellResolution"))) {
+  if ((string = get_xml_property (node, "cellResolution"))) {
     gchar *ptr = string;
     cellres_x = (guint) g_ascii_strtoull (ptr, &ptr, 10U);
     cellres_y = (guint) g_ascii_strtoull (ptr, NULL, 10U);
@@ -1768,14 +1764,14 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
   GST_CAT_DEBUG (ebuttdparse, "cellres_x: %u   cellres_y: %u", cellres_x,
       cellres_y);
 
-  for (cur = cur->children; cur; cur = cur->next) {
-    if (xmlStrcmp (cur->name, (const xmlChar *) "head") == 0) {
-      xml_process_head (cur, style_hash, region_hash);
-    } else if (xmlStrcmp (cur->name, (const xmlChar *) "body") == 0) {
+  for (node = node->children; node; node = node->next) {
+    if (xmlStrcmp (node->name, (const xmlChar *) "head") == 0) {
+      parse_head (node, styles_table, regions_table);
+    } else if (xmlStrcmp (node->name, (const xmlChar *) "body") == 0) {
       GList *region_trees;
 
       /* Process Body of xml doc */
-      body = parse_tree (cur);
+      body = parse_body (node);
       GST_CAT_LOG (ebuttdparse, "Body tree contains %u nodes.",
           g_node_n_nodes (body, G_TRAVERSE_ALL));
       GST_CAT_LOG (ebuttdparse, "Body tree height is %u",
@@ -1784,8 +1780,8 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
       strip_surrounding_whitespace (body);
       resolve_timings (body);
       resolve_regions (body);
-      region_trees = split_body_by_region (body, region_hash);
-      resolve_referenced_styles (region_trees, style_hash);
+      region_trees = split_body_by_region (body, regions_table);
+      resolve_referenced_styles (region_trees, styles_table);
       inherit_element_styles (region_trees);
       assign_region_times (region_trees, buffer_pts, buffer_duration);
       scenes = create_scenes (region_trees);
@@ -1801,8 +1797,8 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
   }
 
   xmlFreeDoc (doc);
-  g_hash_table_destroy (style_hash);
-  g_hash_table_destroy (region_hash);
+  g_hash_table_destroy (styles_table);
+  g_hash_table_destroy (regions_table);
 
   return output_buffers;
 }
