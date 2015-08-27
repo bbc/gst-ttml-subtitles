@@ -1292,59 +1292,37 @@ strip_surrounding_whitespace (GNode * tree)
 
 
 static void
-parse_head (xmlNodePtr head_cur, GHashTable * styles_table,
+store_unique_children (xmlNodePtr node, const gchar * element_name,
+    GHashTable * table)
+{
+  xmlNodePtr ptr;
+
+  for (ptr = node->children; ptr; ptr = ptr->next) {
+    if (xmlStrcmp (ptr->name, (const xmlChar *) element_name) == 0) {
+      GstEbuttdElement *element = parse_element (ptr);
+
+      if (element)
+        if (!g_hash_table_contains (table, element->id))
+          g_hash_table_insert (table, (gpointer) (element->id),
+              (gpointer) element);
+    }
+  }
+}
+
+
+/* Parse style and region elements from @head and store in their respective
+ * hash tables for future reference. */
+static void
+parse_head (xmlNodePtr head, GHashTable * styles_table,
     GHashTable * regions_table)
 {
-  xmlNodePtr head_child, node_ptr; /* pointers to different levels */
+  xmlNodePtr node;
 
-  head_child = head_cur->children;
-  while (head_child != NULL) {
-    if (xmlStrcmp (head_child->name, (const xmlChar *) "styling") == 0) {
-      GST_CAT_DEBUG (ebuttdparse, "parsing styling element...");
-      node_ptr = head_child->children;
-      while (node_ptr != NULL) {
-        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "style") == 0) {
-          /* use style id as key, create style properties object for value */
-          GstEbuttdElement *element;
-          element = parse_element (node_ptr);
-
-          if (element) {
-            g_assert (element->id != NULL);
-            /* XXX: should check that style ID is unique. */
-            g_hash_table_insert (styles_table,
-                (gpointer) (element->id), (gpointer) element);
-            GST_CAT_LOG (ebuttdparse, "added style %s to styles_table",
-                element->id);
-            _print_style_set (element->style_set);
-          }
-        }
-        node_ptr = node_ptr->next;
-      }
-    }
-    if (xmlStrcmp (head_child->name, (const xmlChar *) "layout") == 0) {
-      GST_CAT_DEBUG (ebuttdparse, "parsing layout element...");
-      node_ptr = head_child->children;
-      while (node_ptr != NULL) {
-        if (xmlStrcmp (node_ptr->name, (const xmlChar *) "region") == 0) {
-          /* use region id as key, create style properties object for value */
-          GstEbuttdElement *element;
-          element = parse_element (node_ptr);
-
-          if (element) {
-            g_assert (element->id != NULL);
-              /* XXX: should check that region ID is unique. */
-            g_hash_table_insert (regions_table,
-                (gpointer) (element->id), (gpointer) element);
-            GST_CAT_LOG (ebuttdparse, "added region %s to regions_table",
-                element->id);
-            _print_style_set (element->style_set);
-          }
-        }
-        node_ptr = node_ptr->next;
-      }
-    }
-    /* XXX: Add code to parse metadata. */
-    head_child = head_child->next;
+  for (node = head->children; node; node = node->next) {
+    if (xmlStrcmp (node->name, (const xmlChar *) "styling") == 0)
+      store_unique_children (node, "style", styles_table);
+    if (xmlStrcmp (node->name, (const xmlChar *) "layout") == 0)
+      store_unique_children (node, "region", regions_table);
   }
 }
 
