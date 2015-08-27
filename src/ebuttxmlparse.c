@@ -1414,9 +1414,9 @@ copy_tree_element (gconstpointer src, gpointer data)
 }
 
 
-/* Split the body tree into elements that belong to each region. Returns a list
- * of trees, one per region, each with the corresponding region element at its
- * root. */
+/* Split the body tree into a set of trees, each containing only the elements
+ * belonging to a single region. Returns a list of trees, one per region, each
+ * with the corresponding region element at its root. */
 static GList *
 split_body_by_region (GNode * body, GHashTable * regions)
 {
