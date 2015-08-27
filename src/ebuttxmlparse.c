@@ -1738,7 +1738,8 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
   GST_CAT_LOG (ebuttdparse, "Input:\n%s", input);
 
   /* Parse input. */
-  doc = xmlReadMemory (input, strlen (input), "any_doc_name", NULL, 0);
+  doc = xmlReadMemory (input, strlen (input), "any_doc_name", NULL,
+      XML_PARSE_NOBLANKS);
   if (!doc) {
     GST_CAT_ERROR (ebuttd_parse_debug, "Failed to parse document.");
     return NULL;
