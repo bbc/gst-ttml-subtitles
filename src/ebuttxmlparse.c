@@ -1750,7 +1750,7 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
   parse_head (node, styles_table, regions_table);
   node = node->next;
 
-  if (xmlStrcmp (node->name, (const xmlChar *) "body") == 0) {
+  if (node && xmlStrcmp (node->name, (const xmlChar *) "body") == 0) {
     GNode *body_tree;
     GList *region_trees = NULL;
     GList *scenes = NULL;
