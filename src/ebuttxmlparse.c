@@ -399,7 +399,7 @@ static GstEbuttdElement *
 parse_element (const xmlNode * node)
 {
   GstEbuttdElement *element;
-  xmlChar *string;
+  gchar *value;
 
   element = g_slice_new0 (GstEbuttdElement);
   GST_CAT_DEBUG (ebuttdparse, "Element name: %s", (const char*) node->name);
@@ -425,16 +425,16 @@ parse_element (const xmlNode * node)
     g_assert (TRUE);
   }
 
-  if ((string = xmlGetProp (node, (const xmlChar*) "id"))) {
-    element->id = g_strdup ((const gchar*) string);
-    xmlFree (string);
+  if ((value = get_xml_property (node, "id"))) {
+    element->id = g_strdup ((const gchar*) value);
+    g_free (value);
   }
 
-  if ((string = xmlGetProp (node, (const xmlChar*) "style"))) {
-    element->styles = g_strsplit ((const gchar*) string, " ", 0);
+  if ((value = get_xml_property (node, "style"))) {
+    element->styles = g_strsplit ((const gchar*) value, " ", 0);
     GST_CAT_DEBUG (ebuttdparse, "%u style(s) referenced in element.",
         g_strv_length (element->styles));
-    xmlFree (string);
+    g_free (value);
   }
 
   /* XXX: Place parsing of attributes that are common to all element types
@@ -451,21 +451,21 @@ parse_element (const xmlNode * node)
           "Style or Region contains no styling attributes.");
   }
 
-  if ((string = xmlGetProp (node, (const xmlChar*) "region"))) {
-    element->region = g_strdup ((const gchar*) string);
-    xmlFree (string);
+  if ((value = get_xml_property (node, "region"))) {
+    element->region = g_strdup ((const gchar*) value);
+    g_free (value);
   }
 
-  if ((string = xmlGetProp (node, (const xmlChar*) "begin"))) {
-    element->begin = parse_timecode ((const gchar*) string);
-    xmlFree (string);
+  if ((value = get_xml_property (node, "begin"))) {
+    element->begin = parse_timecode ((const gchar*) value);
+    g_free (value);
   } else {
     element->begin = GST_CLOCK_TIME_NONE;
   }
 
-  if ((string = xmlGetProp (node, (const xmlChar*) "end"))) {
-    element->end = parse_timecode ((const gchar*) string);
-    xmlFree (string);
+  if ((value = get_xml_property (node, "end"))) {
+    element->end = parse_timecode ((const gchar*) value);
+    g_free (value);
   } else {
     element->end = GST_CLOCK_TIME_NONE;
   }
