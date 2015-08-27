@@ -1758,7 +1758,6 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
   if ((string = get_xml_property (cur, "cellResolution"))) {
     gchar *ptr = string;
     cellres_x = (guint) g_ascii_strtoull (ptr, &ptr, 10U);
-    while (!g_ascii_isspace (*ptr)) ++ptr;
     cellres_y = (guint) g_ascii_strtoull (ptr, NULL, 10U);
     g_free (string);
   } else {
