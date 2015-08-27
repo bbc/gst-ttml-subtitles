@@ -884,7 +884,7 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
         const gchar *tmp = ret->font_size;
         ret->font_size = get_relative_font_size (parent->font_size,
             child->font_size);
-        GST_CAT_ERROR (ebuttdparse, "Calculated font size: %s", ret->font_size);
+        GST_CAT_LOG (ebuttdparse, "Calculated font size: %s", ret->font_size);
         g_free ((gpointer) tmp);
       }
     }
