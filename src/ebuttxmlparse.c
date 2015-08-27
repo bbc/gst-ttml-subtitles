@@ -1291,6 +1291,8 @@ strip_surrounding_whitespace (GNode * tree)
 }
 
 
+/* Store child elements of @node with name @element_name in @table, as long as
+ * @table doesn't already contain an element with the same ID. */
 static void
 store_unique_children (xmlNodePtr node, const gchar * element_name,
     GHashTable * table)
