@@ -30,12 +30,12 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GstEbuttdStyleSet GstEbuttdStyleSet;
-typedef struct _GstEbuttdElement GstEbuttdElement;
-typedef struct _GstEbuttdScene GstEbuttdScene;
+typedef struct _TtmlStyleSet TtmlStyleSet;
+typedef struct _TtmlElement TtmlElement;
+typedef struct _TtmlScene TtmlScene;
 
 
-struct _GstEbuttdStyleSet {
+struct _TtmlStyleSet {
   const gchar *text_direction;
   const gchar *font_family;
   const gchar *font_size;
@@ -61,25 +61,25 @@ struct _GstEbuttdStyleSet {
 
 
 typedef enum {
-  GST_EBUTTD_ELEMENT_TYPE_STYLE,
-  GST_EBUTTD_ELEMENT_TYPE_REGION,
-  GST_EBUTTD_ELEMENT_TYPE_BODY,
-  GST_EBUTTD_ELEMENT_TYPE_DIV,
-  GST_EBUTTD_ELEMENT_TYPE_P,
-  GST_EBUTTD_ELEMENT_TYPE_SPAN,
-  GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN,
-  GST_EBUTTD_ELEMENT_TYPE_BR,
-} GstEbuttdElementType;
+  TTML_ELEMENT_TYPE_STYLE,
+  TTML_ELEMENT_TYPE_REGION,
+  TTML_ELEMENT_TYPE_BODY,
+  TTML_ELEMENT_TYPE_DIV,
+  TTML_ELEMENT_TYPE_P,
+  TTML_ELEMENT_TYPE_SPAN,
+  TTML_ELEMENT_TYPE_ANON_SPAN,
+  TTML_ELEMENT_TYPE_BR,
+} TtmlElementType;
 
 
-struct _GstEbuttdElement {
-  GstEbuttdElementType type;
+struct _TtmlElement {
+  TtmlElementType type;
   gchar *id;
   gchar **styles;
   gchar *region;
   GstClockTime begin;
   GstClockTime end;
-  GstEbuttdStyleSet *style_set;
+  TtmlStyleSet *style_set;
   gchar *text;
   guint text_index;
 };
@@ -87,7 +87,7 @@ struct _GstEbuttdElement {
 
 /* Represents a static scene consisting of one or more text elements that
  * should be visible over a specific period of time. */
-struct _GstEbuttdScene {
+struct _TtmlScene {
   GstClockTime begin;
   GstClockTime end;
   GList *elements;
@@ -95,8 +95,8 @@ struct _GstEbuttdScene {
 };
 
 
-GList *ebutt_xml_parse (const gchar * xml_file_buffer, GstClockTime doc_begin,
-    GstClockTime doc_duration);
+GList *ttml_parse (const gchar * file, GstClockTime begin,
+    GstClockTime duration);
 
 G_END_DECLS
 #endif /* _EBU_PARSE_H_ */

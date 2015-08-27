@@ -1,4 +1,4 @@
-/* GStreamer EBU-TT-D subtitle parser
+/* GStreamer TTML subtitle parser
  * Copyright (C) <2015> British Broadcasting Corporation
  *   Authors:
  *     Chris Bass <dash@rd.bbc.co.uk>
@@ -34,13 +34,13 @@
 #define DEFAULT_CELLRES_X 32
 #define DEFAULT_CELLRES_Y 15
 
-GST_DEBUG_CATEGORY_STATIC (ebuttdparse);
+GST_DEBUG_CATEGORY_STATIC (ttmlparse);
 
-gchar * get_xml_property (const xmlNode * node, const char * name);
+gchar * ttml_get_xml_property (const xmlNode * node, const char * name);
 
 
 static guint8
-hex_pair_to_byte (const gchar * hex_pair)
+ttml_hex_pair_to_byte (const gchar * hex_pair)
 {
   gint hi_digit, lo_digit;
 
@@ -51,7 +51,7 @@ hex_pair_to_byte (const gchar * hex_pair)
 
 
 static GstSubtitleColor
-parse_ebuttd_colorstring (const gchar * color)
+ttml_parse_colorstring (const gchar * color)
 {
   guint length;
   const gchar *c = NULL;
@@ -65,19 +65,19 @@ parse_ebuttd_colorstring (const gchar * color)
   if (((length == 7) || (length == 9)) && *color == '#') {
     c = color + 1;
 
-    ret.r = hex_pair_to_byte (c) / 255.0;
-    ret.g = hex_pair_to_byte (c + 2) / 255.0;
-    ret.b = hex_pair_to_byte (c + 4) / 255.0;
+    ret.r = ttml_hex_pair_to_byte (c) / 255.0;
+    ret.g = ttml_hex_pair_to_byte (c + 2) / 255.0;
+    ret.b = ttml_hex_pair_to_byte (c + 4) / 255.0;
 
     if (length == 7)
       ret.a = 1.0;
     else
-      ret.a = hex_pair_to_byte (c + 6) / 255.0;
+      ret.a = ttml_hex_pair_to_byte (c + 6) / 255.0;
 
-    GST_CAT_LOG (ebuttdparse, "Returning color - r:%g  b:%g  g:%g  a:%g",
+    GST_CAT_LOG (ttmlparse, "Returning color - r:%g  b:%g  g:%g  a:%g",
         ret.r, ret.b, ret.g, ret.a);
   } else {
-    GST_CAT_ERROR (ebuttdparse, "Invalid color string: %s", color);
+    GST_CAT_ERROR (ttmlparse, "Invalid color string: %s", color);
   }
 
   return ret;
@@ -85,194 +85,194 @@ parse_ebuttd_colorstring (const gchar * color)
 
 
 static void
-_print_element (GstEbuttdElement * element)
+ttml_print_element (TtmlElement * element)
 {
   if (element->id)
-    GST_CAT_DEBUG (ebuttdparse, "Element ID: %s", element->id);
+    GST_CAT_DEBUG (ttmlparse, "Element ID: %s", element->id);
   switch (element->type) {
-    case GST_EBUTTD_ELEMENT_TYPE_STYLE:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <style>");
+    case TTML_ELEMENT_TYPE_STYLE:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <style>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_REGION:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <region>");
+    case TTML_ELEMENT_TYPE_REGION:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <region>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_BODY:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <body>");
+    case TTML_ELEMENT_TYPE_BODY:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <body>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_DIV:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <div>");
+    case TTML_ELEMENT_TYPE_DIV:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <div>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_P:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <p>");
+    case TTML_ELEMENT_TYPE_P:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <p>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_SPAN:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <span>");
+    case TTML_ELEMENT_TYPE_SPAN:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <span>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <anon-span>");
+    case TTML_ELEMENT_TYPE_ANON_SPAN:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <anon-span>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_BR:
-      GST_CAT_DEBUG (ebuttdparse, "Element type: <br>");
+    case TTML_ELEMENT_TYPE_BR:
+      GST_CAT_DEBUG (ttmlparse, "Element type: <br>");
       break;
   }
   if (element->region)
-    GST_CAT_DEBUG (ebuttdparse, "Element region: %s", element->region);
+    GST_CAT_DEBUG (ttmlparse, "Element region: %s", element->region);
   if (element->begin != GST_CLOCK_TIME_NONE)
-    GST_CAT_DEBUG (ebuttdparse, "Element begin: %" GST_TIME_FORMAT,
+    GST_CAT_DEBUG (ttmlparse, "Element begin: %" GST_TIME_FORMAT,
         GST_TIME_ARGS (element->begin));
   if (element->end != GST_CLOCK_TIME_NONE)
-    GST_CAT_DEBUG (ebuttdparse, "Element end: %" GST_TIME_FORMAT,
+    GST_CAT_DEBUG (ttmlparse, "Element end: %" GST_TIME_FORMAT,
         GST_TIME_ARGS (element->end));
   if (element->text) {
-    GST_CAT_DEBUG (ebuttdparse, "Element text: %s", element->text);
-    GST_CAT_DEBUG (ebuttdparse, "Element text index: %u", element->text_index);
+    GST_CAT_DEBUG (ttmlparse, "Element text: %s", element->text);
+    GST_CAT_DEBUG (ttmlparse, "Element text index: %u", element->text_index);
   }
 }
 
 
 static void
-_print_style_set (GstEbuttdStyleSet * set)
+ttml_print_style_set (TtmlStyleSet * set)
 {
-  GST_CAT_LOG (ebuttdparse, "Style set %p:", set);
+  GST_CAT_LOG (ttmlparse, "Style set %p:", set);
   if (set->text_direction)
-    GST_CAT_LOG (ebuttdparse, "\t\ttext_direction: %s", set->text_direction);
+    GST_CAT_LOG (ttmlparse, "\t\ttext_direction: %s", set->text_direction);
   if (set->font_family)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_family: %s", set->font_family);
+    GST_CAT_LOG (ttmlparse, "\t\tfont_family: %s", set->font_family);
   if (set->font_size)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_size: %s", set->font_size);
+    GST_CAT_LOG (ttmlparse, "\t\tfont_size: %s", set->font_size);
   if (set->line_height)
-    GST_CAT_LOG (ebuttdparse, "\t\tline_height: %s", set->line_height);
+    GST_CAT_LOG (ttmlparse, "\t\tline_height: %s", set->line_height);
   if (set->text_align)
-    GST_CAT_LOG (ebuttdparse, "\t\ttext_align: %s", set->text_align);
+    GST_CAT_LOG (ttmlparse, "\t\ttext_align: %s", set->text_align);
   if (set->color)
-    GST_CAT_LOG (ebuttdparse, "\t\tcolor: %s", set->color);
+    GST_CAT_LOG (ttmlparse, "\t\tcolor: %s", set->color);
   if (set->bg_color)
-    GST_CAT_LOG (ebuttdparse, "\t\tbg_color: %s", set->bg_color);
+    GST_CAT_LOG (ttmlparse, "\t\tbg_color: %s", set->bg_color);
   if (set->font_style)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_style: %s", set->font_style);
+    GST_CAT_LOG (ttmlparse, "\t\tfont_style: %s", set->font_style);
   if (set->font_weight)
-    GST_CAT_LOG (ebuttdparse, "\t\tfont_weight: %s", set->font_weight);
+    GST_CAT_LOG (ttmlparse, "\t\tfont_weight: %s", set->font_weight);
   if (set->text_decoration)
-    GST_CAT_LOG (ebuttdparse, "\t\ttext_decoration: %s", set->text_decoration);
+    GST_CAT_LOG (ttmlparse, "\t\ttext_decoration: %s", set->text_decoration);
   if (set->unicode_bidi)
-    GST_CAT_LOG (ebuttdparse, "\t\tunicode_bidi: %s", set->unicode_bidi);
+    GST_CAT_LOG (ttmlparse, "\t\tunicode_bidi: %s", set->unicode_bidi);
   if (set->wrap_option)
-    GST_CAT_LOG (ebuttdparse, "\t\twrap_option: %s", set->wrap_option);
+    GST_CAT_LOG (ttmlparse, "\t\twrap_option: %s", set->wrap_option);
   if (set->multi_row_align)
-    GST_CAT_LOG (ebuttdparse, "\t\tmulti_row_align: %s", set->multi_row_align);
+    GST_CAT_LOG (ttmlparse, "\t\tmulti_row_align: %s", set->multi_row_align);
   if (set->line_padding)
-    GST_CAT_LOG (ebuttdparse, "\t\tline_padding: %s", set->line_padding);
+    GST_CAT_LOG (ttmlparse, "\t\tline_padding: %s", set->line_padding);
   if (set->origin)
-    GST_CAT_LOG (ebuttdparse, "\t\torigin: %s", set->origin);
+    GST_CAT_LOG (ttmlparse, "\t\torigin: %s", set->origin);
   if (set->extent)
-    GST_CAT_LOG (ebuttdparse, "\t\textent: %s", set->extent);
+    GST_CAT_LOG (ttmlparse, "\t\textent: %s", set->extent);
   if (set->display_align)
-    GST_CAT_LOG (ebuttdparse, "\t\tdisplay_align: %s", set->display_align);
+    GST_CAT_LOG (ttmlparse, "\t\tdisplay_align: %s", set->display_align);
   if (set->overflow)
-    GST_CAT_LOG (ebuttdparse, "\t\toverflow: %s", set->overflow);
+    GST_CAT_LOG (ttmlparse, "\t\toverflow: %s", set->overflow);
   if (set->padding)
-    GST_CAT_LOG (ebuttdparse, "\t\tpadding: %s", set->padding);
+    GST_CAT_LOG (ttmlparse, "\t\tpadding: %s", set->padding);
   if (set->writing_mode)
-    GST_CAT_LOG (ebuttdparse, "\t\twriting_mode: %s", set->writing_mode);
+    GST_CAT_LOG (ttmlparse, "\t\twriting_mode: %s", set->writing_mode);
   if (set->show_background)
-    GST_CAT_LOG (ebuttdparse, "\t\tshow_background: %s", set->show_background);
+    GST_CAT_LOG (ttmlparse, "\t\tshow_background: %s", set->show_background);
 }
 
 
-static GstEbuttdStyleSet *
-parse_style_set (const xmlNode * node)
+static TtmlStyleSet *
+ttml_parse_style_set (const xmlNode * node)
 {
-  GstEbuttdStyleSet *s;
+  TtmlStyleSet *s;
   gchar *value = NULL;
 
-  if ((!get_xml_property (node, "id"))) {
-    GST_CAT_ERROR (ebuttdparse, "styles must have an ID.");
+  if ((!ttml_get_xml_property (node, "id"))) {
+    GST_CAT_ERROR (ttmlparse, "styles must have an ID.");
     return NULL;
   }
 
-  s = g_slice_new0 (GstEbuttdStyleSet);
+  s = g_slice_new0 (TtmlStyleSet);
 
-  if ((value = get_xml_property (node, "direction"))) {
+  if ((value = ttml_get_xml_property (node, "direction"))) {
     s->text_direction = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "fontFamily"))) {
+  if ((value = ttml_get_xml_property (node, "fontFamily"))) {
     s->font_family = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "fontSize"))) {
+  if ((value = ttml_get_xml_property (node, "fontSize"))) {
     s->font_size = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "lineHeight"))) {
+  if ((value = ttml_get_xml_property (node, "lineHeight"))) {
     s->line_height = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "textAlign"))) {
+  if ((value = ttml_get_xml_property (node, "textAlign"))) {
     s->text_align = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "color"))) {
+  if ((value = ttml_get_xml_property (node, "color"))) {
     s->color = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "backgroundColor"))) {
+  if ((value = ttml_get_xml_property (node, "backgroundColor"))) {
     s->bg_color = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "fontStyle"))) {
+  if ((value = ttml_get_xml_property (node, "fontStyle"))) {
     s->font_style = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "fontWeight"))) {
+  if ((value = ttml_get_xml_property (node, "fontWeight"))) {
     s->font_weight = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "textDecoration"))) {
+  if ((value = ttml_get_xml_property (node, "textDecoration"))) {
     s->text_decoration = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "unicodeBidi"))) {
+  if ((value = ttml_get_xml_property (node, "unicodeBidi"))) {
     s->unicode_bidi = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "wrapOption"))) {
+  if ((value = ttml_get_xml_property (node, "wrapOption"))) {
     s->wrap_option = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "multiRowAlign"))) {
+  if ((value = ttml_get_xml_property (node, "multiRowAlign"))) {
     s->multi_row_align = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "linePadding"))) {
+  if ((value = ttml_get_xml_property (node, "linePadding"))) {
     s->line_padding = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "origin"))) {
+  if ((value = ttml_get_xml_property (node, "origin"))) {
     s->origin = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "extent"))) {
+  if ((value = ttml_get_xml_property (node, "extent"))) {
     s->extent = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "displayAlign"))) {
+  if ((value = ttml_get_xml_property (node, "displayAlign"))) {
     s->display_align = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "overflow"))) {
+  if ((value = ttml_get_xml_property (node, "overflow"))) {
     s->overflow = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "padding"))) {
+  if ((value = ttml_get_xml_property (node, "padding"))) {
     s->padding = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "writingMode"))) {
+  if ((value = ttml_get_xml_property (node, "writingMode"))) {
     s->writing_mode = g_strdup (value);
     g_free (value);
   }
-  if ((value = get_xml_property (node, "showBackground"))) {
+  if ((value = ttml_get_xml_property (node, "showBackground"))) {
     s->show_background = g_strdup (value);
     g_free (value);
   }
@@ -282,9 +282,9 @@ parse_style_set (const xmlNode * node)
 
 
 static void
-delete_style_set (GstEbuttdStyleSet * style)
+ttml_delete_style_set (TtmlStyleSet * style)
 {
-  GST_CAT_LOG (ebuttdparse, "Deleting style set %p...", style);
+  GST_CAT_LOG (ttmlparse, "Deleting style set %p...", style);
   if (style->text_direction) g_free ((gpointer) style->text_direction);
   if (style->font_family) g_free ((gpointer) style->font_family);
   if (style->font_size) g_free ((gpointer) style->font_size);
@@ -306,26 +306,26 @@ delete_style_set (GstEbuttdStyleSet * style)
   if (style->padding) g_free ((gpointer) style->padding);
   if (style->writing_mode) g_free ((gpointer) style->writing_mode);
   if (style->show_background) g_free ((gpointer) style->show_background);
-  g_slice_free (GstEbuttdStyleSet, style);
+  g_slice_free (TtmlStyleSet, style);
 }
 
 
 static void
-delete_element (GstEbuttdElement * element)
+ttml_delete_element (TtmlElement * element)
 {
-  GST_CAT_LOG (ebuttdparse, "Deleting element %p...", element);
+  GST_CAT_LOG (ttmlparse, "Deleting element %p...", element);
 
   if (element->id) g_free ((gpointer) element->id);
   if (element->styles) g_strfreev (element->styles);
   if (element->region) g_free ((gpointer) element->region);
-  if (element->style_set) delete_style_set (element->style_set);
+  if (element->style_set) ttml_delete_style_set (element->style_set);
   if (element->text) g_free ((gpointer) element->text);
-  g_slice_free (GstEbuttdElement, element);
+  g_slice_free (TtmlElement, element);
 }
 
 
 gchar *
-get_xml_property (const xmlNode * node, const char *name)
+ttml_get_xml_property (const xmlNode * node, const char *name)
 {
   xmlChar *xml_string = NULL;
   gchar *gst_string = NULL;
@@ -342,17 +342,17 @@ get_xml_property (const xmlNode * node, const char *name)
 
 
 static GstClockTime
-parse_timecode (const gchar * timestring)
+ttml_parse_timecode (const gchar * timestring)
 {
   gchar **strings;
   guint64 hours = 0, minutes = 0, seconds = 0, milliseconds = 0;
   GstClockTime time = GST_CLOCK_TIME_NONE;
 
-  GST_CAT_LOG (ebuttdparse, "time string: %s", timestring);
+  GST_CAT_LOG (ttmlparse, "time string: %s", timestring);
 
   strings = g_strsplit (timestring, ":", 3);
   if (g_strv_length (strings) != 3U) {
-    GST_CAT_ERROR (ebuttdparse, "badly formatted time string: %s", timestring);
+    GST_CAT_ERROR (ttmlparse, "badly formatted time string: %s", timestring);
     return time;
   }
 
@@ -364,7 +364,7 @@ parse_timecode (const gchar * timestring)
     seconds = g_ascii_strtoull (substrings[0], NULL, 10U);
     n_digits = strlen (substrings[1]);
     if (n_digits > 3) {
-      GST_CAT_ERROR (ebuttdparse, "badly formatted time string "
+      GST_CAT_ERROR (ttmlparse, "badly formatted time string "
           "(too many millisecond digits): %s\n", timestring);
     } else {
       milliseconds = g_ascii_strtoull (substrings[1], NULL, 10U);
@@ -377,12 +377,12 @@ parse_timecode (const gchar * timestring)
   }
 
   if (minutes > 59 || seconds > 60) {
-    GST_CAT_ERROR (ebuttdparse, "invalid time string "
+    GST_CAT_ERROR (ttmlparse, "invalid time string "
         "(minutes or seconds out-of-bounds): %s\n", timestring);
   }
 
   g_strfreev (strings);
-  GST_CAT_LOG (ebuttdparse,
+  GST_CAT_LOG (ttmlparse,
       "hours: %llu  minutes: %llu  seconds: %llu  milliseconds: %llu",
       hours,  minutes,  seconds,  milliseconds);
 
@@ -395,44 +395,44 @@ parse_timecode (const gchar * timestring)
 }
 
 
-static GstEbuttdElement *
-parse_element (const xmlNode * node)
+static TtmlElement *
+ttml_parse_element (const xmlNode * node)
 {
-  GstEbuttdElement *element;
+  TtmlElement *element;
   gchar *value;
 
-  element = g_slice_new0 (GstEbuttdElement);
-  GST_CAT_DEBUG (ebuttdparse, "Element name: %s", (const char*) node->name);
+  element = g_slice_new0 (TtmlElement);
+  GST_CAT_DEBUG (ttmlparse, "Element name: %s", (const char*) node->name);
   if ((g_strcmp0 ((const char*) node->name, "style") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_STYLE;
+    element->type = TTML_ELEMENT_TYPE_STYLE;
   } else if ((g_strcmp0 ((const char*) node->name, "region") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_REGION;
+    element->type = TTML_ELEMENT_TYPE_REGION;
   } else if ((g_strcmp0 ((const char*) node->name, "body") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_BODY;
+    element->type = TTML_ELEMENT_TYPE_BODY;
   } else if ((g_strcmp0 ((const char*) node->name, "div") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_DIV;
+    element->type = TTML_ELEMENT_TYPE_DIV;
   } else if ((g_strcmp0 ((const char*) node->name, "p") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_P;
+    element->type = TTML_ELEMENT_TYPE_P;
   } else if ((g_strcmp0 ((const char*) node->name, "span") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_SPAN;
+    element->type = TTML_ELEMENT_TYPE_SPAN;
   } else if ((g_strcmp0 ((const char*) node->name, "text") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN;
+    element->type = TTML_ELEMENT_TYPE_ANON_SPAN;
   } else if ((g_strcmp0 ((const char*) node->name, "br") == 0)) {
-    element->type = GST_EBUTTD_ELEMENT_TYPE_BR;
+    element->type = TTML_ELEMENT_TYPE_BR;
   } else {
-    GST_CAT_ERROR (ebuttdparse, "illegal element type: %s",
+    GST_CAT_ERROR (ttmlparse, "illegal element type: %s",
         (const char*) node->name);
     g_assert (TRUE);
   }
 
-  if ((value = get_xml_property (node, "id"))) {
+  if ((value = ttml_get_xml_property (node, "id"))) {
     element->id = g_strdup ((const gchar*) value);
     g_free (value);
   }
 
-  if ((value = get_xml_property (node, "style"))) {
+  if ((value = ttml_get_xml_property (node, "style"))) {
     element->styles = g_strsplit ((const gchar*) value, " ", 0);
-    GST_CAT_DEBUG (ebuttdparse, "%u style(s) referenced in element.",
+    GST_CAT_DEBUG (ttmlparse, "%u style(s) referenced in element.",
         g_strv_length (element->styles));
     g_free (value);
   }
@@ -440,41 +440,38 @@ parse_element (const xmlNode * node)
   /* XXX: Place parsing of attributes that are common to all element types
    * before this line. */
 
-  if (element->type == GST_EBUTTD_ELEMENT_TYPE_STYLE
-      || element->type == GST_EBUTTD_ELEMENT_TYPE_REGION) {
-    GstEbuttdStyleSet *ss;
-    ss = parse_style_set (node);
+  if (element->type == TTML_ELEMENT_TYPE_STYLE
+      || element->type == TTML_ELEMENT_TYPE_REGION) {
+    TtmlStyleSet *ss;
+    ss = ttml_parse_style_set (node);
     if (ss)
       element->style_set = ss;
     else
-      GST_CAT_WARNING (ebuttdparse,
+      GST_CAT_WARNING (ttmlparse,
           "Style or Region contains no styling attributes.");
   }
 
-  if ((value = get_xml_property (node, "region"))) {
+  if ((value = ttml_get_xml_property (node, "region"))) {
     element->region = g_strdup ((const gchar*) value);
     g_free (value);
   }
 
-  if ((value = get_xml_property (node, "begin"))) {
-    element->begin = parse_timecode ((const gchar*) value);
+  if ((value = ttml_get_xml_property (node, "begin"))) {
+    element->begin = ttml_parse_timecode ((const gchar*) value);
     g_free (value);
   } else {
     element->begin = GST_CLOCK_TIME_NONE;
   }
 
-  if ((value = get_xml_property (node, "end"))) {
-    element->end = parse_timecode ((const gchar*) value);
+  if ((value = ttml_get_xml_property (node, "end"))) {
+    element->end = ttml_parse_timecode ((const gchar*) value);
     g_free (value);
   } else {
     element->end = GST_CLOCK_TIME_NONE;
   }
-  /*GST_CAT_DEBUG (ebuttdparse, "element->begin: %" GST_TIME_FORMAT "   "
-      "element->end: %" GST_TIME_FORMAT, GST_TIME_ARGS (element->begin),
-      GST_TIME_ARGS (element->end));*/
 
   if (node->content) {
-    GST_CAT_LOG (ebuttdparse, "Node content: %s", node->content);
+    GST_CAT_LOG (ttmlparse, "Node content: %s", node->content);
     element->text = g_strdup ((gchar*) node->content);
   }
 
@@ -483,18 +480,18 @@ parse_element (const xmlNode * node)
 
 
 static GNode *
-parse_body (const xmlNode * node)
+ttml_parse_body (const xmlNode * node)
 {
   GNode *ret;
-  GstEbuttdElement *element;
+  TtmlElement *element;
 
-  GST_CAT_LOG (ebuttdparse, "parsing node %s", node->name);
-  element = parse_element (node);
+  GST_CAT_LOG (ttmlparse, "parsing node %s", node->name);
+  element = ttml_parse_element (node);
   ret = g_node_new (element);
 
   for (node = node->children; node != NULL; node = node->next) {
     GNode *descendants = NULL;
-    if (!xmlIsBlankNode (node) && (descendants = parse_body (node)))
+    if (!xmlIsBlankNode (node) && (descendants = ttml_parse_body (node)))
         g_node_append (ret, descendants);
   }
 
@@ -504,10 +501,10 @@ parse_body (const xmlNode * node)
 
 /* XXX: Do we need to put defaults in here, seeing that the passed-in style set should have default values, and if a value isn't recognized it seems reasonable to do nothing...? */
 static void
-update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
+ttml_update_style_set (GstSubtitleStyleSet * ss, TtmlStyleSet * ess,
     guint cellres_x, guint cellres_y)
 {
-  GST_CAT_LOG (ebuttdparse, "cellres_x: %u  cellres_y: %u", cellres_x,
+  GST_CAT_LOG (ttmlparse, "cellres_x: %u  cellres_y: %u", cellres_x,
       cellres_y);
 
   if (ess->text_direction) {
@@ -521,7 +518,7 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
     gsize length = g_strlcpy (ss->font_family, ess->font_family,
         MAX_FONT_FAMILY_NAME_LENGTH);
     if (length > MAX_FONT_FAMILY_NAME_LENGTH)
-      GST_CAT_ERROR (ebuttdparse, "Font family name is too long.");
+      GST_CAT_ERROR (ttmlparse, "Font family name is too long.");
   }
 
   if (ess->font_size) {
@@ -550,11 +547,11 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
   }
 
   if (ess->color) {
-    ss->color = parse_ebuttd_colorstring (ess->color);
+    ss->color = ttml_parse_colorstring (ess->color);
   }
 
   if (ess->bg_color) {
-    ss->bg_color = parse_ebuttd_colorstring (ess->bg_color);
+    ss->bg_color = ttml_parse_colorstring (ess->bg_color);
   }
 
   if (ess->font_style) {
@@ -716,12 +713,12 @@ update_style_set (GstSubtitleStyleSet * ss, GstEbuttdStyleSet * ess,
 }
 
 
-static GstEbuttdStyleSet *
-copy_style_set (GstEbuttdStyleSet * style)
+static TtmlStyleSet *
+ttml_copy_style_set (TtmlStyleSet * style)
 {
-  GstEbuttdStyleSet *ret;
+  TtmlStyleSet *ret;
 
-  ret = g_slice_new0 (GstEbuttdStyleSet);
+  ret = g_slice_new0 (TtmlStyleSet);
 
   if (style->text_direction)
     ret->text_direction = g_strdup (style->text_direction);
@@ -771,13 +768,13 @@ copy_style_set (GstEbuttdStyleSet * style)
 
 
 /* s2 overrides s1. Unlike style inheritance, merging will result in all values from s1 being merged into s2. */
-static GstEbuttdStyleSet *
-merge_style_sets (GstEbuttdStyleSet * set1, GstEbuttdStyleSet * set2)
+static TtmlStyleSet *
+ttml_merge_style_sets (TtmlStyleSet * set1, TtmlStyleSet * set2)
 {
-  GstEbuttdStyleSet *ret = NULL;
+  TtmlStyleSet *ret = NULL;
 
   if (set1) {
-    ret = copy_style_set (set1);
+    ret = ttml_copy_style_set (set1);
 
     if (set2) {
       if (set2->text_direction)
@@ -824,7 +821,7 @@ merge_style_sets (GstEbuttdStyleSet * set1, GstEbuttdStyleSet * set2)
         ret->show_background = g_strdup (set2->show_background);
     }
   } else if (set2) {
-    ret = copy_style_set (set2);
+    ret = ttml_copy_style_set (set2);
   }
 
   return ret;
@@ -832,7 +829,7 @@ merge_style_sets (GstEbuttdStyleSet * set1, GstEbuttdStyleSet * set2)
 
 
 static const gchar *
-get_relative_font_size (const gchar * parent_size,
+ttml_get_relative_font_size (const gchar * parent_size,
     const gchar * child_size)
 {
   guint psize = (guint) g_ascii_strtoull (parent_size, NULL, 10U);
@@ -842,10 +839,10 @@ get_relative_font_size (const gchar * parent_size,
 }
 
 
-static GstEbuttdStyleSet *
-inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
+static TtmlStyleSet *
+ttml_inherit_styling (TtmlStyleSet * parent, TtmlStyleSet * child)
 {
-  GstEbuttdStyleSet *ret = NULL;
+  TtmlStyleSet *ret = NULL;
 
   /*
    * The following styling attributes are not inherited:
@@ -861,9 +858,9 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
    */
 
   if (child) {
-    ret = copy_style_set (child);
+    ret = ttml_copy_style_set (child);
   } else {
-    ret = g_slice_new0 (GstEbuttdStyleSet);
+    ret = g_slice_new0 (TtmlStyleSet);
   }
 
   if (parent) {
@@ -884,9 +881,9 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
         ret->font_size = g_strdup (parent->font_size);
       } else {
         const gchar *tmp = ret->font_size;
-        ret->font_size = get_relative_font_size (parent->font_size,
+        ret->font_size = ttml_get_relative_font_size (parent->font_size,
             child->font_size);
-        GST_CAT_LOG (ebuttdparse, "Calculated font size: %s", ret->font_size);
+        GST_CAT_LOG (ttmlparse, "Calculated font size: %s", ret->font_size);
         g_free ((gpointer) tmp);
       }
     }
@@ -916,31 +913,31 @@ inherit_styling (GstEbuttdStyleSet * parent, GstEbuttdStyleSet * child)
 
 
 static gchar *
-get_element_type_string (GstEbuttdElement * element)
+ttml_get_element_type_string (TtmlElement * element)
 {
   switch (element->type) {
-    case GST_EBUTTD_ELEMENT_TYPE_STYLE:
+    case TTML_ELEMENT_TYPE_STYLE:
       return g_strdup ("<style>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_REGION:
+    case TTML_ELEMENT_TYPE_REGION:
       return g_strdup ("<region>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_BODY:
+    case TTML_ELEMENT_TYPE_BODY:
       return g_strdup ("<body>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_DIV:
+    case TTML_ELEMENT_TYPE_DIV:
       return g_strdup ("<div>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_P:
+    case TTML_ELEMENT_TYPE_P:
       return g_strdup ("<p>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_SPAN:
+    case TTML_ELEMENT_TYPE_SPAN:
       return g_strdup ("<span>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN:
+    case TTML_ELEMENT_TYPE_ANON_SPAN:
       return g_strdup ("<anon-span>");
       break;
-    case GST_EBUTTD_ELEMENT_TYPE_BR:
+    case TTML_ELEMENT_TYPE_BR:
       return g_strdup ("<br>");
       break;
     default:
@@ -952,10 +949,10 @@ get_element_type_string (GstEbuttdElement * element)
 
 /* Merge styles referenced by an element. */
 gboolean
-resolve_styles (GNode * node, gpointer data)
+ttml_resolve_styles (GNode * node, gpointer data)
 {
-  GstEbuttdStyleSet *tmp = NULL;
-  GstEbuttdElement *element, *style;
+  TtmlStyleSet *tmp = NULL;
+  TtmlElement *element, *style;
   GHashTable *styles_table;
   gchar *type_string;
   gint i;
@@ -963,8 +960,8 @@ resolve_styles (GNode * node, gpointer data)
   styles_table = (GHashTable *)data;
   element = node->data;
 
-  type_string = get_element_type_string (element);
-  GST_CAT_LOG (ebuttdparse, "Element type: %s", type_string);
+  type_string = ttml_get_element_type_string (element);
+  GST_CAT_LOG (ttmlparse, "Element type: %s", type_string);
   g_free (type_string);
 
   if (!element->styles)
@@ -972,29 +969,29 @@ resolve_styles (GNode * node, gpointer data)
 
   for (i = 0; i < g_strv_length (element->styles); ++i) {
     tmp = element->style_set;
-    GST_CAT_LOG (ebuttdparse, "Merging style %s...", element->styles[i]);
+    GST_CAT_LOG (ttmlparse, "Merging style %s...", element->styles[i]);
     style = g_hash_table_lookup (styles_table, element->styles[i]);
     g_assert (style != NULL);
-    element->style_set = merge_style_sets (element->style_set,
+    element->style_set = ttml_merge_style_sets (element->style_set,
         style->style_set);
-    if (tmp) delete_style_set (tmp);
+    if (tmp) ttml_delete_style_set (tmp);
   }
 
-  GST_CAT_LOG (ebuttdparse, "Styleset after merging:");
-  _print_style_set (element->style_set);
+  GST_CAT_LOG (ttmlparse, "Styleset after merging:");
+  ttml_print_style_set (element->style_set);
 
   return FALSE;
 }
 
 
 static void
-resolve_referenced_styles (GList * trees, GHashTable * styles_table)
+ttml_resolve_referenced_styles (GList * trees, GHashTable * styles_table)
 {
   GList * tree;
 
   for (tree = g_list_first (trees); tree; tree = tree->next) {
     GNode *root = (GNode *)tree->data;
-    g_node_traverse (root, G_PRE_ORDER, G_TRAVERSE_ALL, -1, resolve_styles,
+    g_node_traverse (root, G_PRE_ORDER, G_TRAVERSE_ALL, -1, ttml_resolve_styles,
         styles_table);
   }
 }
@@ -1002,64 +999,64 @@ resolve_referenced_styles (GList * trees, GHashTable * styles_table)
 
 /* Inherit styling attributes from parent. */
 gboolean
-inherit_styles (GNode * node, gpointer data)
+ttml_inherit_styles (GNode * node, gpointer data)
 {
-  GstEbuttdStyleSet *tmp = NULL;
-  GstEbuttdElement *element, *parent;
+  TtmlStyleSet *tmp = NULL;
+  TtmlElement *element, *parent;
   gchar *type_string;
 
   element = node->data;
 
-  type_string = get_element_type_string (element);
-  GST_CAT_LOG (ebuttdparse, "Element type: %s", type_string);
+  type_string = ttml_get_element_type_string (element);
+  GST_CAT_LOG (ttmlparse, "Element type: %s", type_string);
   g_free (type_string);
 
   if (node->parent) {
     parent = node->parent->data;
     if (parent->style_set) {
       tmp = element->style_set;
-      if (element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
+      if (element->type == TTML_ELEMENT_TYPE_ANON_SPAN) {
         /* Anon spans should merge all style attributes from their parent. */
-        element->style_set = merge_style_sets (parent->style_set,
+        element->style_set = ttml_merge_style_sets (parent->style_set,
             element->style_set);
       } else {
-        element->style_set = inherit_styling (parent->style_set,
+        element->style_set = ttml_inherit_styling (parent->style_set,
             element->style_set);
       }
-      if (tmp) delete_style_set (tmp);
+      if (tmp) ttml_delete_style_set (tmp);
     }
   }
 
-  GST_CAT_LOG (ebuttdparse, "Styleset after inheriting:");
-  _print_style_set (element->style_set);
+  GST_CAT_LOG (ttmlparse, "Styleset after inheriting:");
+  ttml_print_style_set (element->style_set);
 
   return FALSE;
 }
 
 
 static void
-inherit_element_styles (GList * trees)
+ttml_inherit_element_styles (GList * trees)
 {
   GList * tree;
 
   for (tree = g_list_first (trees); tree; tree = tree->next) {
     GNode *root = (GNode *)tree->data;
-    g_node_traverse (root, G_PRE_ORDER, G_TRAVERSE_ALL, -1, inherit_styles,
+    g_node_traverse (root, G_PRE_ORDER, G_TRAVERSE_ALL, -1, ttml_inherit_styles,
         NULL);
   }
 }
 
 
 static gboolean
-resolve_element_timings (GNode * node, gpointer data)
+ttml_resolve_element_timings (GNode * node, gpointer data)
 {
-  GstEbuttdElement *element, *leaf;
+  TtmlElement *element, *leaf;
 
   leaf = element = node->data;
 
   if (GST_CLOCK_TIME_IS_VALID (leaf->begin)
       && GST_CLOCK_TIME_IS_VALID (leaf->end)) {
-    GST_CAT_LOG (ebuttdparse, "Leaf node already has timing.");
+    GST_CAT_LOG (ttmlparse, "Leaf node already has timing.");
     return FALSE;
   }
 
@@ -1070,15 +1067,15 @@ resolve_element_timings (GNode * node, gpointer data)
   }
 
   if (!GST_CLOCK_TIME_IS_VALID (element->begin)) {
-    GST_CAT_WARNING (ebuttdparse,
+    GST_CAT_WARNING (ttmlparse,
         "No timing found for element. Removing from tree...");
     g_node_unlink (node);
   } else {
     leaf->begin = element->begin;
     leaf->end = element->end;
-    GST_CAT_LOG (ebuttdparse, "Leaf begin: %" GST_TIME_FORMAT,
+    GST_CAT_LOG (ttmlparse, "Leaf begin: %" GST_TIME_FORMAT,
         GST_TIME_ARGS (leaf->begin));
-    GST_CAT_LOG (ebuttdparse, "Leaf end: %" GST_TIME_FORMAT,
+    GST_CAT_LOG (ttmlparse, "Leaf end: %" GST_TIME_FORMAT,
         GST_TIME_ARGS (leaf->end));
   }
 
@@ -1087,17 +1084,17 @@ resolve_element_timings (GNode * node, gpointer data)
 
 
 static void
-resolve_timings (GNode * tree)
+ttml_resolve_timings (GNode * tree)
 {
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
-      resolve_element_timings, NULL);
+      ttml_resolve_element_timings, NULL);
 }
 
 
 static gboolean
-resolve_leaf_region (GNode * node, gpointer data)
+ttml_resolve_leaf_region (GNode * node, gpointer data)
 {
-  GstEbuttdElement *element, *leaf;
+  TtmlElement *element, *leaf;
   leaf = element = node->data;
 
   while (node->parent && !element->region) {
@@ -1107,9 +1104,9 @@ resolve_leaf_region (GNode * node, gpointer data)
 
   if (element->region) {
     leaf->region = g_strdup (element->region);
-    GST_CAT_LOG (ebuttdparse, "Leaf region: %s", leaf->region);
+    GST_CAT_LOG (ttmlparse, "Leaf region: %s", leaf->region);
   } else {
-    GST_CAT_WARNING (ebuttdparse, "No region found above leaf element.");
+    GST_CAT_WARNING (ttmlparse, "No region found above leaf element.");
   }
 
   return FALSE;
@@ -1117,10 +1114,10 @@ resolve_leaf_region (GNode * node, gpointer data)
 
 
 static void
-resolve_regions (GNode * tree)
+ttml_resolve_regions (GNode * tree)
 {
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
-      resolve_leaf_region, NULL);
+      ttml_resolve_leaf_region, NULL);
 }
 
 
@@ -1131,12 +1128,12 @@ typedef struct {
 
 
 static gboolean
-update_transition_time (GNode * node, gpointer data)
+ttml_update_transition_time (GNode * node, gpointer data)
 {
-  GstEbuttdElement *element = node->data;
+  TtmlElement *element = node->data;
   TrState *state = (TrState *)data;
 
-  GST_CAT_LOG (ebuttdparse, "begin: %" GST_TIME_FORMAT "  end: %"
+  GST_CAT_LOG (ttmlparse, "begin: %" GST_TIME_FORMAT "  end: %"
       GST_TIME_FORMAT "  start_time: %" GST_TIME_FORMAT,
       GST_TIME_ARGS (element->begin), GST_TIME_ARGS (element->end),
       GST_TIME_ARGS (state->start_time));
@@ -1144,7 +1141,7 @@ update_transition_time (GNode * node, gpointer data)
   if ((element->begin < state->next_transition_time)
       && (element->begin > state->start_time)) {
     state->next_transition_time = element->begin;
-    GST_CAT_LOG (ebuttdparse,
+    GST_CAT_LOG (ttmlparse,
         "Updating next transition time to element begin time (%"
         GST_TIME_FORMAT ")", GST_TIME_ARGS (state->next_transition_time));
     return FALSE;
@@ -1153,7 +1150,7 @@ update_transition_time (GNode * node, gpointer data)
   if ((element->end < state->next_transition_time)
       && (element->end > state->start_time)) {
     state->next_transition_time = element->end;
-    GST_CAT_LOG (ebuttdparse,
+    GST_CAT_LOG (ttmlparse,
         "Updating next transition time to element end time (%"
         GST_TIME_FORMAT ")", GST_TIME_ARGS (state->next_transition_time));
   }
@@ -1164,7 +1161,7 @@ update_transition_time (GNode * node, gpointer data)
 
 /* Return details about the next transition after @time. */
 static GstClockTime
-find_next_transition (GList * trees, GstClockTime time)
+ttml_find_next_transition (GList * trees, GstClockTime time)
 {
   TrState state;
   state.start_time = time;
@@ -1173,10 +1170,10 @@ find_next_transition (GList * trees, GstClockTime time)
   for (trees = g_list_first (trees); trees; trees = trees->next) {
     GNode *tree = (GNode *)trees->data;
     g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
-        update_transition_time, &state);
+        ttml_update_transition_time, &state);
   }
 
-  GST_CAT_LOG (ebuttdparse, "Next transition is at %" GST_TIME_FORMAT,
+  GST_CAT_LOG (ttmlparse, "Next transition is at %" GST_TIME_FORMAT,
       GST_TIME_ARGS (state.next_transition_time));
 
   return state.next_transition_time;
@@ -1184,16 +1181,16 @@ find_next_transition (GList * trees, GstClockTime time)
 
 
 static GNode *
-remove_nodes_by_time (GNode * node, GstClockTime time)
+ttml_remove_nodes_by_time (GNode * node, GstClockTime time)
 {
   GNode *child, *next_child;
-  GstEbuttdElement *element;
+  TtmlElement *element;
   element = node->data;
 
   child = node->children;
   next_child = child ? child->next : NULL;
   while (child) {
-    remove_nodes_by_time (child, time);
+    ttml_remove_nodes_by_time (child, time);
     child = next_child;
     next_child = child ? child->next : NULL;
   }
@@ -1212,55 +1209,55 @@ remove_nodes_by_time (GNode * node, GstClockTime time)
 /* Return a list of trees containing the elements and their ancestors that are
  * visible at @time. */
 static GList *
-get_active_elements (GList * element_trees, GstClockTime time)
+ttml_get_active_elements (GList * element_trees, GstClockTime time)
 {
   GList *tree;
   GList *ret = NULL;
 
   for (tree = g_list_first (element_trees); tree; tree = tree->next) {
     GNode *root = g_node_copy ((GNode *)tree->data);
-    GST_CAT_LOG (ebuttdparse, "There are %u nodes in tree.",
+    GST_CAT_LOG (ttmlparse, "There are %u nodes in tree.",
         g_node_n_nodes (root, G_TRAVERSE_ALL));
-    root = remove_nodes_by_time (root, time);
+    root = ttml_remove_nodes_by_time (root, time);
     if (root) {
-      GST_CAT_LOG (ebuttdparse, "After filtering there are %u nodes in tree.",
+      GST_CAT_LOG (ttmlparse, "After filtering there are %u nodes in tree.",
           g_node_n_nodes (root, G_TRAVERSE_ALL));
 
       ret = g_list_append (ret, root);
     } else {
-      GST_CAT_LOG (ebuttdparse, "All elements have been filtered from tree.");
+      GST_CAT_LOG (ttmlparse, "All elements have been filtered from tree.");
     }
   }
 
-  GST_CAT_DEBUG (ebuttdparse, "There are %u trees in returned list.",
+  GST_CAT_DEBUG (ttmlparse, "There are %u trees in returned list.",
       g_list_length (ret));
   return ret;
 }
 
 
 static GList *
-create_scenes (GList * region_trees)
+ttml_create_scenes (GList * region_trees)
 {
-  GstEbuttdScene *cur_scene = NULL;
+  TtmlScene *cur_scene = NULL;
   GList *output_scenes = NULL;
   GList *active_elements = NULL;
   GstClockTime timestamp = 0;
 
-  while ((timestamp = find_next_transition (region_trees, timestamp))
+  while ((timestamp = ttml_find_next_transition (region_trees, timestamp))
       != GST_CLOCK_TIME_NONE) {
-    GST_CAT_LOG (ebuttdparse, "Next transition found at time %" GST_TIME_FORMAT,
+    GST_CAT_LOG (ttmlparse, "Next transition found at time %" GST_TIME_FORMAT,
         GST_TIME_ARGS (timestamp));
     if (cur_scene) {
       cur_scene->end = timestamp;
       output_scenes = g_list_append (output_scenes, cur_scene);
     }
 
-    active_elements = get_active_elements (region_trees, timestamp);
-    GST_CAT_LOG (ebuttdparse, "There will be %u active areas after "
+    active_elements = ttml_get_active_elements (region_trees, timestamp);
+    GST_CAT_LOG (ttmlparse, "There will be %u active areas after "
         "transition", g_list_length (active_elements));
 
     if (active_elements) {
-      cur_scene = g_slice_new0 (GstEbuttdScene);
+      cur_scene = g_slice_new0 (TtmlScene);
       cur_scene->begin = timestamp;
       cur_scene->elements = active_elements;
     } else {
@@ -1274,9 +1271,9 @@ create_scenes (GList * region_trees)
 
 
 static gboolean
-strip_whitespace (GNode * node, gpointer data)
+ttml_strip_whitespace (GNode * node, gpointer data)
 {
-  GstEbuttdElement *element;
+  TtmlElement *element;
   element = node->data;
   if (element->text) g_strstrip (element->text);
   return FALSE;
@@ -1284,9 +1281,9 @@ strip_whitespace (GNode * node, gpointer data)
 
 
 static void
-strip_surrounding_whitespace (GNode * tree)
+ttml_strip_surrounding_whitespace (GNode * tree)
 {
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, strip_whitespace,
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, ttml_strip_whitespace,
       NULL);
 }
 
@@ -1294,14 +1291,14 @@ strip_surrounding_whitespace (GNode * tree)
 /* Store child elements of @node with name @element_name in @table, as long as
  * @table doesn't already contain an element with the same ID. */
 static void
-store_unique_children (xmlNodePtr node, const gchar * element_name,
+ttml_store_unique_children (xmlNodePtr node, const gchar * element_name,
     GHashTable * table)
 {
   xmlNodePtr ptr;
 
   for (ptr = node->children; ptr; ptr = ptr->next) {
     if (xmlStrcmp (ptr->name, (const xmlChar *) element_name) == 0) {
-      GstEbuttdElement *element = parse_element (ptr);
+      TtmlElement *element = ttml_parse_element (ptr);
 
       if (element)
         if (!g_hash_table_contains (table, element->id))
@@ -1315,16 +1312,16 @@ store_unique_children (xmlNodePtr node, const gchar * element_name,
 /* Parse style and region elements from @head and store in their respective
  * hash tables for future reference. */
 static void
-parse_head (xmlNodePtr head, GHashTable * styles_table,
+ttml_parse_head (xmlNodePtr head, GHashTable * styles_table,
     GHashTable * regions_table)
 {
   xmlNodePtr node;
 
   for (node = head->children; node; node = node->next) {
     if (xmlStrcmp (node->name, (const xmlChar *) "styling") == 0)
-      store_unique_children (node, "style", styles_table);
+      ttml_store_unique_children (node, "style", styles_table);
     if (xmlStrcmp (node->name, (const xmlChar *) "layout") == 0)
-      store_unique_children (node, "region", regions_table);
+      ttml_store_unique_children (node, "region", regions_table);
   }
 }
 
@@ -1332,30 +1329,30 @@ parse_head (xmlNodePtr head, GHashTable * styles_table,
 /* Remove nodes that do not belong to @region, or are not an ancestor of a node
  * belonging to @region. */
 static GNode *
-remove_nodes_by_region (GNode * node, const gchar *region)
+ttml_remove_nodes_by_region (GNode * node, const gchar *region)
 {
   GNode *child, *next_child;
-  GstEbuttdElement *element;
+  TtmlElement *element;
   element = node->data;
 
   child = node->children;
   next_child = child ? child->next : NULL;
   while (child) {
-    remove_nodes_by_region (child, region);
+    ttml_remove_nodes_by_region (child, region);
     child = next_child;
     next_child = child ? child->next : NULL;
   }
 
-  if ((element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
-        || element->type != GST_EBUTTD_ELEMENT_TYPE_BR)
+  if ((element->type == TTML_ELEMENT_TYPE_ANON_SPAN
+        || element->type != TTML_ELEMENT_TYPE_BR)
       && element->region && (g_strcmp0 (element->region, region) != 0)) {
-    delete_element (element);
+    ttml_delete_element (element);
     g_node_destroy (node);
     return NULL;
   }
-  if (element->type != GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN
-        && element->type != GST_EBUTTD_ELEMENT_TYPE_BR && !node->children) {
-    delete_element (element);
+  if (element->type != TTML_ELEMENT_TYPE_ANON_SPAN
+        && element->type != TTML_ELEMENT_TYPE_BR && !node->children) {
+    ttml_delete_element (element);
     g_node_destroy (node);
     return NULL;
   }
@@ -1364,10 +1361,10 @@ remove_nodes_by_region (GNode * node, const gchar *region)
 }
 
 
-static GstEbuttdElement *
-copy_element (const GstEbuttdElement * element)
+static TtmlElement *
+ttml_copy_element (const TtmlElement * element)
 {
-  GstEbuttdElement *ret = g_slice_new0 (GstEbuttdElement);
+  TtmlElement *ret = g_slice_new0 (TtmlElement);
 
   ret->type = element->type;
   if (element->id)
@@ -1379,7 +1376,7 @@ copy_element (const GstEbuttdElement * element)
   ret->begin = element->begin;
   ret->end = element->end;
   if (element->style_set)
-    ret->style_set = copy_style_set (element->style_set);
+    ret->style_set = ttml_copy_style_set (element->style_set);
   if (element->text)
     ret->text = g_strdup (element->text);
   ret->text_index = element->text_index;
@@ -1387,10 +1384,11 @@ copy_element (const GstEbuttdElement * element)
   return ret;
 }
 
+
 static gpointer
-copy_tree_element (gconstpointer src, gpointer data)
+ttml_copy_tree_element (gconstpointer src, gpointer data)
 {
-  return copy_element ((GstEbuttdElement *)src);
+  return ttml_copy_element ((TtmlElement *)src);
 }
 
 
@@ -1398,7 +1396,7 @@ copy_tree_element (gconstpointer src, gpointer data)
  * belonging to a single region. Returns a list of trees, one per region, each
  * with the corresponding region element at its root. */
 static GList *
-split_body_by_region (GNode * body, GHashTable * regions)
+ttml_split_body_by_region (GNode * body, GHashTable * regions)
 {
   GHashTableIter iter;
   gpointer key, value;
@@ -1407,34 +1405,34 @@ split_body_by_region (GNode * body, GHashTable * regions)
   g_hash_table_iter_init (&iter, regions);
   while (g_hash_table_iter_next (&iter, &key, &value)) {
     gchar *region_name = (gchar *)key;
-    GstEbuttdElement *region = (GstEbuttdElement *)value;
-    GNode *region_node = g_node_new (copy_element (region));
-    GNode *body_copy = g_node_copy_deep (body, copy_tree_element, NULL);
+    TtmlElement *region = (TtmlElement *)value;
+    GNode *region_node = g_node_new (ttml_copy_element (region));
+    GNode *body_copy = g_node_copy_deep (body, ttml_copy_tree_element, NULL);
 
-    GST_CAT_DEBUG (ebuttdparse, "Creating tree for region %s", region_name);
-    GST_CAT_LOG (ebuttdparse, "Copy of body has %u nodes.",
+    GST_CAT_DEBUG (ttmlparse, "Creating tree for region %s", region_name);
+    GST_CAT_LOG (ttmlparse, "Copy of body has %u nodes.",
         g_node_n_nodes (body_copy, G_TRAVERSE_ALL));
 
-    body_copy = remove_nodes_by_region (body_copy, region_name);
+    body_copy = ttml_remove_nodes_by_region (body_copy, region_name);
     if (body_copy) {
-      GST_CAT_LOG (ebuttdparse, "Copy of body now has %u nodes.",
+      GST_CAT_LOG (ttmlparse, "Copy of body now has %u nodes.",
           g_node_n_nodes (body_copy, G_TRAVERSE_ALL));
 
       /* Reparent tree to region node. */
       g_node_prepend (region_node, body_copy);
     }
-    GST_CAT_LOG (ebuttdparse, "Final tree has %u nodes.",
+    GST_CAT_LOG (ttmlparse, "Final tree has %u nodes.",
         g_node_n_nodes (region_node, G_TRAVERSE_ALL));
     ret = g_list_append (ret, region_node);
   }
 
-  GST_CAT_DEBUG (ebuttdparse, "Returning %u trees.", g_list_length (ret));
+  GST_CAT_DEBUG (ttmlparse, "Returning %u trees.", g_list_length (ret));
   return ret;
 }
 
 
 static guint
-add_text_to_buffer (GstBuffer * buf, const gchar * text)
+ttml_add_text_to_buffer (GstBuffer * buf, const gchar * text)
 {
   GstMemory *mem;
   GstMapInfo map;
@@ -1442,10 +1440,10 @@ add_text_to_buffer (GstBuffer * buf, const gchar * text)
 
   mem = gst_allocator_alloc (NULL, strlen (text) + 1, NULL);
   if (!gst_memory_map (mem, &map, GST_MAP_WRITE))
-    GST_CAT_ERROR (ebuttdparse, "Failed to map memory.");
+    GST_CAT_ERROR (ttmlparse, "Failed to map memory.");
 
   g_strlcpy ((gchar *)map.data, text, map.size);
-  GST_CAT_DEBUG (ebuttdparse, "Inserted following text into buffer: %s",
+  GST_CAT_DEBUG (ttmlparse, "Inserted following text into buffer: %s",
       (gchar *)map.data);
   gst_memory_unmap (mem, &map);
 
@@ -1458,7 +1456,7 @@ add_text_to_buffer (GstBuffer * buf, const gchar * text)
 /* Create a GstSubtitleElement from @element, add it to @block, and insert its
  * associated text in @buf. */
 static void
-add_element (GstSubtitleBlock * block, GstEbuttdElement * element,
+ttml_add_element (GstSubtitleBlock * block, TtmlElement * element,
     GstBuffer * buf, guint cellres_x, guint cellres_y)
 {
   GstSubtitleStyleSet *element_style;
@@ -1466,22 +1464,22 @@ add_element (GstSubtitleBlock * block, GstEbuttdElement * element,
   GstSubtitleElement *sub_element;
 
   element_style = gst_subtitle_style_set_new ();
-  update_style_set (element_style, element->style_set,
+  ttml_update_style_set (element_style, element->style_set,
       cellres_x, cellres_y);
-  GST_CAT_DEBUG (ebuttdparse, "Creating element with text index %u",
+  GST_CAT_DEBUG (ttmlparse, "Creating element with text index %u",
       element->text_index);
 
-  if (element->type != GST_EBUTTD_ELEMENT_TYPE_BR)
-    buffer_index = add_text_to_buffer (buf, element->text);
+  if (element->type != TTML_ELEMENT_TYPE_BR)
+    buffer_index = ttml_add_text_to_buffer (buf, element->text);
   else
-    buffer_index = add_text_to_buffer (buf, "\n");
+    buffer_index = ttml_add_text_to_buffer (buf, "\n");
 
-  GST_CAT_DEBUG (ebuttdparse, "Inserted text at index %u in GstBuffer.",
+  GST_CAT_DEBUG (ttmlparse, "Inserted text at index %u in GstBuffer.",
       buffer_index);
   sub_element = gst_subtitle_element_new (element_style, buffer_index);
 
   gst_subtitle_block_add_element (block, sub_element);
-  GST_CAT_DEBUG (ebuttdparse, "Added element to block; there are now %u"
+  GST_CAT_DEBUG (ttmlparse, "Added element to block; there are now %u"
       " elements in the block.",
       gst_subtitle_block_get_element_count (block));
 }
@@ -1490,20 +1488,20 @@ add_element (GstSubtitleBlock * block, GstEbuttdElement * element,
 /* Create the subtitle area and its child blocks and elements for @tree,
  * inserting element text in @buf. */
 static GstSubtitleArea *
-create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
+ttml_create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
     guint cellres_y)
 {
   GstSubtitleArea *area;
   GstSubtitleStyleSet *region_style;
-  GstEbuttdElement *element;
+  TtmlElement *element;
   GNode *node;
 
   element = tree->data;
-  g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_REGION);
+  g_assert (element->type == TTML_ELEMENT_TYPE_REGION);
 
   /* Create SubtitleArea from region. */
   region_style = gst_subtitle_style_set_new ();
-  update_style_set (region_style, element->style_set, cellres_x, cellres_y);
+  ttml_update_style_set (region_style, element->style_set, cellres_x, cellres_y);
   area = gst_subtitle_area_new (region_style);
   g_assert (area != NULL);
 
@@ -1513,13 +1511,13 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
 
   g_assert (node->next == NULL);
   element = node->data;
-  g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_BODY);
+  g_assert (element->type == TTML_ELEMENT_TYPE_BODY);
 
   for (node = node->children; node; node = node->next) {
     GNode *p_node;
 
     element = node->data;
-    g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_DIV);
+    g_assert (element->type == TTML_ELEMENT_TYPE_DIV);
 
     for (p_node = node->children; p_node; p_node = p_node->next) {
       GstSubtitleBlock *block;
@@ -1527,9 +1525,10 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
       GNode *content_node;
 
       element = p_node->data;
-      g_assert (element->type == GST_EBUTTD_ELEMENT_TYPE_P);
+      g_assert (element->type == TTML_ELEMENT_TYPE_P);
       block_style = gst_subtitle_style_set_new ();
-      update_style_set (block_style, element->style_set, cellres_x, cellres_y);
+      ttml_update_style_set (block_style, element->style_set, cellres_x,
+          cellres_y);
 
       /* TODO: blend bg colors from body, div and p here. */
 
@@ -1541,31 +1540,31 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
         GNode *anon_node;
         element = content_node->data;
 
-        if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR
-          || element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
-          add_element (block, element, buf, cellres_x, cellres_y);
-        } else if (element->type == GST_EBUTTD_ELEMENT_TYPE_SPAN) {
+        if (element->type == TTML_ELEMENT_TYPE_BR
+          || element->type == TTML_ELEMENT_TYPE_ANON_SPAN) {
+          ttml_add_element (block, element, buf, cellres_x, cellres_y);
+        } else if (element->type == TTML_ELEMENT_TYPE_SPAN) {
           /* Loop through anon-span children of this span. */
           for (anon_node = content_node->children; anon_node;
               anon_node = anon_node->next) {
             element = anon_node->data;
 
-            if (element->type == GST_EBUTTD_ELEMENT_TYPE_BR
-                || element->type == GST_EBUTTD_ELEMENT_TYPE_ANON_SPAN) {
-              add_element (block, element, buf, cellres_x, cellres_y);
+            if (element->type == TTML_ELEMENT_TYPE_BR
+                || element->type == TTML_ELEMENT_TYPE_ANON_SPAN) {
+              ttml_add_element (block, element, buf, cellres_x, cellres_y);
             } else {
-              GST_CAT_ERROR (ebuttdparse,
+              GST_CAT_ERROR (ttmlparse,
                   "Element type not allowed at this level of document.");
             }
           }
         } else {
-          GST_CAT_ERROR (ebuttdparse,
+          GST_CAT_ERROR (ttmlparse,
               "Element type not allowed at this level of document.");
         }
       }
 
       gst_subtitle_area_add_block (area, block);
-      GST_CAT_DEBUG (ebuttdparse, "Added block to area; there are now %u blocks"
+      GST_CAT_DEBUG (ttmlparse, "Added block to area; there are now %u blocks"
           " in the area.", gst_subtitle_area_get_block_count (area));
     }
   }
@@ -1575,13 +1574,13 @@ create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
 
 
 static GNode *
-create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_y)
+ttml_create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_y)
 {
   GList *scene_entry;
 
   for (scene_entry = g_list_first (scenes); scene_entry;
       scene_entry = scene_entry->next) {
-    GstEbuttdScene * scene = scene_entry->data;
+    TtmlScene * scene = scene_entry->data;
     GPtrArray *areas = g_ptr_array_new ();
     GList *region_tree;
 
@@ -1596,7 +1595,7 @@ create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_y)
       GNode *tree = (GNode *)region_tree->data;
       GstSubtitleArea *area;
 
-      area = create_subtitle_area (tree, scene->buf, cellres_x, cellres_y);
+      area = ttml_create_subtitle_area (tree, scene->buf, cellres_x, cellres_y);
       g_ptr_array_add (areas, area);
     }
 
@@ -1613,7 +1612,7 @@ GList * create_buffer_list (GList * scenes)
   GList *ret = NULL;
 
   while (scenes) {
-    GstEbuttdScene *scene = scenes->data;
+    TtmlScene *scene = scenes->data;
     ret = g_list_prepend (ret, gst_buffer_ref (scene->buf));
     scenes = scenes->next;
   }
@@ -1622,37 +1621,38 @@ GList * create_buffer_list (GList * scenes)
 
 
 static gboolean
-free_node_data (GNode * node, gpointer data)
+ttml_free_node_data (GNode * node, gpointer data)
 {
-  GstEbuttdElement *element;
+  TtmlElement *element;
   element = node->data;
-  delete_element (element);
+  ttml_delete_element (element);
   return FALSE;
 }
 
 
 static void
-delete_tree (GNode * tree)
+ttml_delete_tree (GNode * tree)
 {
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, free_node_data, NULL);
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1, ttml_free_node_data,
+      NULL);
   g_node_destroy (tree);
 }
 
 
 static void
-delete_scene (GstEbuttdScene * scene)
+ttml_delete_scene (TtmlScene * scene)
 {
   if (scene->elements)
     g_list_free_full (scene->elements, (GDestroyNotify) g_node_destroy);
   if (scene->buf)
     gst_buffer_unref (scene->buf);
-  g_slice_free (GstEbuttdScene, scene);
+  g_slice_free (TtmlScene, scene);
 }
 
 
 /* Returns TRUE if @color is totally transparent. */
 static gboolean
-color_is_transparent (const GstSubtitleColor *color)
+ttml_color_is_transparent (const GstSubtitleColor *color)
 {
   if (!color)
     return FALSE;
@@ -1661,30 +1661,29 @@ color_is_transparent (const GstSubtitleColor *color)
 }
 
 
-/* XXX: Should we be using GstClockTimeDiffs for durations? */
 static void
-assign_region_times (GList *region_trees, GstClockTime doc_begin,
+ttml_assign_region_times (GList *region_trees, GstClockTime doc_begin,
     GstClockTime doc_duration)
 {
   GList *tree;
 
   for (tree = g_list_first (region_trees); tree; tree = tree->next) {
     GNode *region_node = (GNode *)tree->data;
-    GstEbuttdElement *region = (GstEbuttdElement *)region_node->data;
+    TtmlElement *region = (TtmlElement *)region_node->data;
     gboolean always_visible = !region->style_set->show_background
       || (g_strcmp0 (region->style_set->show_background, "always") == 0);
 
     GstSubtitleColor region_color = { 0, 0, 0, 0 };
     if (region->style_set->bg_color)
-      region_color = parse_ebuttd_colorstring (region->style_set->bg_color);
+      region_color = ttml_parse_colorstring (region->style_set->bg_color);
 
-    if (always_visible && !color_is_transparent (&region_color)) {
-      GST_CAT_DEBUG (ebuttdparse, "Assigning times to region.");
+    if (always_visible && !ttml_color_is_transparent (&region_color)) {
+      GST_CAT_DEBUG (ttmlparse, "Assigning times to region.");
       /* If the input XML document was not encapsulated in a container that
        * provides timing information for the document as a whole (i.e., its
        * PTS and duration) and the region background should be always visible,
-       * set region start times to 40ms and end times to 24 hours. This allows
-       * the transition finding logic to work cleanly and ensures that the
+       * set region start time to 40ms and end time to 24 hours. This allows
+       * the transition finding logic to work cleanly and ensures that
        * regions with showBackground="always" are visible for [virtually] the
        * entirety of any real-world stream. */
       region->begin = (doc_begin != GST_CLOCK_TIME_NONE) ?
@@ -1697,40 +1696,40 @@ assign_region_times (GList *region_trees, GstClockTime doc_begin,
 
 
 GList *
-ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
-    GstClockTime buffer_duration)
+ttml_parse (const gchar * input, GstClockTime begin,
+    GstClockTime duration)
 {
   xmlDocPtr doc;
   xmlNodePtr node;
 
   GHashTable *styles_table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) delete_element);
+      NULL, (GDestroyNotify) ttml_delete_element);
   GHashTable *regions_table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) delete_element);
+      NULL, (GDestroyNotify) ttml_delete_element);
   GList *output_buffers = NULL;
   gchar *value;
   guint cellres_x, cellres_y;
 
-  GST_DEBUG_CATEGORY_INIT (ebuttdparse, "ebuttdparser", 0,
-      "EBU-TT-D debug category");
-  GST_CAT_LOG (ebuttdparse, "Input:\n%s", input);
+  GST_DEBUG_CATEGORY_INIT (ttmlparse, "ttmlparser", 0,
+      "TTML parser debug category");
+  GST_CAT_LOG (ttmlparse, "Input:\n%s", input);
 
   /* Parse input. */
   doc = xmlReadMemory (input, strlen (input), "any_doc_name", NULL,
       XML_PARSE_NOBLANKS);
   if (!doc) {
-    GST_CAT_ERROR (ebuttd_parse_debug, "Failed to parse document.");
+    GST_CAT_ERROR (ttmlparse, "Failed to parse document.");
     return NULL;
   }
   node = xmlDocGetRootElement (doc);
 
   if (xmlStrcmp (node->name, (const xmlChar *) "tt") != 0) {
-    GST_CAT_ERROR (ebuttdparse, "Root element of document is not tt:tt.");
+    GST_CAT_ERROR (ttmlparse, "Root element of document is not tt:tt.");
     xmlFreeDoc (doc);
     return NULL;
   }
 
-  if ((value = get_xml_property (node, "cellResolution"))) {
+  if ((value = ttml_get_xml_property (node, "cellResolution"))) {
     gchar *ptr = value;
     cellres_x = (guint) g_ascii_strtoull (ptr, &ptr, 10U);
     cellres_y = (guint) g_ascii_strtoull (ptr, NULL, 10U);
@@ -1740,16 +1739,16 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
     cellres_y = DEFAULT_CELLRES_Y;
   }
 
-  GST_CAT_DEBUG (ebuttdparse, "cellres_x: %u   cellres_y: %u", cellres_x,
+  GST_CAT_DEBUG (ttmlparse, "cellres_x: %u   cellres_y: %u", cellres_x,
       cellres_y);
 
   node = node->children;
   if (xmlStrcmp (node->name, (const xmlChar *) "head") != 0) {
-    GST_CAT_ERROR (ebuttdparse, "First element is not <head>.");
+    GST_CAT_ERROR (ttmlparse, "First element is not <head>.");
     xmlFreeDoc (doc);
     return NULL;
   }
-  parse_head (node, styles_table, regions_table);
+  ttml_parse_head (node, styles_table, regions_table);
   node = node->next;
 
   if (node && xmlStrcmp (node->name, (const xmlChar *) "body") == 0) {
@@ -1757,30 +1756,29 @@ ebutt_xml_parse (const gchar * input, GstClockTime buffer_pts,
     GList *region_trees = NULL;
     GList *scenes = NULL;
 
-    /* Process body_tree of xml doc */
-    body_tree = parse_body (node);
-    GST_CAT_LOG (ebuttdparse, "body_tree tree contains %u nodes.",
+    body_tree = ttml_parse_body (node);
+    GST_CAT_LOG (ttmlparse, "body_tree tree contains %u nodes.",
         g_node_n_nodes (body_tree, G_TRAVERSE_ALL));
-    GST_CAT_LOG (ebuttdparse, "body_tree tree height is %u",
+    GST_CAT_LOG (ttmlparse, "body_tree tree height is %u",
         g_node_max_height (body_tree));
 
-    strip_surrounding_whitespace (body_tree);
-    resolve_timings (body_tree);
-    resolve_regions (body_tree);
-    region_trees = split_body_by_region (body_tree, regions_table);
-    resolve_referenced_styles (region_trees, styles_table);
-    inherit_element_styles (region_trees);
-    assign_region_times (region_trees, buffer_pts, buffer_duration);
-    scenes = create_scenes (region_trees);
-    GST_CAT_LOG (ebuttdparse, "There are %u scenes in all.",
+    ttml_strip_surrounding_whitespace (body_tree);
+    ttml_resolve_timings (body_tree);
+    ttml_resolve_regions (body_tree);
+    region_trees = ttml_split_body_by_region (body_tree, regions_table);
+    ttml_resolve_referenced_styles (region_trees, styles_table);
+    ttml_inherit_element_styles (region_trees);
+    ttml_assign_region_times (region_trees, begin, duration);
+    scenes = ttml_create_scenes (region_trees);
+    GST_CAT_LOG (ttmlparse, "There are %u scenes in all.",
         g_list_length (scenes));
     /* XXX: Might this be confusing, as input docs can contain metadata...? */
-    create_and_attach_metadata (scenes, cellres_x, cellres_y);
+    ttml_create_and_attach_metadata (scenes, cellres_x, cellres_y);
     output_buffers = create_buffer_list (scenes);
 
-    g_list_free_full (scenes, (GDestroyNotify) delete_scene);
-    g_list_free_full (region_trees, (GDestroyNotify) delete_tree);
-    delete_tree (body_tree);
+    g_list_free_full (scenes, (GDestroyNotify) ttml_delete_scene);
+    g_list_free_full (region_trees, (GDestroyNotify) ttml_delete_tree);
+    ttml_delete_tree (body_tree);
   }
 
   xmlFreeDoc (doc);
