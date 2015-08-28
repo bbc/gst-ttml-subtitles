@@ -133,7 +133,6 @@ ttml_print_element (TtmlElement * element)
 static void
 ttml_print_style_set (TtmlStyleSet * set)
 {
-  GST_CAT_LOG (ttmlparse, "Style set %p:", set);
   if (set->text_direction)
     GST_CAT_LOG (ttmlparse, "\t\ttext_direction: %s", set->text_direction);
   if (set->font_family)
@@ -284,7 +283,6 @@ ttml_parse_style_set (const xmlNode * node)
 static void
 ttml_delete_style_set (TtmlStyleSet * style)
 {
-  GST_CAT_LOG (ttmlparse, "Deleting style set %p...", style);
   if (style->text_direction) g_free ((gpointer) style->text_direction);
   if (style->font_family) g_free ((gpointer) style->font_family);
   if (style->font_size) g_free ((gpointer) style->font_size);
@@ -313,8 +311,6 @@ ttml_delete_style_set (TtmlStyleSet * style)
 static void
 ttml_delete_element (TtmlElement * element)
 {
-  GST_CAT_LOG (ttmlparse, "Deleting element %p...", element);
-
   if (element->id) g_free ((gpointer) element->id);
   if (element->styles) g_strfreev (element->styles);
   if (element->region) g_free ((gpointer) element->region);
