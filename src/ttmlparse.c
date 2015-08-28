@@ -379,7 +379,8 @@ ttml_parse_timecode (const gchar * timestring)
 
   g_strfreev (strings);
   GST_CAT_LOG (ttmlparse,
-      "hours: %llu  minutes: %llu  seconds: %llu  milliseconds: %llu",
+      "hours: %" G_GUINT64_FORMAT "  minutes: %" G_GUINT64_FORMAT
+      "  seconds: %" G_GUINT64_FORMAT "  milliseconds: %" G_GUINT64_FORMAT "",
       hours,  minutes,  seconds,  milliseconds);
 
   time = hours * GST_SECOND * 3600
