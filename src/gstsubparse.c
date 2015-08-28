@@ -1569,11 +1569,18 @@ handle_buffer (GstTtmlParse * self, GstBuffer * buf)
   }
 
   if (g_strcmp0 (self->subtitle_codec, "EBUTT") == 0) {
+    GTimer *timer = g_timer_new ();
+
     /* use libxml2 instead of line by line parsing
      * TODO: remove duplicate code.
      */
     GList *subtitle_list = ttml_parse (self->textbuf->str,
         GST_BUFFER_PTS (buf), GST_BUFFER_DURATION (buf));
+
+    g_timer_stop (timer);
+    GST_CAT_INFO (ttml_parse_debug, "Time to parse file: %gms",
+        g_timer_elapsed (timer, NULL) * 1000.0);
+    g_timer_destroy (timer);
 
     while (subtitle_list) {
       GstBuffer *op_buffer = subtitle_list->data;
