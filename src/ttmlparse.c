@@ -1137,11 +1137,6 @@ ttml_update_transition_time (GNode * node, gpointer data)
   TtmlElement *element = node->data;
   TrState *state = (TrState *)data;
 
-  GST_CAT_LOG (ttmlparse, "begin: %" GST_TIME_FORMAT "  end: %"
-      GST_TIME_FORMAT "  start_time: %" GST_TIME_FORMAT,
-      GST_TIME_ARGS (element->begin), GST_TIME_ARGS (element->end),
-      GST_TIME_ARGS (state->start_time));
-
   if ((element->begin < state->next_transition_time)
       && (element->begin > state->start_time)) {
     state->next_transition_time = element->begin;
