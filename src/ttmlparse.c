@@ -973,12 +973,17 @@ ttml_resolve_styles (GNode * node, gpointer data)
 
   for (i = 0; i < g_strv_length (element->styles); ++i) {
     tmp = element->style_set;
-    GST_CAT_LOG (ttmlparse, "Merging style %s...", element->styles[i]);
     style = g_hash_table_lookup (styles_table, element->styles[i]);
-    g_assert (style != NULL);
-    element->style_set = ttml_merge_style_sets (element->style_set,
-        style->style_set);
-    if (tmp) ttml_delete_style_set (tmp);
+    if (style) {
+      GST_CAT_LOG (ttmlparse, "Merging style %s...", element->styles[i]);
+      element->style_set = ttml_merge_style_sets (element->style_set,
+          style->style_set);
+      if (tmp)
+        ttml_delete_style_set (tmp);
+    } else {
+      GST_CAT_WARNING (ttmlparse, "Element references an unknown style (%s)",
+          element->styles[i]);
+    }
   }
 
   GST_CAT_LOG (ttmlparse, "Styleset after merging:");
