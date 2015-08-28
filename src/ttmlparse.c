@@ -504,7 +504,6 @@ ttml_parse_body (const xmlNode * node)
 }
 
 
-/* XXX: Do we need to put defaults in here, seeing that the passed-in style set should have default values, and if a value isn't recognized it seems reasonable to do nothing...? */
 static void
 ttml_update_style_set (GstSubtitleStyleSet * ss, TtmlStyleSet * ess,
     guint cellres_x, guint cellres_y)
