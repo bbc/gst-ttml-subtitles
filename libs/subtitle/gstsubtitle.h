@@ -63,12 +63,12 @@ typedef enum {
 
 typedef enum {
     GST_SUBTITLE_BACKGROUND_MODE_ALWAYS,
-    GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE,
+    GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE
 } GstSubtitleBackgroundMode;
 
 typedef enum {
     GST_SUBTITLE_OVERFLOW_MODE_HIDDEN,
-    GST_SUBTITLE_OVERFLOW_MODE_VISIBLE,
+    GST_SUBTITLE_OVERFLOW_MODE_VISIBLE
 } GstSubtitleOverflowMode;
 
 struct _GstSubtitleColor {
@@ -98,7 +98,7 @@ typedef enum {
 
 typedef enum {
   GST_SUBTITLE_FONT_WEIGHT_NORMAL,
-  GST_SUBTITLE_FONT_WEIGHT_BOLD,
+  GST_SUBTITLE_FONT_WEIGHT_BOLD
 } GstSubtitleFontWeight;
 
 typedef enum {
@@ -114,14 +114,14 @@ typedef enum {
 
 typedef enum {
   GST_SUBTITLE_WRAPPING_ON,
-  GST_SUBTITLE_WRAPPING_OFF,
+  GST_SUBTITLE_WRAPPING_OFF
 } GstSubtitleWrapping;
 
 typedef enum {
   GST_SUBTITLE_MULTI_ROW_ALIGN_AUTO,
   GST_SUBTITLE_MULTI_ROW_ALIGN_START,
   GST_SUBTITLE_MULTI_ROW_ALIGN_CENTER,
-  GST_SUBTITLE_MULTI_ROW_ALIGN_END,
+  GST_SUBTITLE_MULTI_ROW_ALIGN_END
 } GstSubtitleMultiRowAlign;
 
 struct _GstSubtitleStyleSet {
