@@ -22,53 +22,53 @@
  * P. TAYLOUR CHANGE LOG
  * ----------------------
  *
- * Added in GST_EBUTTD_PARSE_FORMAT_EBUTT = 11 to the enum
- * in the .c file, added in support for GST_EBUTTD_PARSE_FORMAT_EBUTT.
+ * Added in GST_TTML_PARSE_FORMAT_TTML = 11 to the enum
+ * in the .c file, added in support for GST_TTML_PARSE_FORMAT_TTML.
  *
  */
 
-#ifndef __GST_SUBPARSE_H__
-#define __GST_SUBPARSE_H__
+#ifndef __GST_TTMLPARSE_H__
+#define __GST_TTMLPARSE_H__
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
 
-GST_DEBUG_CATEGORY_EXTERN (ebuttd_parse_debug);
-GST_DEBUG_CATEGORY_EXTERN (ebuttd_parse_debug_ebutt);
-#define GST_CAT_DEFAULT ebuttd_parse_debug
+GST_DEBUG_CATEGORY_EXTERN (ttml_parse_debug);
+GST_DEBUG_CATEGORY_EXTERN (ttml_parse_debug_ebutt);
+#define GST_CAT_DEFAULT ttml_parse_debug
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_EBUTTDPARSE \
-  (gst_ebuttd_parse_get_type ())
-#define GST_EBUTTDPARSE(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST ((obj), GST_TYPE_EBUTTDPARSE, GstEbuttdParse))
-#define GST_EBUTTDPARSE_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST ((klass), GST_TYPE_EBUTTDPARSE, GstEbuttdParseClass))
-#define GST_IS_EBUTTDPARSE(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GST_TYPE_EBUTTDPARSE))
-#define GST_IS_EBUTTDPARSE_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE ((klass), GST_TYPE_EBUTTDPARSE))
+#define GST_TYPE_TTMLPARSE \
+  (gst_ttml_parse_get_type ())
+#define GST_TTMLPARSE(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), GST_TYPE_TTMLPARSE, GstTtmlParse))
+#define GST_TTMLPARSE_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST ((klass), GST_TYPE_TTMLPARSE, GstTtmlParseClass))
+#define GST_IS_TTMLPARSE(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GST_TYPE_TTMLPARSE))
+#define GST_IS_TTMLPARSE_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE ((klass), GST_TYPE_TTMLPARSE))
 
-typedef struct _GstEbuttdParse GstEbuttdParse;
-typedef struct _GstEbuttdParseClass GstEbuttdParseClass;
+typedef struct _GstTtmlParse GstTtmlParse;
+typedef struct _GstTtmlParseClass GstTtmlParseClass;
 
 /* format enum */
 typedef enum
 {
-  GST_EBUTTD_PARSE_FORMAT_UNKNOWN   = 0,
-  GST_EBUTTD_PARSE_FORMAT_MDVDSUB   = 1,
-  GST_EBUTTD_PARSE_FORMAT_SUBRIP    = 2,
-  GST_EBUTTD_PARSE_FORMAT_MPSUB     = 3,
-  GST_EBUTTD_PARSE_FORMAT_SAMI      = 4,
-  GST_EBUTTD_PARSE_FORMAT_TMPLAYER  = 5,
-  GST_EBUTTD_PARSE_FORMAT_MPL2      = 6,
-  GST_EBUTTD_PARSE_FORMAT_SUBVIEWER = 7,
-  GST_EBUTTD_PARSE_FORMAT_DKS       = 8,
-  GST_EBUTTD_PARSE_FORMAT_QTTEXT    = 9,
-  GST_EBUTTD_PARSE_FORMAT_LRC       = 10,
-  GST_EBUTTD_PARSE_FORMAT_EBUTT     = 11
-} GstEbuttdParseFormat;
+  GST_TTML_PARSE_FORMAT_UNKNOWN   = 0,
+  GST_TTML_PARSE_FORMAT_MDVDSUB   = 1,
+  GST_TTML_PARSE_FORMAT_SUBRIP    = 2,
+  GST_TTML_PARSE_FORMAT_MPSUB     = 3,
+  GST_TTML_PARSE_FORMAT_SAMI      = 4,
+  GST_TTML_PARSE_FORMAT_TMPLAYER  = 5,
+  GST_TTML_PARSE_FORMAT_MPL2      = 6,
+  GST_TTML_PARSE_FORMAT_SUBVIEWER = 7,
+  GST_TTML_PARSE_FORMAT_DKS       = 8,
+  GST_TTML_PARSE_FORMAT_QTTEXT    = 9,
+  GST_TTML_PARSE_FORMAT_LRC       = 10,
+  GST_TTML_PARSE_FORMAT_TTML     = 11
+} GstTtmlParseFormat;
 
 typedef struct {
   int      state;
@@ -84,7 +84,7 @@ typedef struct {
 
 typedef gchar* (*Parser) (ParserState *state, const gchar *line);
 
-struct _GstEbuttdParse {
+struct _GstTtmlParse {
   GstElement element;
 
   GstPad *sinkpad,*srcpad;
@@ -94,7 +94,7 @@ struct _GstEbuttdParse {
   /* contains the UTF-8 decoded input */
   GString *textbuf;
 
-  GstEbuttdParseFormat parser_type;
+  GstTtmlParseFormat parser_type;
   gboolean parser_detected;
   const gchar *subtitle_codec;
 
@@ -119,12 +119,12 @@ struct _GstEbuttdParse {
   gint fps_n, fps_d;
 };
 
-struct _GstEbuttdParseClass {
+struct _GstTtmlParseClass {
   GstElementClass parent_class;
 };
 
-GType gst_ebuttd_parse_get_type (void);
+GType gst_ttml_parse_get_type (void);
 
 G_END_DECLS
 
-#endif /* __GST_SUBPARSE_H__ */
+#endif /* __GST_TTMLPARSE_H__ */

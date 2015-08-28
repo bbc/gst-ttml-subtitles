@@ -38,8 +38,7 @@
 #include "qttextparse.h"
 #include "ttmlparse.h"
 
-GST_DEBUG_CATEGORY (ebuttd_parse_debug);
-GST_DEBUG_CATEGORY (ebuttd_parse_debug_ebutt);
+GST_DEBUG_CATEGORY (ttml_parse_debug);
 
 #define DEFAULT_ENCODING   NULL
 
@@ -52,10 +51,10 @@ enum
 
 
 static void
-gst_ebuttd_parse_set_property (GObject * object, guint prop_id,
+gst_ttml_parse_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void
-gst_ebuttd_parse_get_property (GObject * object, guint prop_id,
+gst_ttml_parse_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 
@@ -84,47 +83,47 @@ static GstStaticPadTemplate src_templ = GST_STATIC_PAD_TEMPLATE ("src",
     );
 
 
-static gboolean gst_ebuttd_parse_src_event (GstPad * pad, GstObject * parent,
+static gboolean gst_ttml_parse_src_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
-static gboolean gst_ebuttd_parse_src_query (GstPad * pad, GstObject * parent,
+static gboolean gst_ttml_parse_src_query (GstPad * pad, GstObject * parent,
     GstQuery * query);
-static gboolean gst_ebuttd_parse_sink_event (GstPad * pad, GstObject * parent,
+static gboolean gst_ttml_parse_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
 
-static GstStateChangeReturn gst_ebuttd_parse_change_state (GstElement * element,
+static GstStateChangeReturn gst_ttml_parse_change_state (GstElement * element,
     GstStateChange transition);
 
-static GstFlowReturn gst_ebuttd_parse_chain (GstPad * sinkpad, GstObject * parent,
+static GstFlowReturn gst_ttml_parse_chain (GstPad * sinkpad, GstObject * parent,
     GstBuffer * buf);
 
-#define gst_ebuttd_parse_parent_class parent_class
-G_DEFINE_TYPE (GstEbuttdParse, gst_ebuttd_parse, GST_TYPE_ELEMENT);
+#define gst_ttml_parse_parent_class parent_class
+G_DEFINE_TYPE (GstTtmlParse, gst_ttml_parse, GST_TYPE_ELEMENT);
 
 static void
-gst_ebuttd_parse_dispose (GObject * object)
+gst_ttml_parse_dispose (GObject * object)
 {
-  GstEbuttdParse *ebuttdparse = GST_EBUTTDPARSE (object);
+  GstTtmlParse *ttmlparse = GST_TTMLPARSE (object);
 
-  GST_DEBUG_OBJECT (ebuttdparse, "cleaning up subtitle parser");
+  GST_DEBUG_OBJECT (ttmlparse, "cleaning up subtitle parser");
 
-  if (ebuttdparse->encoding) {
-    g_free (ebuttdparse->encoding);
-    ebuttdparse->encoding = NULL;
+  if (ttmlparse->encoding) {
+    g_free (ttmlparse->encoding);
+    ttmlparse->encoding = NULL;
   }
 
-  if (ebuttdparse->detected_encoding) {
-    g_free (ebuttdparse->detected_encoding);
-    ebuttdparse->detected_encoding = NULL;
+  if (ttmlparse->detected_encoding) {
+    g_free (ttmlparse->detected_encoding);
+    ttmlparse->detected_encoding = NULL;
   }
 
-  if (ebuttdparse->adapter) {
-    g_object_unref (ebuttdparse->adapter);
-    ebuttdparse->adapter = NULL;
+  if (ttmlparse->adapter) {
+    g_object_unref (ttmlparse->adapter);
+    ttmlparse->adapter = NULL;
   }
 
-  if (ebuttdparse->textbuf) {
-    g_string_free (ebuttdparse->textbuf, TRUE);
-    ebuttdparse->textbuf = NULL;
+  if (ttmlparse->textbuf) {
+    g_string_free (ttmlparse->textbuf, TRUE);
+    ttmlparse->textbuf = NULL;
   }
 
   GST_CALL_PARENT (G_OBJECT_CLASS, dispose, (object));
@@ -132,14 +131,14 @@ gst_ebuttd_parse_dispose (GObject * object)
 
 
 static void
-gst_ebuttd_parse_class_init (GstEbuttdParseClass * klass)
+gst_ttml_parse_class_init (GstTtmlParseClass * klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
 
-  object_class->dispose = gst_ebuttd_parse_dispose;
-  object_class->set_property = gst_ebuttd_parse_set_property;
-  object_class->get_property = gst_ebuttd_parse_get_property;
+  object_class->dispose = gst_ttml_parse_dispose;
+  object_class->set_property = gst_ttml_parse_set_property;
+  object_class->get_property = gst_ttml_parse_get_property;
 
   gst_element_class_add_pad_template (element_class,
       gst_static_pad_template_get (&sink_templ));
@@ -151,7 +150,7 @@ gst_ebuttd_parse_class_init (GstEbuttdParseClass * klass)
       "Gustavo J. A. M. Carneiro <gjc@inescporto.pt>, "
       "GStreamer maintainers <gstreamer-devel@lists.sourceforge.net>");
 
-  element_class->change_state = gst_ebuttd_parse_change_state;
+  element_class->change_state = gst_ttml_parse_change_state;
 
   g_object_class_install_property (object_class, PROP_ENCODING,
       g_param_spec_string ("subtitle-encoding", "subtitle charset encoding",
@@ -171,33 +170,33 @@ gst_ebuttd_parse_class_init (GstEbuttdParseClass * klass)
 }
 
 static void
-gst_ebuttd_parse_init (GstEbuttdParse * ebuttdparse)
+gst_ttml_parse_init (GstTtmlParse * ttmlparse)
 {
-  ebuttdparse->sinkpad = gst_pad_new_from_static_template (&sink_templ, "sink");
-  gst_pad_set_chain_function (ebuttdparse->sinkpad,
-      GST_DEBUG_FUNCPTR (gst_ebuttd_parse_chain));
-  gst_pad_set_event_function (ebuttdparse->sinkpad,
-      GST_DEBUG_FUNCPTR (gst_ebuttd_parse_sink_event));
-  gst_element_add_pad (GST_ELEMENT (ebuttdparse), ebuttdparse->sinkpad);
+  ttmlparse->sinkpad = gst_pad_new_from_static_template (&sink_templ, "sink");
+  gst_pad_set_chain_function (ttmlparse->sinkpad,
+      GST_DEBUG_FUNCPTR (gst_ttml_parse_chain));
+  gst_pad_set_event_function (ttmlparse->sinkpad,
+      GST_DEBUG_FUNCPTR (gst_ttml_parse_sink_event));
+  gst_element_add_pad (GST_ELEMENT (ttmlparse), ttmlparse->sinkpad);
 
-  ebuttdparse->srcpad = gst_pad_new_from_static_template (&src_templ, "src");
-  gst_pad_set_event_function (ebuttdparse->srcpad,
-      GST_DEBUG_FUNCPTR (gst_ebuttd_parse_src_event));
-  gst_pad_set_query_function (ebuttdparse->srcpad,
-      GST_DEBUG_FUNCPTR (gst_ebuttd_parse_src_query));
-  gst_element_add_pad (GST_ELEMENT (ebuttdparse), ebuttdparse->srcpad);
+  ttmlparse->srcpad = gst_pad_new_from_static_template (&src_templ, "src");
+  gst_pad_set_event_function (ttmlparse->srcpad,
+      GST_DEBUG_FUNCPTR (gst_ttml_parse_src_event));
+  gst_pad_set_query_function (ttmlparse->srcpad,
+      GST_DEBUG_FUNCPTR (gst_ttml_parse_src_query));
+  gst_element_add_pad (GST_ELEMENT (ttmlparse), ttmlparse->srcpad);
 
-  ebuttdparse->textbuf = g_string_new (NULL);
-  ebuttdparse->parser_type = GST_EBUTTD_PARSE_FORMAT_UNKNOWN;
-  ebuttdparse->flushing = FALSE;
-  gst_segment_init (&ebuttdparse->segment, GST_FORMAT_TIME);
-  ebuttdparse->need_segment = TRUE;
-  ebuttdparse->encoding = g_strdup (DEFAULT_ENCODING);
-  ebuttdparse->detected_encoding = NULL;
-  ebuttdparse->adapter = gst_adapter_new ();
+  ttmlparse->textbuf = g_string_new (NULL);
+  ttmlparse->parser_type = GST_TTML_PARSE_FORMAT_UNKNOWN;
+  ttmlparse->flushing = FALSE;
+  gst_segment_init (&ttmlparse->segment, GST_FORMAT_TIME);
+  ttmlparse->need_segment = TRUE;
+  ttmlparse->encoding = g_strdup (DEFAULT_ENCODING);
+  ttmlparse->detected_encoding = NULL;
+  ttmlparse->adapter = gst_adapter_new ();
 
-  ebuttdparse->fps_n = 24000;
-  ebuttdparse->fps_d = 1001;
+  ttmlparse->fps_n = 24000;
+  ttmlparse->fps_d = 1001;
 }
 
 /*
@@ -205,9 +204,9 @@ gst_ebuttd_parse_init (GstEbuttdParse * ebuttdparse)
  */
 
 static gboolean
-gst_ebuttd_parse_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
+gst_ttml_parse_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
-  GstEbuttdParse *self = GST_EBUTTDPARSE (parent);
+  GstTtmlParse *self = GST_TTMLPARSE (parent);
   gboolean ret = FALSE;
 
   GST_DEBUG ("Handling %s query", GST_QUERY_TYPE_NAME (query));
@@ -254,9 +253,9 @@ gst_ebuttd_parse_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
 }
 
 static gboolean
-gst_ebuttd_parse_src_event (GstPad * pad, GstObject * parent, GstEvent * event)
+gst_ttml_parse_src_event (GstPad * pad, GstObject * parent, GstEvent * event)
 {
-  GstEbuttdParse *self = GST_EBUTTDPARSE (parent);
+  GstTtmlParse *self = GST_TTMLPARSE (parent);
   gboolean ret = FALSE;
 
   GST_DEBUG ("Handling %s event", GST_EVENT_TYPE_NAME (event));
@@ -312,29 +311,29 @@ beach:
 }
 
 static void
-gst_ebuttd_parse_set_property (GObject * object, guint prop_id,
+gst_ttml_parse_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstEbuttdParse *ebuttdparse = GST_EBUTTDPARSE (object);
+  GstTtmlParse *ttmlparse = GST_TTMLPARSE (object);
 
-  GST_OBJECT_LOCK (ebuttdparse);
+  GST_OBJECT_LOCK (ttmlparse);
   switch (prop_id) {
     case PROP_ENCODING:
-      g_free (ebuttdparse->encoding);
-      ebuttdparse->encoding = g_value_dup_string (value);
+      g_free (ttmlparse->encoding);
+      ttmlparse->encoding = g_value_dup_string (value);
       GST_LOG_OBJECT (object, "subtitle encoding set to %s",
-          GST_STR_NULL (ebuttdparse->encoding));
+          GST_STR_NULL (ttmlparse->encoding));
       break;
     case PROP_VIDEOFPS:
     {
-      ebuttdparse->fps_n = gst_value_get_fraction_numerator (value);
-      ebuttdparse->fps_d = gst_value_get_fraction_denominator (value);
-      GST_DEBUG_OBJECT (object, "video framerate set to %d/%d", ebuttdparse->fps_n,
-          ebuttdparse->fps_d);
+      ttmlparse->fps_n = gst_value_get_fraction_numerator (value);
+      ttmlparse->fps_d = gst_value_get_fraction_denominator (value);
+      GST_DEBUG_OBJECT (object, "video framerate set to %d/%d", ttmlparse->fps_n,
+          ttmlparse->fps_d);
 
-      if (!ebuttdparse->state.have_internal_fps) {
-        ebuttdparse->state.fps_n = ebuttdparse->fps_n;
-        ebuttdparse->state.fps_d = ebuttdparse->fps_d;
+      if (!ttmlparse->state.have_internal_fps) {
+        ttmlparse->state.fps_n = ttmlparse->fps_n;
+        ttmlparse->state.fps_d = ttmlparse->fps_d;
       }
       break;
     }
@@ -342,60 +341,58 @@ gst_ebuttd_parse_set_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
-  GST_OBJECT_UNLOCK (ebuttdparse);
+  GST_OBJECT_UNLOCK (ttmlparse);
 }
 
 static void
-gst_ebuttd_parse_get_property (GObject * object, guint prop_id,
+gst_ttml_parse_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstEbuttdParse *ebuttdparse = GST_EBUTTDPARSE (object);
+  GstTtmlParse *ttmlparse = GST_TTMLPARSE (object);
 
-  GST_OBJECT_LOCK (ebuttdparse);
+  GST_OBJECT_LOCK (ttmlparse);
   switch (prop_id) {
     case PROP_ENCODING:
-      g_value_set_string (value, ebuttdparse->encoding);
+      g_value_set_string (value, ttmlparse->encoding);
       break;
     case PROP_VIDEOFPS:
-      gst_value_set_fraction (value, ebuttdparse->fps_n, ebuttdparse->fps_d);
+      gst_value_set_fraction (value, ttmlparse->fps_n, ttmlparse->fps_d);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
-  GST_OBJECT_UNLOCK (ebuttdparse);
+  GST_OBJECT_UNLOCK (ttmlparse);
 }
 
 static const gchar *
-gst_ebuttd_parse_get_format_description (GstEbuttdParseFormat format)
+gst_ttml_parse_get_format_description (GstTtmlParseFormat format)
 {
   switch (format) {
-    case GST_EBUTTD_PARSE_FORMAT_MDVDSUB:
+    case GST_TTML_PARSE_FORMAT_MDVDSUB:
       return "MicroDVD";
-    case GST_EBUTTD_PARSE_FORMAT_SUBRIP:
+    case GST_TTML_PARSE_FORMAT_SUBRIP:
       return "SubRip";
-    case GST_EBUTTD_PARSE_FORMAT_MPSUB:
+    case GST_TTML_PARSE_FORMAT_MPSUB:
       return "MPSub";
-    case GST_EBUTTD_PARSE_FORMAT_SAMI:
+    case GST_TTML_PARSE_FORMAT_SAMI:
       return "SAMI";
-    case GST_EBUTTD_PARSE_FORMAT_TMPLAYER:
+    case GST_TTML_PARSE_FORMAT_TMPLAYER:
       return "TMPlayer";
-    case GST_EBUTTD_PARSE_FORMAT_MPL2:
+    case GST_TTML_PARSE_FORMAT_MPL2:
       return "MPL2";
-    case GST_EBUTTD_PARSE_FORMAT_SUBVIEWER:
+    case GST_TTML_PARSE_FORMAT_SUBVIEWER:
       return "SubViewer";
-    case GST_EBUTTD_PARSE_FORMAT_DKS:
+    case GST_TTML_PARSE_FORMAT_DKS:
       return "DKS";
-    case GST_EBUTTD_PARSE_FORMAT_QTTEXT:
+    case GST_TTML_PARSE_FORMAT_QTTEXT:
       return "QTtext";
-    case GST_EBUTTD_PARSE_FORMAT_LRC:
+    case GST_TTML_PARSE_FORMAT_LRC:
       return "LRC";
-    /**P Taylour
-    * added ebutt support **/
-    case GST_EBUTTD_PARSE_FORMAT_EBUTT:
+    case GST_TTML_PARSE_FORMAT_TTML:
       return "EBUTT";
     default:
-    case GST_EBUTTD_PARSE_FORMAT_UNKNOWN:
+    case GST_TTML_PARSE_FORMAT_UNKNOWN:
       break;
   }
   return NULL;
@@ -449,7 +446,7 @@ detect_encoding (const gchar * str, gsize len)
 }
 
 static gchar *
-convert_encoding (GstEbuttdParse * self, const gchar * str, gsize len,
+convert_encoding (GstTtmlParse * self, const gchar * str, gsize len,
     gsize * consumed)
 {
   const gchar *encoding;
@@ -516,7 +513,7 @@ convert_encoding (GstEbuttdParse * self, const gchar * str, gsize len,
 }
 
 static gchar *
-get_next_line (GstEbuttdParse * self)
+get_next_line (GstTtmlParse * self)
 {
   char *line = NULL;
   const char *line_end;
@@ -1191,7 +1188,7 @@ parser_state_init (ParserState * state)
 }
 
 static void
-parser_state_dispose (GstEbuttdParse * self, ParserState * state)
+parser_state_dispose (GstTtmlParse * self, ParserState * state)
 {
   if (state->buf) {
     g_string_free (state->buf, TRUE);
@@ -1199,10 +1196,10 @@ parser_state_dispose (GstEbuttdParse * self, ParserState * state)
   }
   if (state->user_data) {
     switch (self->parser_type) {
-      case GST_EBUTTD_PARSE_FORMAT_QTTEXT:
+      case GST_TTML_PARSE_FORMAT_QTTEXT:
         qttext_context_deinit (state);
         break;
-      case GST_EBUTTD_PARSE_FORMAT_SAMI:
+      case GST_TTML_PARSE_FORMAT_SAMI:
         sami_context_deinit (state);
         break;
       default:
@@ -1214,19 +1211,19 @@ parser_state_dispose (GstEbuttdParse * self, ParserState * state)
 /* regex type enum */
 typedef enum
 {
-  GST_EBUTTD_PARSE_REGEX_UNKNOWN = 0,
-  GST_EBUTTD_PARSE_REGEX_MDVDSUB = 1,
-  GST_EBUTTD_PARSE_REGEX_SUBRIP = 2,
-  GST_EBUTTD_PARSE_REGEX_DKS = 3,
-} GstEbuttdParseRegex;
+  GST_TTML_PARSE_REGEX_UNKNOWN = 0,
+  GST_TTML_PARSE_REGEX_MDVDSUB = 1,
+  GST_TTML_PARSE_REGEX_SUBRIP = 2,
+  GST_TTML_PARSE_REGEX_DKS = 3,
+} GstTtmlParseRegex;
 
 static gpointer
-gst_ebuttd_parse_data_format_autodetect_regex_once (GstEbuttdParseRegex regtype)
+gst_ttml_parse_data_format_autodetect_regex_once (GstTtmlParseRegex regtype)
 {
   gpointer result = NULL;
   GError *gerr = NULL;
   switch (regtype) {
-    case GST_EBUTTD_PARSE_REGEX_MDVDSUB:
+    case GST_TTML_PARSE_REGEX_MDVDSUB:
       result =
           (gpointer) g_regex_new ("^\\{[0-9]+\\}\\{[0-9]+\\}",
           G_REGEX_RAW | G_REGEX_OPTIMIZE, 0, &gerr);
@@ -1235,7 +1232,7 @@ gst_ebuttd_parse_data_format_autodetect_regex_once (GstEbuttdParseRegex regtype)
         g_error_free (gerr);
       }
       break;
-    case GST_EBUTTD_PARSE_REGEX_SUBRIP:
+    case GST_TTML_PARSE_REGEX_SUBRIP:
       result = (gpointer)
           g_regex_new ("^[\\s\\n]*[\\n]? {0,3}[ 0-9]{1,4}\\s*(\x0d)?\x0a"
           " ?[0-9]{1,2}: ?[0-9]{1,2}: ?[0-9]{1,2}[,.] {0,2}[0-9]{1,3}"
@@ -1246,7 +1243,7 @@ gst_ebuttd_parse_data_format_autodetect_regex_once (GstEbuttdParseRegex regtype)
         g_error_free (gerr);
       }
       break;
-    case GST_EBUTTD_PARSE_REGEX_DKS:
+    case GST_TTML_PARSE_REGEX_DKS:
       result = (gpointer) g_regex_new ("^\\[[0-9]+:[0-9]+:[0-9]+\\].*",
           G_REGEX_RAW | G_REGEX_OPTIMIZE, 0, &gerr);
       if (result == NULL) {
@@ -1266,8 +1263,8 @@ gst_ebuttd_parse_data_format_autodetect_regex_once (GstEbuttdParseRegex regtype)
  * I don't really see the use of that.
  */
 
-static GstEbuttdParseFormat
-gst_ebuttd_parse_data_format_autodetect (gchar * match_str)
+static GstTtmlParseFormat
+gst_ttml_parse_data_format_autodetect (gchar * match_str)
 {
   guint n1, n2, n3;
 
@@ -1280,14 +1277,14 @@ gst_ebuttd_parse_data_format_autodetect (gchar * match_str)
   GRegex *dks_grx;
 
   g_once (&mdvd_rx_once,
-      (GThreadFunc) gst_ebuttd_parse_data_format_autodetect_regex_once,
-      (gpointer) GST_EBUTTD_PARSE_REGEX_MDVDSUB);
+      (GThreadFunc) gst_ttml_parse_data_format_autodetect_regex_once,
+      (gpointer) GST_TTML_PARSE_REGEX_MDVDSUB);
   g_once (&subrip_rx_once,
-      (GThreadFunc) gst_ebuttd_parse_data_format_autodetect_regex_once,
-      (gpointer) GST_EBUTTD_PARSE_REGEX_SUBRIP);
+      (GThreadFunc) gst_ttml_parse_data_format_autodetect_regex_once,
+      (gpointer) GST_TTML_PARSE_REGEX_SUBRIP);
   g_once (&dks_rx_once,
-      (GThreadFunc) gst_ebuttd_parse_data_format_autodetect_regex_once,
-      (gpointer) GST_EBUTTD_PARSE_REGEX_DKS);
+      (GThreadFunc) gst_ttml_parse_data_format_autodetect_regex_once,
+      (gpointer) GST_TTML_PARSE_REGEX_DKS);
 
   mdvd_grx = (GRegex *) mdvd_rx_once.retval;
   subrip_grx = (GRegex *) subrip_rx_once.retval;
@@ -1295,25 +1292,25 @@ gst_ebuttd_parse_data_format_autodetect (gchar * match_str)
 
   if (g_regex_match (mdvd_grx, match_str, 0, NULL)) {
     GST_LOG ("MicroDVD (frame based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_MDVDSUB;
+    return GST_TTML_PARSE_FORMAT_MDVDSUB;
   }
   if (g_regex_match (subrip_grx, match_str, 0, NULL)) {
     GST_LOG ("SubRip (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_SUBRIP;
+    return GST_TTML_PARSE_FORMAT_SUBRIP;
   }
   if (g_regex_match (dks_grx, match_str, 0, NULL)) {
     GST_LOG ("DKS (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_DKS;
+    return GST_TTML_PARSE_FORMAT_DKS;
   }
 
   if (!strncmp (match_str, "FORMAT=TIME", 11)) {
     GST_LOG ("MPSub (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_MPSUB;
+    return GST_TTML_PARSE_FORMAT_MPSUB;
   }
   if (strstr (match_str, "<SAMI>") != NULL ||
       strstr (match_str, "<sami>") != NULL) {
     GST_LOG ("SAMI (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_SAMI;
+    return GST_TTML_PARSE_FORMAT_SAMI;
   }
   /* we're boldly assuming the first subtitle appears within the first hour */
   if (sscanf (match_str, "0:%02u:%02u:", &n1, &n2) == 2 ||
@@ -1322,19 +1319,19 @@ gst_ebuttd_parse_data_format_autodetect (gchar * match_str)
       sscanf (match_str, "00:%02u:%02u=", &n1, &n2) == 2 ||
       sscanf (match_str, "00:%02u:%02u,%u=", &n1, &n2, &n3) == 3) {
     GST_LOG ("TMPlayer (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_TMPLAYER;
+    return GST_TTML_PARSE_FORMAT_TMPLAYER;
   }
   if (sscanf (match_str, "[%u][%u]", &n1, &n2) == 2) {
     GST_LOG ("MPL2 (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_MPL2;
+    return GST_TTML_PARSE_FORMAT_MPL2;
   }
   if (strstr (match_str, "[INFORMATION]") != NULL) {
     GST_LOG ("SubViewer (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_SUBVIEWER;
+    return GST_TTML_PARSE_FORMAT_SUBVIEWER;
   }
   if (strstr (match_str, "{QTtext}") != NULL) {
     GST_LOG ("QTtext (time based) format detected");
-    return GST_EBUTTD_PARSE_FORMAT_QTTEXT;
+    return GST_TTML_PARSE_FORMAT_QTTEXT;
   }
   /* We assume the LRC file starts immediately */
   if (match_str[0] == '[') {
@@ -1362,25 +1359,25 @@ gst_ebuttd_parse_data_format_autodetect (gchar * match_str)
     g_strfreev (split);
 
     if (all_lines_good)
-      return GST_EBUTTD_PARSE_FORMAT_LRC;
+      return GST_TTML_PARSE_FORMAT_LRC;
   }
 
   if (match_str) {
     /** P Taylour
      * Adding detection for EBUTT */
     GST_LOG ("EBUTT detected");
-    return GST_EBUTTD_PARSE_FORMAT_EBUTT;
+    return GST_TTML_PARSE_FORMAT_TTML;
   }
 
   GST_DEBUG ("no subtitle format detected");
-  return GST_EBUTTD_PARSE_FORMAT_UNKNOWN;
+  return GST_TTML_PARSE_FORMAT_UNKNOWN;
 }
 
 static GstCaps *
-gst_ebuttd_parse_format_autodetect (GstEbuttdParse * self)
+gst_ttml_parse_format_autodetect (GstTtmlParse * self)
 {
   gchar *data;
-  GstEbuttdParseFormat format;
+  GstTtmlParseFormat format;
 
   if (strlen (self->textbuf->str) < 30) {
     GST_DEBUG ("File too small to be a subtitles file");
@@ -1388,54 +1385,54 @@ gst_ebuttd_parse_format_autodetect (GstEbuttdParse * self)
   }
 
   data = g_strndup (self->textbuf->str, 35);
-  format = gst_ebuttd_parse_data_format_autodetect (data);
+  format = gst_ttml_parse_data_format_autodetect (data);
   g_free (data);
 
   self->parser_type = format;
-  self->subtitle_codec = gst_ebuttd_parse_get_format_description (format);
+  self->subtitle_codec = gst_ttml_parse_get_format_description (format);
   parser_state_init (&self->state);
 
   switch (format) {
-    case GST_EBUTTD_PARSE_FORMAT_MDVDSUB:
+    case GST_TTML_PARSE_FORMAT_MDVDSUB:
       self->parse_line = parse_mdvdsub;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "pango-markup", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_SUBRIP:
+    case GST_TTML_PARSE_FORMAT_SUBRIP:
       self->parse_line = parse_subrip;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "pango-markup", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_MPSUB:
+    case GST_TTML_PARSE_FORMAT_MPSUB:
       self->parse_line = parse_mpsub;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "utf8", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_SAMI:
+    case GST_TTML_PARSE_FORMAT_SAMI:
       self->parse_line = parse_sami;
       sami_context_init (&self->state);
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "pango-markup", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_TMPLAYER:
+    case GST_TTML_PARSE_FORMAT_TMPLAYER:
       self->parse_line = parse_tmplayer;
       self->state.max_duration = 5 * GST_SECOND;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "utf8", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_MPL2:
+    case GST_TTML_PARSE_FORMAT_MPL2:
       self->parse_line = parse_mpl2;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "pango-markup", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_DKS:
+    case GST_TTML_PARSE_FORMAT_DKS:
       self->parse_line = parse_dks;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "utf8", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_SUBVIEWER:
+    case GST_TTML_PARSE_FORMAT_SUBVIEWER:
       self->parse_line = parse_subviewer;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "utf8", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_QTTEXT:
+    case GST_TTML_PARSE_FORMAT_QTTEXT:
       self->parse_line = parse_qttext;
       qttext_context_init (&self->state);
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "pango-markup", NULL);
-    case GST_EBUTTD_PARSE_FORMAT_LRC:
+    case GST_TTML_PARSE_FORMAT_LRC:
       self->parse_line = parse_lrc;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "utf8", NULL);
@@ -1443,14 +1440,14 @@ gst_ebuttd_parse_format_autodetect (GstEbuttdParse * self)
      * Adding  case for ebu-tt
      * No autodetect so "application/x-subtitle-ebutt" must be provided.
      */
-    case GST_EBUTTD_PARSE_FORMAT_EBUTT:
+    case GST_TTML_PARSE_FORMAT_TTML:
 
       self->parse_line = NULL;  /* parse_ebutt; ebutt_xml_parse;  */
 
       return gst_caps_new_simple ("text/x-raw", /** TODO: is this correct? **/
           "format", G_TYPE_STRING, "pango-markup", NULL);
 
-    case GST_EBUTTD_PARSE_FORMAT_UNKNOWN:
+    case GST_TTML_PARSE_FORMAT_UNKNOWN:
     default:
       GST_DEBUG ("no subtitle format detected");
       GST_ELEMENT_ERROR (self, STREAM, WRONG_TYPE,
@@ -1460,7 +1457,7 @@ gst_ebuttd_parse_format_autodetect (GstEbuttdParse * self)
 }
 
 static void
-feed_textbuf (GstEbuttdParse * self, GstBuffer * buf)
+feed_textbuf (GstTtmlParse * self, GstBuffer * buf)
 {
   gboolean discont;
   gsize consumed;
@@ -1482,7 +1479,7 @@ feed_textbuf (GstEbuttdParse * self, GstBuffer * buf)
     parser_state_init (&self->state);
     g_string_truncate (self->textbuf, 0);
     gst_adapter_clear (self->adapter);
-    if (self->parser_type == GST_EBUTTD_PARSE_FORMAT_SAMI)
+    if (self->parser_type == GST_TTML_PARSE_FORMAT_SAMI)
       sami_context_reset (&self->state);
     /* we could set a flag to make sure that the next buffer we push out also
      * has the DISCONT flag set, but there's no point really given that it's
@@ -1518,7 +1515,7 @@ feed_textbuf (GstEbuttdParse * self, GstBuffer * buf)
 
 
 static GstFlowReturn
-handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
+handle_buffer (GstTtmlParse * self, GstBuffer * buf)
 {
   GstFlowReturn ret = GST_FLOW_OK;
   GstCaps *caps = NULL;
@@ -1539,8 +1536,8 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
   feed_textbuf (self, buf);
 
   /* make sure we know the format */
-  if (G_UNLIKELY (self->parser_type == GST_EBUTTD_PARSE_FORMAT_UNKNOWN)) {
-    if (!(caps = gst_ebuttd_parse_format_autodetect (self))) {
+  if (G_UNLIKELY (self->parser_type == GST_TTML_PARSE_FORMAT_UNKNOWN)) {
+    if (!(caps = gst_ttml_parse_format_autodetect (self))) {
       return GST_FLOW_EOS;
     }
     if (!gst_pad_set_caps (self->srcpad, caps)) {
@@ -1655,12 +1652,12 @@ handle_buffer (GstEbuttdParse * self, GstBuffer * buf)
 }
 
 static GstFlowReturn
-gst_ebuttd_parse_chain (GstPad * sinkpad, GstObject * parent, GstBuffer * buf)
+gst_ttml_parse_chain (GstPad * sinkpad, GstObject * parent, GstBuffer * buf)
 {
   GstFlowReturn ret;
-  GstEbuttdParse *self;
+  GstTtmlParse *self;
 
-  self = GST_EBUTTDPARSE (parent);
+  self = GST_TTMLPARSE (parent);
 
   ret = handle_buffer (self, buf);
 
@@ -1668,9 +1665,9 @@ gst_ebuttd_parse_chain (GstPad * sinkpad, GstObject * parent, GstBuffer * buf)
 }
 
 static gboolean
-gst_ebuttd_parse_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
+gst_ttml_parse_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 {
-  GstEbuttdParse *self = GST_EBUTTDPARSE (parent);
+  GstTtmlParse *self = GST_TTMLPARSE (parent);
   gboolean ret = FALSE;
 
   GST_DEBUG ("Handling %s event", GST_EVENT_TYPE_NAME (event));
@@ -1679,10 +1676,10 @@ gst_ebuttd_parse_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
     case GST_EVENT_EOS:{
       /* Make sure the last subrip chunk is pushed out even
        * if the file does not have an empty line at the end */
-      if (self->parser_type == GST_EBUTTD_PARSE_FORMAT_SUBRIP ||
-          self->parser_type == GST_EBUTTD_PARSE_FORMAT_TMPLAYER ||
-          self->parser_type == GST_EBUTTD_PARSE_FORMAT_MPL2 ||
-          self->parser_type == GST_EBUTTD_PARSE_FORMAT_QTTEXT) {
+      if (self->parser_type == GST_TTML_PARSE_FORMAT_SUBRIP ||
+          self->parser_type == GST_TTML_PARSE_FORMAT_TMPLAYER ||
+          self->parser_type == GST_TTML_PARSE_FORMAT_MPL2 ||
+          self->parser_type == GST_TTML_PARSE_FORMAT_QTTEXT) {
         gchar term_chars[] = { '\n', '\n', '\0' };
         GstBuffer *buf = gst_buffer_new_and_alloc (2 + 1);
 
@@ -1691,7 +1688,7 @@ gst_ebuttd_parse_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
         gst_buffer_set_size (buf, 2);
 
         GST_BUFFER_OFFSET (buf) = self->offset;
-        gst_ebuttd_parse_chain (pad, parent, buf);
+        gst_ttml_parse_chain (pad, parent, buf);
       }
       ret = gst_pad_event_default (pad, parent, event);
       break;
@@ -1741,16 +1738,16 @@ gst_ebuttd_parse_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 
 
 static GstStateChangeReturn
-gst_ebuttd_parse_change_state (GstElement * element, GstStateChange transition)
+gst_ttml_parse_change_state (GstElement * element, GstStateChange transition)
 {
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-  GstEbuttdParse *self = GST_EBUTTDPARSE (element);
+  GstTtmlParse *self = GST_TTMLPARSE (element);
 
   switch (transition) {
     case GST_STATE_CHANGE_READY_TO_PAUSED:
       /* format detection will init the parser state */
       self->offset = 0;
-      self->parser_type = GST_EBUTTD_PARSE_FORMAT_UNKNOWN;
+      self->parser_type = GST_TTML_PARSE_FORMAT_UNKNOWN;
       self->valid_utf8 = TRUE;
       self->first_buffer = TRUE;
       g_free (self->detected_encoding);
@@ -1769,7 +1766,7 @@ gst_ebuttd_parse_change_state (GstElement * element, GstStateChange transition)
   switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
       parser_state_dispose (self, &self->state);
-      self->parser_type = GST_EBUTTD_PARSE_FORMAT_UNKNOWN;
+      self->parser_type = GST_TTML_PARSE_FORMAT_UNKNOWN;
       break;
     default:
       break;
@@ -1819,9 +1816,9 @@ GST_STATIC_CAPS ("application/x-subtitle-ebutt");
 
 
 static void
-gst_ebuttdparse_type_find (GstTypeFind * tf, gpointer private)
+gst_ttmlparse_type_find (GstTypeFind * tf, gpointer private)
 {
-  GstEbuttdParseFormat format;
+  GstTtmlParseFormat format;
   const guint8 *data;
   GstCaps *caps;
   gchar *str;
@@ -1874,27 +1871,27 @@ gst_ebuttdparse_type_find (GstTypeFind * tf, gpointer private)
     }
   }
 
-  format = gst_ebuttd_parse_data_format_autodetect (str);
+  format = gst_ttml_parse_data_format_autodetect (str);
   g_free (str);
 
   switch (format) {
-    case GST_EBUTTD_PARSE_FORMAT_MDVDSUB:
+    case GST_TTML_PARSE_FORMAT_MDVDSUB:
       GST_DEBUG ("MicroDVD format detected");
       caps = SUB_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_SUBRIP:
+    case GST_TTML_PARSE_FORMAT_SUBRIP:
       GST_DEBUG ("SubRip format detected");
       caps = SUB_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_MPSUB:
+    case GST_TTML_PARSE_FORMAT_MPSUB:
       GST_DEBUG ("MPSub format detected");
       caps = SUB_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_SAMI:
+    case GST_TTML_PARSE_FORMAT_SAMI:
       GST_DEBUG ("SAMI (time-based) format detected");
       caps = SAMI_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_TMPLAYER:
+    case GST_TTML_PARSE_FORMAT_TMPLAYER:
       GST_DEBUG ("TMPlayer (time based) format detected");
       caps = TMP_CAPS;
       break;
@@ -1902,23 +1899,23 @@ gst_ebuttdparse_type_find (GstTypeFind * tf, gpointer private)
        * returning a high probability (however, since we registered our
        * typefinder here with a rank of MARGINAL we should pretty much only
        * be called if most other typefinders have already run */
-    case GST_EBUTTD_PARSE_FORMAT_MPL2:
+    case GST_TTML_PARSE_FORMAT_MPL2:
       GST_DEBUG ("MPL2 (time based) format detected");
       caps = MPL2_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_SUBVIEWER:
+    case GST_TTML_PARSE_FORMAT_SUBVIEWER:
       GST_DEBUG ("SubViewer format detected");
       caps = SUB_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_DKS:
+    case GST_TTML_PARSE_FORMAT_DKS:
       GST_DEBUG ("DKS format detected");
       caps = DKS_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_QTTEXT:
+    case GST_TTML_PARSE_FORMAT_QTTEXT:
       GST_DEBUG ("QTtext format detected");
       caps = QTTEXT_CAPS;
       break;
-    case GST_EBUTTD_PARSE_FORMAT_LRC:
+    case GST_TTML_PARSE_FORMAT_LRC:
       GST_DEBUG ("LRC format detected");
       caps = LRC_CAPS;
       break;
@@ -1926,13 +1923,13 @@ gst_ebuttdparse_type_find (GstTypeFind * tf, gpointer private)
      * P. Taylour
      * Adding in case for ebu-tt
      */
-    case GST_EBUTTD_PARSE_FORMAT_EBUTT:
-      GST_DEBUG ("EBU-TT format detected");
+    case GST_TTML_PARSE_FORMAT_TTML:
+      GST_DEBUG ("TTML format detected");
       caps = EBUTT_CAPS;
       break;
 
     default:
-    case GST_EBUTTD_PARSE_FORMAT_UNKNOWN:
+    case GST_TTML_PARSE_FORMAT_UNKNOWN:
       GST_DEBUG ("no subtitle format detected");
       return;
   }
@@ -1944,22 +1941,19 @@ gst_ebuttdparse_type_find (GstTypeFind * tf, gpointer private)
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
-  GST_DEBUG_CATEGORY_INIT (ebuttd_parse_debug, "ebuttdparse", 0, ".sub parser");
-  GST_DEBUG_CATEGORY_INIT (ebuttd_parse_debug_ebutt, "ebuttdparse_ebutt", 0,
-      ".sub parser");
-
+  GST_DEBUG_CATEGORY_INIT (ttml_parse_debug, "ttmlparse", 0, "TTML sub parser");
 
   /**
    * P. TAYLOUR
    * Have added xml to type find list
    */
-  if (!gst_type_find_register (plugin, "ebuttdparse_typefind", GST_RANK_MARGINAL,
-          gst_ebuttdparse_type_find, "srt,sub,mpsub,mdvd,smi,txt,dks,xml",
+  if (!gst_type_find_register (plugin, "ttmlparse_typefind", GST_RANK_MARGINAL,
+          gst_ttmlparse_type_find, "srt,sub,mpsub,mdvd,smi,txt,dks,xml",
           SUB_CAPS, NULL, NULL))
     return FALSE;
 
-  if (!gst_element_register (plugin, "ebuttdparse",
-          GST_RANK_PRIMARY, GST_TYPE_EBUTTDPARSE)) {
+  if (!gst_element_register (plugin, "ttmlparse",
+          GST_RANK_PRIMARY, GST_TYPE_TTMLPARSE)) {
     return FALSE;
   }
 
@@ -1968,6 +1962,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    ebuttdparse,
-    "Subtitle parsing, including EBU-TT-D.",
-    plugin_init, VERSION, "LGPL", "gst-ebuttd", "http://www.bbc.co.uk/rd")
+    ttmlparse,
+    "Subtitle parsing, including EBU-TT-D profile of TTML.",
+    plugin_init, VERSION, "LGPL", "gst-ttml", "http://www.bbc.co.uk/rd")
