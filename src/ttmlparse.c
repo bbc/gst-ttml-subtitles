@@ -986,7 +986,7 @@ ttml_resolve_styles (GNode * node, gpointer data)
     }
   }
 
-  GST_CAT_LOG (ttmlparse, "Styleset after merging:");
+  GST_CAT_LOG (ttmlparse, "Style set after merging:");
   ttml_print_style_set (element->style_set);
 
   return FALSE;
@@ -1036,7 +1036,7 @@ ttml_inherit_styles (GNode * node, gpointer data)
     }
   }
 
-  GST_CAT_LOG (ttmlparse, "Styleset after inheriting:");
+  GST_CAT_LOG (ttmlparse, "Style set after inheriting:");
   ttml_print_style_set (element->style_set);
 
   return FALSE;
