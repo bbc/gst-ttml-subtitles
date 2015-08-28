@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
@@ -361,17 +362,12 @@ ttml_parse_timecode (const gchar * timestring)
   minutes = g_ascii_strtoull (strings[1], NULL, 10U);
   if (g_strstr_len (strings[2], -1, ".")) {
     guint n_digits;
-    char ** substrings = g_strsplit (strings[2], ".", 2);
+    gchar ** substrings = g_strsplit (strings[2], ".", 2);
     seconds = g_ascii_strtoull (substrings[0], NULL, 10U);
     n_digits = strlen (substrings[1]);
-    if (n_digits > 3) {
-      GST_CAT_ERROR (ttmlparse, "badly formatted time string "
-          "(too many millisecond digits): %s\n", timestring);
-    } else {
-      milliseconds = g_ascii_strtoull (substrings[1], NULL, 10U);
-      for (n_digits = (3 - n_digits); n_digits; --n_digits)
-        milliseconds *= 10;
-    }
+    milliseconds = g_ascii_strtoull (substrings[1], NULL, 10U);
+    milliseconds =
+      (guint64) (milliseconds * pow (10.0, (3 - (double) n_digits)));
     g_strfreev (substrings);
   } else {
     seconds = g_ascii_strtoull (strings[2], NULL, 10U);
