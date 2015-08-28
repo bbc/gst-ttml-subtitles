@@ -33,10 +33,10 @@
 
 #include "gstsubparse.h"
 #include "samiparse.h"
-#include "ebuttxmlparse.h"
 #include "tmplayerparse.h"
 #include "mpl2parse.h"
 #include "qttextparse.h"
+#include "ttmlparse.h"
 
 GST_DEBUG_CATEGORY (ebuttd_parse_debug);
 GST_DEBUG_CATEGORY (ebuttd_parse_debug_ebutt);

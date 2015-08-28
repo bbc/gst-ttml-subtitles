@@ -12,8 +12,8 @@ libgstebuttdparse_la_SOURCES = \
 	mpl2parse.h \
 	qttextparse.c \
 	qttextparse.h \
-	ebuttxmlparse.c \
-	ebuttxmlparse.h
+	ttmlparse.c \
+	ttmlparse.h
 
 
 # compiler and linker flags used to compile this plugin, set in configure.ac
@@ -28,5 +28,5 @@ noinst_HEADERS = \
 	tmplayerparse.h \
 	mpl2parse.h \
 	qttextparse.h \
-	ebuttxmlparse.h
+	ttmlparse.h
 

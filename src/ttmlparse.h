@@ -1,4 +1,4 @@
-/* GStreamer EBU-TT-D subtitle parser
+/* GStreamer TTML subtitle parser
  * Copyright (C) <2015> British Broadcasting Corporation
  *   Authors:
  *     Chris Bass <dash@rd.bbc.co.uk>

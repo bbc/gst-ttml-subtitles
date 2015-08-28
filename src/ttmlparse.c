@@ -29,7 +29,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-#include "ebuttxmlparse.h"
+#include "ttmlparse.h"
 
 #define DEFAULT_CELLRES_X 32
 #define DEFAULT_CELLRES_Y 15
@@ -1710,7 +1710,7 @@ ttml_parse (const gchar * input, GstClockTime begin,
   gchar *value;
   guint cellres_x, cellres_y;
 
-  GST_DEBUG_CATEGORY_INIT (ttmlparse, "ttmlparser", 0,
+  GST_DEBUG_CATEGORY_INIT (ttmlparse, "ttmlparse", 0,
       "TTML parser debug category");
   GST_CAT_LOG (ttmlparse, "Input:\n%s", input);
 
