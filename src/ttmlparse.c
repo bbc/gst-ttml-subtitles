@@ -133,6 +133,11 @@ ttml_print_element (TtmlElement * element)
 static void
 ttml_print_style_set (TtmlStyleSet * set)
 {
+  if (!set) {
+    GST_CAT_LOG (ttmlparse, "\t\t[NULL]");
+    return;
+  }
+
   if (set->text_direction)
     GST_CAT_LOG (ttmlparse, "\t\ttext_direction: %s", set->text_direction);
   if (set->font_family)
