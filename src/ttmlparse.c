@@ -639,13 +639,12 @@ ttml_update_style_set (GstSubtitleStyleSet * ss, TtmlStyleSet * ess,
   if (ess->padding) {
     gchar **decimals;
     guint n_decimals;
-    gint i;
+    guint i;
 
     decimals = g_strsplit (ess->padding, "%", 0);
     n_decimals = g_strv_length (decimals) - 1;
-    for (i = 0; i < n_decimals; ++i) {
+    for (i = 0; i < n_decimals; ++i)
       g_strstrip (decimals[i]);
-    }
 
     switch (n_decimals) {
       case 1:
@@ -955,7 +954,7 @@ ttml_resolve_styles (GNode * node, gpointer data)
   TtmlElement *element, *style;
   GHashTable *styles_table;
   gchar *type_string;
-  gint i;
+  guint i;
 
   styles_table = (GHashTable *)data;
   element = node->data;
