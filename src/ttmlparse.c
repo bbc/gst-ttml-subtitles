@@ -399,31 +399,34 @@ static TtmlElement *
 ttml_parse_element (const xmlNode * node)
 {
   TtmlElement *element;
+  TtmlElementType type;
   gchar *value;
 
-  element = g_slice_new0 (TtmlElement);
   GST_CAT_DEBUG (ttmlparse, "Element name: %s", (const char*) node->name);
   if ((g_strcmp0 ((const char*) node->name, "style") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_STYLE;
+    type = TTML_ELEMENT_TYPE_STYLE;
   } else if ((g_strcmp0 ((const char*) node->name, "region") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_REGION;
+    type = TTML_ELEMENT_TYPE_REGION;
   } else if ((g_strcmp0 ((const char*) node->name, "body") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_BODY;
+    type = TTML_ELEMENT_TYPE_BODY;
   } else if ((g_strcmp0 ((const char*) node->name, "div") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_DIV;
+    type = TTML_ELEMENT_TYPE_DIV;
   } else if ((g_strcmp0 ((const char*) node->name, "p") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_P;
+    type = TTML_ELEMENT_TYPE_P;
   } else if ((g_strcmp0 ((const char*) node->name, "span") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_SPAN;
+    type = TTML_ELEMENT_TYPE_SPAN;
   } else if ((g_strcmp0 ((const char*) node->name, "text") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_ANON_SPAN;
+    type = TTML_ELEMENT_TYPE_ANON_SPAN;
   } else if ((g_strcmp0 ((const char*) node->name, "br") == 0)) {
-    element->type = TTML_ELEMENT_TYPE_BR;
+    type = TTML_ELEMENT_TYPE_BR;
   } else {
     GST_CAT_ERROR (ttmlparse, "illegal element type: %s",
         (const char*) node->name);
-    g_assert (TRUE);
+    return NULL;
   }
+
+  element = g_slice_new0 (TtmlElement);
+  element->type = type;
 
   if ((value = ttml_get_xml_property (node, "id"))) {
     element->id = g_strdup ((const gchar*) value);
