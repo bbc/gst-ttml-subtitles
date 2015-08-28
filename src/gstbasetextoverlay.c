@@ -2369,16 +2369,14 @@ beach:
 static gchar *
 color_to_rgb_string (GstSubtitleColor color)
 {
-  return g_strdup_printf ("#%02x%02x%02x", (gint) (color.r * 255.0),
-      (gint) (color.g * 255.0), (gint) (color.b * 255.0));
+  return g_strdup_printf ("#%02x%02x%02x", color.r, color.g, color.b);
 }
 
 static gchar *
 color_to_rgba_string (GstSubtitleColor color)
 {
-  return g_strdup_printf ("#%02x%02x%02x%02x", (gint) (color.r * 255.0),
-      (gint) (color.g * 255.0), (gint) (color.b * 255.0),
-      (gint) (color.a * 255.0));
+  return g_strdup_printf ("#%02x%02x%02x%02x",
+      color.r, color.g, color.b, color.a);
 }
 
 
@@ -2401,7 +2399,8 @@ draw_rectangle (guint width, guint height, GstSubtitleColor color)
   cairo_set_operator (cairo_state, CAIRO_OPERATOR_OVER);
 
   cairo_save (cairo_state);
-  cairo_set_source_rgba (cairo_state, color.r, color.g, color.b, color.a);
+  cairo_set_source_rgba (cairo_state, color.r/255.0, color.g/255.0,
+      color.b/255.0, color.a/255.0);
   cairo_paint (cairo_state);
   cairo_restore (cairo_state);
   cairo_destroy (cairo_state);
@@ -2821,9 +2820,9 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
 
 
 static gboolean
-color_is_transparent (GstSubtitleColor *color)
+color_is_transparent (GstSubtitleColor * color)
 {
-  return ((guint)(color->a * 255) == 0);
+  return (color->a == 0);
 }
 
 
