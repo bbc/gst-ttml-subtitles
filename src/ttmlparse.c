@@ -1508,11 +1508,10 @@ ttml_create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
   element = tree->data;
   g_assert (element->type == TTML_ELEMENT_TYPE_REGION);
 
-  /* Create SubtitleArea from region. */
   region_style = gst_subtitle_style_set_new ();
-  ttml_update_style_set (region_style, element->style_set, cellres_x, cellres_y);
+  ttml_update_style_set (region_style, element->style_set, cellres_x,
+      cellres_y);
   area = gst_subtitle_area_new (region_style);
-  g_assert (area != NULL);
 
   node = tree->children;
   if (!node)
@@ -1592,8 +1591,6 @@ ttml_create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_
     TtmlScene * scene = scene_entry->data;
     GPtrArray *areas = g_ptr_array_new ();
     GList *region_tree;
-
-    g_assert (scene != NULL);
 
     scene->buf = gst_buffer_new ();
     GST_BUFFER_PTS (scene->buf) = scene->begin;
