@@ -426,12 +426,12 @@ ttml_parse_element (const xmlNode * node)
   element->type = type;
 
   if ((value = ttml_get_xml_property (node, "id"))) {
-    element->id = g_strdup ((const gchar*) value);
+    element->id = g_strdup (value);
     g_free (value);
   }
 
   if ((value = ttml_get_xml_property (node, "style"))) {
-    element->styles = g_strsplit ((const gchar*) value, " ", 0);
+    element->styles = g_strsplit (value, " ", 0);
     GST_CAT_DEBUG (ttmlparse, "%u style(s) referenced in element.",
         g_strv_length (element->styles));
     g_free (value);
@@ -452,19 +452,19 @@ ttml_parse_element (const xmlNode * node)
   }
 
   if ((value = ttml_get_xml_property (node, "region"))) {
-    element->region = g_strdup ((const gchar*) value);
+    element->region = g_strdup (value);
     g_free (value);
   }
 
   if ((value = ttml_get_xml_property (node, "begin"))) {
-    element->begin = ttml_parse_timecode ((const gchar*) value);
+    element->begin = ttml_parse_timecode (value);
     g_free (value);
   } else {
     element->begin = GST_CLOCK_TIME_NONE;
   }
 
   if ((value = ttml_get_xml_property (node, "end"))) {
-    element->end = ttml_parse_timecode ((const gchar*) value);
+    element->end = ttml_parse_timecode (value);
     g_free (value);
   } else {
     element->end = GST_CLOCK_TIME_NONE;
@@ -472,7 +472,7 @@ ttml_parse_element (const xmlNode * node)
 
   if (node->content) {
     GST_CAT_LOG (ttmlparse, "Node content: %s", node->content);
-    element->text = g_strdup ((gchar*) node->content);
+    element->text = g_strdup ((const gchar*) node->content);
   }
 
   return element;
