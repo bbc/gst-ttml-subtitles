@@ -72,10 +72,10 @@ typedef enum {
 } GstSubtitleOverflowMode;
 
 struct _GstSubtitleColor {
-  gdouble r;
-  gdouble g;
-  gdouble b;
-  gdouble a;
+  guint8 r;
+  guint8 g;
+  guint8 b;
+  guint8 a;
 };
 
 typedef enum {

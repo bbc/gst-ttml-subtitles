@@ -55,7 +55,7 @@ ttml_parse_colorstring (const gchar * color)
 {
   guint length;
   const gchar *c = NULL;
-  GstSubtitleColor ret = { 1.0, 1.0, 1.0, 1.0 };
+  GstSubtitleColor ret = { 0, 0, 0, 0 };
 
   if (!color)
     return ret;
@@ -65,16 +65,16 @@ ttml_parse_colorstring (const gchar * color)
   if (((length == 7) || (length == 9)) && *color == '#') {
     c = color + 1;
 
-    ret.r = ttml_hex_pair_to_byte (c) / 255.0;
-    ret.g = ttml_hex_pair_to_byte (c + 2) / 255.0;
-    ret.b = ttml_hex_pair_to_byte (c + 4) / 255.0;
+    ret.r = ttml_hex_pair_to_byte (c);
+    ret.g = ttml_hex_pair_to_byte (c + 2);
+    ret.b = ttml_hex_pair_to_byte (c + 4);
 
     if (length == 7)
-      ret.a = 1.0;
+      ret.a = G_MAXUINT8;
     else
-      ret.a = ttml_hex_pair_to_byte (c + 6) / 255.0;
+      ret.a = ttml_hex_pair_to_byte (c + 6);
 
-    GST_CAT_LOG (ttmlparse, "Returning color - r:%g  b:%g  g:%g  a:%g",
+    GST_CAT_LOG (ttmlparse, "Returning color - r:%u  b:%u  g:%u  a:%u",
         ret.r, ret.b, ret.g, ret.a);
   } else {
     GST_CAT_ERROR (ttmlparse, "Invalid color string: %s", color);
@@ -1658,12 +1658,12 @@ ttml_delete_scene (TtmlScene * scene)
 
 /* Returns TRUE if @color is totally transparent. */
 static gboolean
-ttml_color_is_transparent (const GstSubtitleColor *color)
+ttml_color_is_transparent (const GstSubtitleColor * color)
 {
   if (!color)
     return FALSE;
   else
-    return ((guint)(color->a * 255) == 0);
+    return (color->a == 0);
 }
 
 
