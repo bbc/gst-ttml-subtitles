@@ -2915,9 +2915,6 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   guint line_padding;
   guint text_offset = 0U;
 
-  GST_CAT_DEBUG (ebuttdrender, "Rendering txt block; text_buf:%p  width:%u "
-      "height:%u", text_buf, width, height);
-
   ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedBlock);
   ret->block = block;
 
@@ -3063,8 +3060,6 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   guint padding_start, padding_end, padding_before, padding_after;
   GSList *layers = NULL;
   GstVideoOverlayComposition *ret = NULL;
-
-  GST_CAT_DEBUG (ebuttdrender, "Rendering text area %p", area);
 
   width = (guint) (round (area->style.extent_w * overlay->width));
   height = (guint) (round (area->style.extent_h * overlay->height));
