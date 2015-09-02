@@ -93,6 +93,7 @@ PKG_CHECK_MODULES([PANGOCAIRO], [ pangocairo ], [ HAVE_PANGOCAIRO="yes" ], [ HAV
 
 AC_CONFIG_FILES(
 Makefile
+gst/Makefile
 gst/parser/Makefile
 gst/renderer/Makefile
 libs/Makefile
