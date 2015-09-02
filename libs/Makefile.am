@@ -1,2 +1,2 @@
-SUBDIRS = subtitle
+SUBDIRS = gst
 

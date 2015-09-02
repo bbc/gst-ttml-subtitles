@@ -88,6 +88,12 @@ AC_DEFINE_UNQUOTED(GST_API_VERSION, "$GST_API_VERSION", [GStreamer API Version])
 
 PKG_CHECK_MODULES([LIBXML2], [ libxml-2.0 ], [ HAVE_LIBXML2="yes" ], [ HAVE_LIBXML2="no" ])
 
-AC_CONFIG_FILES([Makefile src/Makefile libs/Makefile libs/subtitle/Makefile])
+AC_CONFIG_FILES(
+Makefile
+src/Makefile
+libs/Makefile
+libs/gst/Makefile
+libs/gst/subtitle/Makefile
+)
 AC_OUTPUT
 
