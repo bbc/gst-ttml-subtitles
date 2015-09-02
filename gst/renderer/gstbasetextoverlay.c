@@ -3472,7 +3472,7 @@ gst_base_ebuttd_overlay_change_state (GstElement * element,
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
-  if (!gst_element_register (plugin, "ebuttdrender", GST_RANK_NONE,
+  if (!gst_element_register (plugin, "ttmlrender", GST_RANK_NONE,
           GST_TYPE_EBUTTD_OVERLAY)) {
     return FALSE;
   }
@@ -3481,5 +3481,6 @@ plugin_init (GstPlugin * plugin)
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    ebuttdrender, "Pango-based text rendering and overlay, supporting EBU-TT_D subtitles.", plugin_init,
-    VERSION, "LGPL", "gst-ebuttd-render", "http://www.bbc.co.uk/rd")
+    ttmlrender, "Pango-based text rendering and overlay, supporting the "
+    "EBU-TT-D profile of TTML.", plugin_init,
+    VERSION, "LGPL", "gst-ttml-render", "http://www.bbc.co.uk/rd")
