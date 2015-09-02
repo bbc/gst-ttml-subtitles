@@ -2,7 +2,7 @@ dnl required version of autoconf
 AC_PREREQ([2.53])
 
 dnl TODO: fill in your package name and package version here
-AC_INIT([my-plugin-package],[1.0.0])
+AC_INIT([ttml-subtitles],[0.9.0])
 
 dnl required versions of gstreamer and plugins-base
 GST_REQUIRED=1.5.0
