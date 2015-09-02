@@ -14,4 +14,9 @@ stamp-*
 my-plugin-*.tar.*
 *~
 *.Plo
+*.o
+*.lo
+src/.libs/*
+*.la
+Makefile
 

@@ -8,7 +8,7 @@ dnl required versions of gstreamer and plugins-base
 GST_REQUIRED=1.5.0
 GSTPB_REQUIRED=1.5.0
 
-AC_CONFIG_SRCDIR([src/gstsubparse.c])
+AC_CONFIG_SRCDIR([gst/parser/gstsubparse.c])
 AC_CONFIG_HEADERS([config.h])
 
 dnl required version of automake
@@ -87,10 +87,14 @@ AC_SUBST(GST_API_VERSION)
 AC_DEFINE_UNQUOTED(GST_API_VERSION, "$GST_API_VERSION", [GStreamer API Version])
 
 PKG_CHECK_MODULES([LIBXML2], [ libxml-2.0 ], [ HAVE_LIBXML2="yes" ], [ HAVE_LIBXML2="no" ])
+PKG_CHECK_MODULES([PANGO], [ pango ], [ HAVE_PANGO="yes" ], [ HAVE_PANGO="no" ])
+PKG_CHECK_MODULES([CAIRO], [ cairo ], [ HAVE_CAIRO="yes" ], [ HAVE_CAIRO="no" ])
+PKG_CHECK_MODULES([PANGOCAIRO], [ pangocairo ], [ HAVE_PANGOCAIRO="yes" ], [ HAVE_PANGOCAIRO="no" ])
 
 AC_CONFIG_FILES(
 Makefile
-src/Makefile
+gst/parser/Makefile
+gst/renderer/Makefile
 libs/Makefile
 libs/gst/Makefile
 libs/gst/subtitle/Makefile
