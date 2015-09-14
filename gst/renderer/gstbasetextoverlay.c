@@ -2964,7 +2964,8 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
 
   /* Render block background, if non-transparent. */
   if (!color_is_transparent (&block->style.bg_color)) {
-    block_bg_image = draw_rectangle (width, height, block->style.bg_color);
+    block_bg_image = draw_rectangle (width, block_extents.height,
+        block->style.bg_color);
     bg_locimage = create_located_image (block_bg_image, 0, 0, width,
         block_extents.height);
     locimages = g_slist_prepend (locimages, bg_locimage);
