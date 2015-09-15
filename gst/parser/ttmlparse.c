@@ -1484,6 +1484,27 @@ ttml_add_element (GstSubtitleBlock * block, TtmlElement * element,
 }
 
 
+/* Returns TRUE if @color is totally transparent. */
+static gboolean
+ttml_color_is_transparent (const GstSubtitleColor * color)
+{
+  if (!color)
+    return FALSE;
+  else
+    return (color->a == 0);
+}
+
+
+static GstSubtitleColor
+ttml_blend_colors (GstSubtitleColor color1, GstSubtitleColor color2)
+{
+  if (ttml_color_is_transparent (&color2))
+    return color1;
+  else
+    return color2;
+}
+
+
 /* Create the subtitle area and its child blocks and elements for @tree,
  * inserting element text in @buf. */
 static GstSubtitleArea *
@@ -1492,6 +1513,7 @@ ttml_create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
 {
   GstSubtitleArea *area;
   GstSubtitleStyleSet *region_style;
+  GstSubtitleColor block_color;
   TtmlElement *element;
   GNode *node;
 
@@ -1510,26 +1532,32 @@ ttml_create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
   g_assert (node->next == NULL);
   element = node->data;
   g_assert (element->type == TTML_ELEMENT_TYPE_BODY);
+  block_color = ttml_parse_colorstring (element->style_set->bg_color);
 
   for (node = node->children; node; node = node->next) {
     GNode *p_node;
+    GstSubtitleColor div_color;
 
     element = node->data;
     g_assert (element->type == TTML_ELEMENT_TYPE_DIV);
+    div_color = ttml_parse_colorstring (element->style_set->bg_color);
+    block_color = ttml_blend_colors (block_color, div_color);
 
     for (p_node = node->children; p_node; p_node = p_node->next) {
       GstSubtitleBlock *block;
       GstSubtitleStyleSet *block_style;
       GNode *content_node;
+      GstSubtitleColor p_color;
 
       element = p_node->data;
       g_assert (element->type == TTML_ELEMENT_TYPE_P);
+      p_color = ttml_parse_colorstring (element->style_set->bg_color);
+      block_color = ttml_blend_colors (block_color, p_color);
+
       block_style = gst_subtitle_style_set_new ();
       ttml_update_style_set (block_style, element->style_set, cellres_x,
           cellres_y);
-
-      /* TODO: blend bg colors from body, div and p here. */
-
+      block_style->bg_color = block_color;
       block = gst_subtitle_block_new (block_style);
       g_assert (block != NULL);
 
@@ -1643,17 +1671,6 @@ ttml_delete_scene (TtmlScene * scene)
   if (scene->buf)
     gst_buffer_unref (scene->buf);
   g_slice_free (TtmlScene, scene);
-}
-
-
-/* Returns TRUE if @color is totally transparent. */
-static gboolean
-ttml_color_is_transparent (const GstSubtitleColor * color)
-{
-  if (!color)
-    return FALSE;
-  else
-    return (color->a == 0);
 }
 
 
