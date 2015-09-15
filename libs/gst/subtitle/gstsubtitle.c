@@ -31,8 +31,8 @@ GstSubtitleStyleSet *
 gst_subtitle_style_set_new ()
 {
   GstSubtitleStyleSet *ret = g_slice_new0 (GstSubtitleStyleSet);
-  GstSubtitleColor white = { 1.0, 1.0, 1.0, 1.0 };
-  GstSubtitleColor transparent = { 0.0, 0.0, 0.0, 0.0 };
+  GstSubtitleColor white = { 255, 255, 255, 255 };
+  GstSubtitleColor transparent = { 0, 0, 0, 0 };
 
   ret->text_direction = GST_SUBTITLE_TEXT_DIRECTION_LTR;
   g_strlcpy (ret->font_family, "default", MAX_FONT_FAMILY_NAME_LENGTH);
