@@ -2450,8 +2450,8 @@ text_range_free (TextRange * range)
 }
 
 static gchar *
-generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
-    guint screen_height, GPtrArray ** text_ranges)
+generate_marked_up_string (GstBaseEbuttdOverlay * overlay,
+    GPtrArray * elements, GstBuffer * text_buf, GPtrArray ** text_ranges)
 {
   GstSubtitleElement *element;
   GstMemory *mem;
@@ -2489,7 +2489,7 @@ generate_marked_up_string (GPtrArray * elements, GstBuffer * text_buf,
     fgcolor = color_to_rgb_string (element->style.color);
     /* XXX: Should we round the pixel font size? */
     font_size = g_strdup_printf ("%u",
-        (guint) (element->style.font_size * screen_height));
+        (guint) (element->style.font_size * overlay->height));
     font_family = (g_strcmp0 (element->style.font_family, "default") == 0) ?
       "Monospace" : element->style.font_family;
     font_style = (element->style.font_style == GST_SUBTITLE_FONT_STYLE_NORMAL) ?
@@ -2540,37 +2540,39 @@ gst_base_ebuttd_overlay_rendered_text_free (
 
 
 static GstBaseEbuttdOverlayRenderedText *
-draw_text (const gchar * string, PangoContext * context, guint width,
-    guint height, PangoAlignment align, guint line_height, guint max_font_size,
-    gboolean wrap, gboolean overflow)
+draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
+    PangoAlignment alignment, guint line_height, guint max_font_size,
+    gboolean wrap)
 {
+  GstBaseEbuttdOverlayClass *class;
   GstBaseEbuttdOverlayRenderedText *ret;
-  cairo_surface_t *surface, *clipped_surface;
-  cairo_t *cairo_state, *clipped_state;
+  cairo_surface_t *surface, *cropped_surface;
+  cairo_t *cairo_state, *cropped_state;
   GstMapInfo map;
   PangoRectangle logical_rect;
   gdouble cur_height;
   gint spacing = 0;
   guint buf_width, buf_height;
-  gdouble offset;
+  gdouble cur_spacing;
   gdouble padding;
+  guint vertical_offset;
   gint stride;
 
   ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedText);
+  class = GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay);
 
-  ret->layout = pango_layout_new (context);
-  pango_layout_set_markup (ret->layout, string, strlen (string));
+  ret->layout = pango_layout_new (class->pango_context);
+  pango_layout_set_markup (ret->layout, text, strlen (text));
   GST_CAT_DEBUG (ebuttdrender, "Layout text: %s",
       pango_layout_get_text (ret->layout));
   if (wrap) {
-    pango_layout_set_width (ret->layout, width * PANGO_SCALE);
+    pango_layout_set_width (ret->layout, max_width * PANGO_SCALE);
     pango_layout_set_wrap (ret->layout, PANGO_WRAP_WORD_CHAR);
   } else {
     pango_layout_set_width (ret->layout, -1);
   }
-  pango_layout_set_height (ret->layout, height * PANGO_SCALE);
 
-  pango_layout_set_alignment (ret->layout, align);
+  pango_layout_set_alignment (ret->layout, alignment);
   pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
 
   /* XXX: Is this the best way to do it? Could we alternatively find the
@@ -2580,17 +2582,18 @@ draw_text (const gchar * string, PangoContext * context, guint width,
    * different sized fonts - need to test. */
   cur_height = (gdouble)logical_rect.height
     / pango_layout_get_line_count (ret->layout);
-  offset = cur_height - (gdouble)max_font_size;
+  cur_spacing = cur_height - (gdouble)max_font_size;
   padding = (line_height - max_font_size)/2.0;
-
-  /* XXX: Fiddle factor of 0.1 * max_font_size is to ensure that text looks
-   * optically in the correct position relative to it's background box; without
-   * this downward shift, the text looks too high. */
-  ret->vert_offset =
-    (guint) round ((padding - offset) + (0.1 * max_font_size));
   spacing =
-    (gint) round ((gdouble)line_height - (gdouble)max_font_size - offset);
-  GST_CAT_DEBUG (ebuttdrender, "offset: %g   spacing: %d", offset, spacing);
+    (gint) round ((gdouble)line_height - (gdouble)max_font_size - cur_spacing);
+
+  /* Offset text downwards by 0.1 * max_font_size is to ensure that text looks
+   * optically in the correct position relative to it's background box. Without
+   * this downward shift, the text looks too high. */
+  vertical_offset =
+    (guint) round ((padding - cur_spacing) + (0.1 * max_font_size));
+  GST_CAT_DEBUG (ebuttdrender, "offset: %g   spacing: %d", cur_spacing,
+      spacing);
   GST_CAT_DEBUG (ebuttdrender, "line_height: %u", line_height);
   GST_CAT_DEBUG (ebuttdrender, "Current line height is %g; changing to %g",
       cur_height, cur_height + spacing);
@@ -2603,7 +2606,8 @@ draw_text (const gchar * string, PangoContext * context, guint width,
       "%d", logical_rect.width, logical_rect.height);
 
   /* Create surface for pango layout to render into. */
-  surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
+  surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32,
+      logical_rect.width, logical_rect.height);
   cairo_state = cairo_create (surface);
   cairo_set_operator (cairo_state, CAIRO_OPERATOR_CLEAR);
   cairo_paint (cairo_state);
@@ -2617,16 +2621,15 @@ draw_text (const gchar * string, PangoContext * context, guint width,
   cairo_restore (cairo_state);
 
   buf_width = logical_rect.width;
-  buf_height = logical_rect.height;
+  buf_height = logical_rect.height + vertical_offset;
   GST_CAT_DEBUG (ebuttdrender, "buf_width: %u  buf_height: %u",
       buf_width, buf_height);
 
   /* Depending on whether the text is wrapped and its alignment, the image
    * created by rendering a PangoLayout will contain more than just the
-   * rendered text: it may contain blankspace around the rendered text. The
-   * following code creates a new surface big enough to hold only the rendered
-   * text and then copies the rendered text into this new surface, which is
-   * then returned in a GstBuffer.*/
+   * rendered text: it may also contain blankspace around the rendered text.
+   * The following code crops blankspace from around the rendered text,
+   * returning only the rendered text itself in a GstBuffer. */
   /* TODO: move into a separate function? */
   ret->text_image =
     gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
@@ -2635,19 +2638,20 @@ draw_text (const gchar * string, PangoContext * context, guint width,
 
   stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
   GST_CAT_DEBUG (ebuttdrender, "stride:%d", stride);
-  clipped_surface =
-    cairo_image_surface_create_for_data (map.data,
-        CAIRO_FORMAT_ARGB32, buf_width, buf_height, stride);
-  clipped_state = cairo_create (clipped_surface);
-  cairo_set_source_surface (clipped_state, surface, -logical_rect.x, 0);
-  cairo_rectangle (clipped_state, 0, 0, logical_rect.width,
+  cropped_surface =
+    cairo_image_surface_create_for_data (
+        map.data + (vertical_offset * stride), CAIRO_FORMAT_ARGB32, buf_width,
+        buf_height, stride);
+  cropped_state = cairo_create (cropped_surface);
+  cairo_set_source_surface (cropped_state, surface, -logical_rect.x, 0);
+  cairo_rectangle (cropped_state, 0, 0, logical_rect.width,
       logical_rect.height);
-  cairo_fill (clipped_state);
+  cairo_fill (cropped_state);
 
   cairo_destroy (cairo_state);
   cairo_surface_destroy (surface);
-  cairo_destroy (clipped_state);
-  cairo_surface_destroy (clipped_surface);
+  cairo_destroy (cropped_state);
+  cairo_surface_destroy (cropped_surface);
   gst_buffer_unmap (ret->text_image, &map);
 
   ret->width = buf_width;
@@ -2900,14 +2904,14 @@ get_alignment (GstSubtitleStyleSet * style)
 
 static GstBaseEbuttdOverlayRenderedBlock *
 render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
-    GstBuffer * text_buf, guint width, guint height, gboolean overflow)
+    GstBuffer * text_buf, guint width, gboolean overflow)
 {
   GstBaseEbuttdOverlayRenderedBlock *ret;
   GPtrArray *char_ranges = NULL;
   GstBuffer *block_bg_image;
   gchar *marked_up_string;
   GstBaseEbuttdOverlayRenderedText *rendered_text;
-  PangoAlignment align;
+  PangoAlignment alignment;
   guint max_font_size;
   GstBaseEbuttdOverlayLocatedImage *text_locimage, *bg_locimage;
   GstBaseEbuttdOverlayExtents block_extents;
@@ -2919,22 +2923,21 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   ret->block = block;
 
   /* Join text from elements to form a single marked-up string. */
-  marked_up_string = generate_marked_up_string (block->elements, text_buf,
-      overlay->height, &char_ranges);
+  marked_up_string = generate_marked_up_string (overlay, block->elements,
+      text_buf, &char_ranges);
 
   max_font_size = (guint) (get_max_font_size (block->elements)
       * overlay->height);
   GST_CAT_DEBUG (ebuttdrender, "Max font size: %u", max_font_size);
 
   line_padding = (guint) (block->style.line_padding * overlay->width);
-  align = get_alignment (&block->style);
+  alignment = get_alignment (&block->style);
 
   /* Render text to buffer. */
-  rendered_text = draw_text (marked_up_string,
-      GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_context,
-      (width - (2 * line_padding)), height, align, (guint)
-      (block->style.line_height * max_font_size), max_font_size,
-      is_wrapped (block->elements), overflow);
+  rendered_text = draw_text (overlay, marked_up_string,
+      (width - (2 * line_padding)), alignment,
+      (guint) (block->style.line_height * max_font_size), max_font_size,
+      is_wrapped (block->elements));
 
   switch (block->style.text_align) {
     gint offset;
@@ -2972,7 +2975,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   }
 
   text_locimage = create_located_image (rendered_text->text_image,
-      text_offset, rendered_text->vert_offset, rendered_text->width,
+      text_offset, 0, rendered_text->width,
       rendered_text->height);
 
   locimages = g_slist_append (locimages, text_locimage);
@@ -3093,8 +3096,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
           height - (padding_before + padding_after + rendered_height));
       block = g_ptr_array_index (area->blocks, i);
       rendered_block = render_text_block (overlay, block, text_buf,
-          width - (padding_start + padding_end),
-          height - (padding_before + padding_after + rendered_height), TRUE);
+          width - (padding_start + padding_end), TRUE);
       GST_CAT_DEBUG (ebuttdrender, "Height of rendered block is %u",
           rendered_block->height);
 
