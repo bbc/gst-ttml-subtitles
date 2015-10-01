@@ -2534,7 +2534,7 @@ static void
 gst_base_ebuttd_overlay_rendered_text_free (
     GstBaseEbuttdOverlayRenderedText * text)
 {
-  gst_buffer_unref (text->text_image);
+  gst_buffer_unref (text->text_image.image);
   g_object_unref (text->layout);
 }
 
@@ -2631,10 +2631,10 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
    * The following code crops blankspace from around the rendered text,
    * returning only the rendered text itself in a GstBuffer. */
   /* TODO: move into a separate function? */
-  ret->text_image =
+  ret->text_image.image =
     gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
-  gst_buffer_memset (ret->text_image, 0, 0U, 4 * buf_width * buf_height);
-  gst_buffer_map (ret->text_image, &map, GST_MAP_READWRITE);
+  gst_buffer_memset (ret->text_image.image, 0, 0U, 4 * buf_width * buf_height);
+  gst_buffer_map (ret->text_image.image, &map, GST_MAP_READWRITE);
 
   stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
   GST_CAT_DEBUG (ebuttdrender, "stride:%d", stride);
@@ -2652,10 +2652,10 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
   cairo_surface_destroy (surface);
   cairo_destroy (cropped_state);
   cairo_surface_destroy (cropped_surface);
-  gst_buffer_unmap (ret->text_image, &map);
+  gst_buffer_unmap (ret->text_image.image, &map);
 
-  ret->width = buf_width;
-  ret->height = buf_height;
+  ret->text_image.width = buf_width;
+  ret->text_image.height = buf_height;
   ret->horiz_offset = logical_rect.x;
 
   return ret;
@@ -2946,12 +2946,12 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
       text_offset = line_padding;
       break;
     case GST_SUBTITLE_TEXT_ALIGN_CENTER:
-      offset = (gint)width - rendered_text->width;
+      offset = (gint)width - rendered_text->text_image.width;
       text_offset = ((MAX (offset, 0))/2);
       break;
     case GST_SUBTITLE_TEXT_ALIGN_END:
     case GST_SUBTITLE_TEXT_ALIGN_RIGHT:
-      text_offset = width - (rendered_text->width + line_padding);
+      text_offset = width - (rendered_text->text_image.width + line_padding);
       break;
   }
 
@@ -2974,9 +2974,9 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
     locimages = g_slist_prepend (locimages, bg_locimage);
   }
 
-  text_locimage = create_located_image (rendered_text->text_image,
-      text_offset, 0, rendered_text->width,
-      rendered_text->height);
+  text_locimage = create_located_image (rendered_text->text_image.image,
+      text_offset, 0, rendered_text->text_image.width,
+      rendered_text->text_image.height);
 
   locimages = g_slist_append (locimages, text_locimage);
 

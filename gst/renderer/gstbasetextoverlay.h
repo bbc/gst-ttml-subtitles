@@ -70,10 +70,16 @@ typedef struct {
 } GstBaseEbuttdOverlayRenderedBlock;
 
 typedef struct {
-  GstBuffer *text_image;
-  PangoLayout *layout;
+  GstBuffer *image;
+  gint x;
+  gint y;
   guint width;
   guint height;
+} GstBaseEbuttdOverlayRenderedImage;
+
+typedef struct {
+  GstBaseEbuttdOverlayRenderedImage text_image;
+  PangoLayout *layout; /* TODO: Add some documentation re. why this is needed. */
 
   /* To cope with the fact that pango positions text at a different horizontal
    * location depending on whether wrapping is enabled or not. */
