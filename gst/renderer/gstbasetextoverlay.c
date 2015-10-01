@@ -2920,7 +2920,6 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   guint text_offset = 0U;
 
   ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedBlock);
-  ret->block = block;
 
   /* Join text from elements to form a single marked-up string. */
   marked_up_string = generate_marked_up_string (overlay, block->elements,

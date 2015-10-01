@@ -63,7 +63,6 @@ typedef struct {
 } GstBaseEbuttdOverlayLocatedImage;
 
 typedef struct {
-  GstSubtitleBlock *block;
   GSList *images;
   guint width;
   guint height;
