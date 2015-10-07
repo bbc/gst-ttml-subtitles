@@ -2715,8 +2715,124 @@ create_located_image (GstBuffer * image, gint x, gint y, guint width,
 }
 
 
+static GstBaseEbuttdOverlayRenderedImage *
+rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
+    guint height)
+{
+  GstBaseEbuttdOverlayRenderedImage *ret;
+
+  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+  /*gst_mini_object_init (GST_MINI_OBJECT_CAST (element), 0,
+      rendered_image_get_type (), NULL, NULL,
+      (GstMiniObjectFreeFunction) rendered_image_free);*/
+
+  ret->image = image;
+  ret->x = x;
+  ret->y = y;
+  ret->width = width;
+  ret->height = height;
+
+  return ret;
+}
+
+
+static GstBaseEbuttdOverlayRenderedImage *
+rendered_image_copy (GstBaseEbuttdOverlayRenderedImage * image)
+{
+  GstBaseEbuttdOverlayRenderedImage *ret
+    = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+
+  ret->image = gst_buffer_ref (image->image);
+  ret->x = image->x;
+  ret->y = image->y;
+  ret->width = image->width;
+  ret->height = image->height;
+
+  return ret;
+}
+
+
+static void
+rendered_image_free (GstBaseEbuttdOverlayRenderedImage * image)
+{
+  if (!image) return;
+  gst_buffer_unref (image->image);
+  g_slice_free (GstBaseEbuttdOverlayRenderedImage, image);
+}
+
+
+static GstBaseEbuttdOverlayRenderedImage *
+rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
+    GstBaseEbuttdOverlayRenderedImage * image2)
+{
+  GstBaseEbuttdOverlayRenderedImage *ret;
+  GstMapInfo map1, map2, map_dest;
+  cairo_surface_t *sfc1, *sfc2, *sfc_dest;
+  cairo_t *state_dest;
+
+  if (image1 && !image2)
+    return rendered_image_copy (image1);
+  if (image2 && !image1)
+    return rendered_image_copy (image2);
+
+  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+
+  /* Work out dimensions of combined image. */
+  ret->x = MIN (image1->x, image2->x);
+  ret->y = MIN (image1->y, image2->y);
+  ret->width = MAX (image1->x + image1->width, image2->x + image2->width);
+  ret->height = MAX (image1->y + image1->height, image2->y + image2->height);
+
+  GST_CAT_DEBUG (ebuttdrender, "Dimensions of combined image:  x:%u  y:%u  "
+      "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
+
+  /* Create cairo_surface from src and dest images. */
+  gst_buffer_map (image1->image, &map1, GST_MAP_READ);
+  sfc1 = cairo_image_surface_create_for_data (
+      map1.data, CAIRO_FORMAT_ARGB32, image1->width, image1->height,
+      cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, image1->width));
+
+  gst_buffer_map (image2->image, &map2, GST_MAP_READ);
+  sfc2 = cairo_image_surface_create_for_data (
+      map2.data, CAIRO_FORMAT_ARGB32, image2->width, image2->height,
+      cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, image2->width));
+
+  /* Create cairo_surface for resultant image. */
+  ret->image = gst_buffer_new_allocate (NULL, 4 * ret->width * ret->height,
+      NULL);
+  gst_buffer_memset (ret->image, 0, 0U, 4 * ret->width * ret->height);
+  gst_buffer_map (ret->image, &map_dest, GST_MAP_READWRITE);
+  sfc_dest = cairo_image_surface_create_for_data (
+      map_dest.data, CAIRO_FORMAT_ARGB32, ret->width, ret->height,
+      cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, ret->width));
+  state_dest = cairo_create (sfc_dest);
+
+  /* Blend image1 into destination surface. */
+  cairo_set_source_surface (state_dest, sfc1, image1->x, image1->y);
+  cairo_rectangle (state_dest, image1->x, image1->y, image1->width,
+      image1->height);
+  cairo_fill (state_dest);
+
+  /* Blend image2 into destination surface. */
+  cairo_set_source_surface (state_dest, sfc2, image2->x, image2->y);
+  cairo_rectangle (state_dest, image2->x, image2->y, image2->width,
+      image2->height);
+  cairo_fill (state_dest);
+
+  /* Return destination image. */
+  cairo_destroy (state_dest);
+  cairo_surface_destroy (sfc1);
+  cairo_surface_destroy (sfc2);
+  gst_buffer_unmap (image1->image, &map1);
+  gst_buffer_unmap (image2->image, &map2);
+  gst_buffer_unmap (ret->image, &map_dest);
+
+  return ret;
+}
+
+
 /* Render the background rectangles to be placed behind each element. */
-static GSList *
+static GstBaseEbuttdOverlayRenderedImage *
 render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
     PangoLayout * layout, guint origin_x, guint origin_y, guint line_height,
     guint line_padding, guint horiz_offset)
@@ -2729,10 +2845,9 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
   GstSubtitleElement *element;
   guint rect_width;
   GstBuffer *rectangle;
-  GstBaseEbuttdOverlayLocatedImage *image;
   guint first_char_start, last_char_end;
   guint i;
-  GSList *ret = NULL;
+  GstBaseEbuttdOverlayRenderedImage *ret = NULL;
 
   for (i = 0; i < char_ranges->len; ++i) {
     range = g_ptr_array_index (char_ranges, i);
@@ -2810,11 +2925,15 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
           color_to_rgba_string (element->style.bg_color));
       rect_width = (area_end - area_start);
       if (rect_width > 0) { /* <br>s will result in zero-width rectangle */
+        GstBaseEbuttdOverlayRenderedImage *image, *tmp;
         rectangle = draw_rectangle (rect_width, line_height,
             element->style.bg_color);
-        image = create_located_image (rectangle, origin_x + area_start,
+        image = rendered_image_new (rectangle, origin_x + area_start,
             origin_y + (cur_line * line_height), rect_width, line_height);
-        ret = g_slist_append (ret, image);
+        tmp = ret;
+        ret = rendered_image_combine (ret, image);
+        if (tmp) rendered_image_free (tmp);
+        rendered_image_free (image);
       }
     }
   }
@@ -2902,24 +3021,49 @@ get_alignment (GstSubtitleStyleSet * style)
 }
 
 
-static GstBaseEbuttdOverlayRenderedBlock *
+static GstBaseEbuttdOverlayRenderedImage *
+stitch_blocks (GList * blocks)
+{
+  guint vert_offset = 0;
+  GList *block_entry;
+  GstBaseEbuttdOverlayRenderedImage *ret = NULL;
+
+  for (block_entry = g_list_first (blocks); block_entry;
+      block_entry = block_entry->next) {
+    GstBaseEbuttdOverlayRenderedImage *block, *tmp;
+    block = (GstBaseEbuttdOverlayRenderedImage *)block_entry->data;
+    tmp = ret;
+
+    block->y += vert_offset;
+    GST_CAT_ERROR (ebuttdrender, "Rendering block at vertical offset %u",
+        vert_offset);
+    vert_offset = block->y + block->height;
+    GST_CAT_ERROR (ebuttdrender, "Increased vertical offset to %u",
+        vert_offset);
+    ret = rendered_image_combine (ret, block);
+    if (tmp) rendered_image_free (tmp);
+  }
+
+  GST_CAT_ERROR (ebuttdrender, "Height of stitched image: %u", ret->height);
+  ret->image = gst_buffer_make_writable (ret->image);
+  return ret;
+}
+
+
+static GstBaseEbuttdOverlayRenderedImage *
 render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
     GstBuffer * text_buf, guint width, gboolean overflow)
 {
-  GstBaseEbuttdOverlayRenderedBlock *ret;
   GPtrArray *char_ranges = NULL;
-  GstBuffer *block_bg_image;
   gchar *marked_up_string;
-  GstBaseEbuttdOverlayRenderedText *rendered_text;
   PangoAlignment alignment;
   guint max_font_size;
-  GstBaseEbuttdOverlayLocatedImage *text_locimage, *bg_locimage;
-  GstBaseEbuttdOverlayExtents block_extents;
-  GSList *locimages;
   guint line_padding;
   guint text_offset = 0U;
-
-  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedBlock);
+  GstBaseEbuttdOverlayRenderedText *rendered_text;
+  GstBaseEbuttdOverlayRenderedImage *text;
+  GstBaseEbuttdOverlayRenderedImage *backgrounds = NULL;
+  GstBaseEbuttdOverlayRenderedImage *ret;
 
   /* Join text from elements to form a single marked-up string. */
   marked_up_string = generate_marked_up_string (overlay, block->elements,
@@ -2954,38 +3098,36 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
       break;
   }
 
+  text = rendered_image_new (rendered_text->text_image.image,
+      text_offset, 0, rendered_text->text_image.width,
+      rendered_text->text_image.height);
+
   /* Render background rectangles, if any. */
-  locimages = render_element_backgrounds (block->elements, char_ranges,
+  backgrounds = render_element_backgrounds (block->elements, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
       (guint) (block->style.line_height * max_font_size), line_padding, 
       rendered_text->horiz_offset);
 
-  /* XXX: Looks like we only really need to know the height of the rendered
-   * block. */
-  block_extents = calculate_block_extents (locimages);
-
   /* Render block background, if non-transparent. */
   if (!color_is_transparent (&block->style.bg_color)) {
-    block_bg_image = draw_rectangle (width, block_extents.height,
+    GstBaseEbuttdOverlayRenderedImage *block_background;
+    GstBaseEbuttdOverlayRenderedImage *tmp = backgrounds;
+
+    GstBuffer *block_bg_image = draw_rectangle (width, backgrounds->height,
         block->style.bg_color);
-    bg_locimage = create_located_image (block_bg_image, 0, 0, width,
-        block_extents.height);
-    locimages = g_slist_prepend (locimages, bg_locimage);
+    block_background = rendered_image_new (block_bg_image, 0, 0, width,
+        backgrounds->height);
+    backgrounds = rendered_image_combine (backgrounds, block_background);
+    rendered_image_free (tmp);
+    rendered_image_free (block_background);
   }
 
-  text_locimage = create_located_image (rendered_text->text_image.image,
-      text_offset, 0, rendered_text->text_image.width,
-      rendered_text->text_image.height);
-
-  locimages = g_slist_append (locimages, text_locimage);
-
-  GST_CAT_DEBUG (ebuttdrender, "%u layers created.",
-      g_slist_length (locimages));
+  /* Combine text and background images. */
+  ret = rendered_image_combine (backgrounds, text);
+  rendered_image_free (backgrounds);
+  rendered_image_free (text);
 
   g_ptr_array_unref (char_ranges);
-  ret->images = locimages;
-  ret->width = width;
-  ret->height = block_extents.height;
   GST_CAT_DEBUG (ebuttdrender, "block width: %u   block height: %u",
       ret->width, ret->height);
   return ret;
@@ -3053,15 +3195,14 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   GstBuffer * text_buf)
 {
   GList *blocks = NULL;
-  GstBaseEbuttdOverlayRenderedBlock *rendered_block;
   guint x, y, width, height;
-  guint rendered_height = 0U;
-  guint i;
   GstBuffer *bg_image;
   GstBaseEbuttdOverlayLayer *bg_layer;
   guint vert_offset = 0U;
   guint padding_start, padding_end, padding_before, padding_after;
   GSList *layers = NULL;
+  GstBaseEbuttdOverlayRenderedImage *blocks_image = NULL;
+  GstBaseEbuttdOverlayLayer *blocks_layer;
   GstVideoOverlayComposition *ret = NULL;
 
   width = (guint) (round (area->style.extent_w * overlay->width));
@@ -3087,12 +3228,12 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   }
 
   if (area->blocks) {
+    guint i;
     /* Render each block and append to list. */
     for (i = 0; i < area->blocks->len; ++i) {
       GstSubtitleBlock *block;
-      GST_CAT_DEBUG (ebuttdrender,
-          "Rendering block; current height remaining in text area is %u",
-          height - (padding_before + padding_after + rendered_height));
+      GstBaseEbuttdOverlayRenderedImage *rendered_block;
+
       block = g_ptr_array_index (area->blocks, i);
       rendered_block = render_text_block (overlay, block, text_buf,
           width - (padding_start + padding_end), TRUE);
@@ -3100,10 +3241,34 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
           rendered_block->height);
 
       blocks = g_list_append (blocks, rendered_block);
-      rendered_height += rendered_block->height;
     }
   }
 
+  blocks_image = stitch_blocks (blocks);
+
+  /* Go through list of rendered blocks; based on overflow and displayAlign
+   * settings, work out which blocks would be visible and of those which would
+   * need to be cropped; crop the latter and update metadata to reflect new
+   * size. */
+
+  /* The other option is that render_text_block returns a single image that is
+   * the combination of text and background images, we then combine all of
+   * these images in vertical order into a single image, and crop depending on
+   * overflow and displayAlign settings. */
+
+  /* Assumptions:
+   *    - The blocks are in order of vertical appearance, in direction of block
+   *    flow.
+   */
+
+  /* Needed functionality:
+   *    - Get total height of a list of blocks.
+   *    - Blend two images together.
+   *    - Concatenate a list of images in a prescribed order.
+   *    - Crop an image.
+   */
+
+#if 0
   GST_CAT_DEBUG (ebuttdrender, "There are %u layers in total.",
       g_slist_length (layers));
 
@@ -3139,10 +3304,15 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     GST_CAT_DEBUG (ebuttdrender, "Increased vertical offset to %u",
         vert_offset);
   }
+#endif
+
+  blocks_layer = create_new_layer (blocks_image->image, x, y,
+      blocks_image->width, blocks_image->height);
+  layers = g_slist_append (layers, blocks_layer);
 
   ret = gst_base_ebuttd_overlay_compose_layers (layers);
   g_slist_free_full (layers, (GDestroyNotify) free_layer);
-  g_list_free_full (blocks, (GDestroyNotify) free_rendered_block);
+  g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
   return ret;
 }
 
