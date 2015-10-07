@@ -156,8 +156,8 @@ typedef enum {
 
 struct _GstBaseEbuttdOverlayLayer {
   GstBuffer *image;
-  guint xpos;
-  guint ypos;
+  gint xpos;
+  gint ypos;
   guint width;
   guint height;
   GstVideoOverlayRectangle *rectangle;

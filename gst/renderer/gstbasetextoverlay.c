@@ -2412,7 +2412,7 @@ draw_rectangle (guint width, guint height, GstSubtitleColor color)
 
 
 static GstBaseEbuttdOverlayLayer *
-create_new_layer (GstBuffer * image, guint xpos, guint ypos, guint width,
+create_new_layer (GstBuffer * image, gint xpos, gint ypos, guint width,
     guint height)
 {
   GstBaseEbuttdOverlayLayer *layer;
@@ -3035,16 +3035,14 @@ stitch_blocks (GList * blocks)
     tmp = ret;
 
     block->y += vert_offset;
-    GST_CAT_ERROR (ebuttdrender, "Rendering block at vertical offset %u",
+    GST_CAT_DEBUG (ebuttdrender, "Rendering block at vertical offset %u",
         vert_offset);
     vert_offset = block->y + block->height;
-    GST_CAT_ERROR (ebuttdrender, "Increased vertical offset to %u",
-        vert_offset);
     ret = rendered_image_combine (ret, block);
     if (tmp) rendered_image_free (tmp);
   }
 
-  GST_CAT_ERROR (ebuttdrender, "Height of stitched image: %u", ret->height);
+  GST_CAT_DEBUG (ebuttdrender, "Height of stitched image: %u", ret->height);
   ret->image = gst_buffer_make_writable (ret->image);
   return ret;
 }
@@ -3198,7 +3196,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   guint x, y, width, height;
   GstBuffer *bg_image;
   GstBaseEbuttdOverlayLayer *bg_layer;
-  guint vert_offset = 0U;
+  gint origin_y = 0;
   guint padding_start, padding_end, padding_before, padding_after;
   GSList *layers = NULL;
   GstBaseEbuttdOverlayRenderedImage *blocks_image = NULL;
@@ -3242,77 +3240,31 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
 
       blocks = g_list_append (blocks, rendered_block);
     }
+    blocks_image = stitch_blocks (blocks);
+    g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
+
+    switch (area->style.display_align) {
+      case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
+        origin_y = y + padding_before;
+        break;
+      case GST_SUBTITLE_DISPLAY_ALIGN_CENTER:
+        origin_y = y + ((gint)((height + padding_before)
+              - (padding_after + blocks_image->height)))/2;
+        break;
+      case GST_SUBTITLE_DISPLAY_ALIGN_AFTER:
+        origin_y = (y + height) - (padding_after + blocks_image->height);
+        break;
+    }
+
+    GST_CAT_DEBUG (ebuttdrender, "Set vertical origin to %d", origin_y);
+
+    blocks_layer = create_new_layer (blocks_image->image, x, origin_y,
+        blocks_image->width, blocks_image->height);
+    layers = g_slist_append (layers, blocks_layer);
   }
-
-  blocks_image = stitch_blocks (blocks);
-
-  /* Go through list of rendered blocks; based on overflow and displayAlign
-   * settings, work out which blocks would be visible and of those which would
-   * need to be cropped; crop the latter and update metadata to reflect new
-   * size. */
-
-  /* The other option is that render_text_block returns a single image that is
-   * the combination of text and background images, we then combine all of
-   * these images in vertical order into a single image, and crop depending on
-   * overflow and displayAlign settings. */
-
-  /* Assumptions:
-   *    - The blocks are in order of vertical appearance, in direction of block
-   *    flow.
-   */
-
-  /* Needed functionality:
-   *    - Get total height of a list of blocks.
-   *    - Blend two images together.
-   *    - Concatenate a list of images in a prescribed order.
-   *    - Crop an image.
-   */
-
-#if 0
-  GST_CAT_DEBUG (ebuttdrender, "There are %u layers in total.",
-      g_slist_length (layers));
-
-  switch (area->style.display_align) {
-    gint offset;
-    case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
-      GST_CAT_DEBUG (ebuttdrender, "displayAlign = BEFORE");
-      vert_offset = y + padding_before;
-      break;
-    case GST_SUBTITLE_DISPLAY_ALIGN_CENTER:
-      GST_CAT_DEBUG (ebuttdrender, "displayAlign = CENTER");
-      offset = (gint)height - rendered_height;
-      GST_CAT_DEBUG (ebuttdrender, "offset: %d", offset);
-      vert_offset = y + (MAX(offset, 0))/2;
-      break;
-    case GST_SUBTITLE_DISPLAY_ALIGN_AFTER:
-      GST_CAT_DEBUG (ebuttdrender, "displayAlign = AFTER");
-      vert_offset = (y + height) - (padding_after + rendered_height);
-      break;
-  }
-
-  GST_CAT_DEBUG (ebuttdrender, "Set vertical offset to %u", vert_offset);
-
-  /* Create layers for the images in each block and add to list. */
-  for (blocks = g_list_first (blocks); blocks != NULL; blocks = blocks->next) {
-    GSList *block_layers;
-    GstBaseEbuttdOverlayRenderedBlock *block =
-      (GstBaseEbuttdOverlayRenderedBlock *)blocks->data;
-
-    block_layers = create_layers (block, x + padding_start, vert_offset);
-    layers = g_slist_concat (layers, block_layers);
-    vert_offset += block->height;
-    GST_CAT_DEBUG (ebuttdrender, "Increased vertical offset to %u",
-        vert_offset);
-  }
-#endif
-
-  blocks_layer = create_new_layer (blocks_image->image, x, y,
-      blocks_image->width, blocks_image->height);
-  layers = g_slist_append (layers, blocks_layer);
 
   ret = gst_base_ebuttd_overlay_compose_layers (layers);
   g_slist_free_full (layers, (GDestroyNotify) free_layer);
-  g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
   return ret;
 }
 
