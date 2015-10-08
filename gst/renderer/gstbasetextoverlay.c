@@ -2831,6 +2831,18 @@ rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
 }
 
 
+static GstBaseEbuttdOverlayRenderedImage *
+rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
+    guint width, guint height)
+{
+  GstBaseEbuttdOverlayRenderedImage *ret;
+
+  /*ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);*/
+
+  return rendered_image_copy (image);
+}
+
+
 /* Render the background rectangles to be placed behind each element. */
 static GstBaseEbuttdOverlayRenderedImage *
 render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
@@ -3267,7 +3279,13 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
         break;
     }
 
-    GST_CAT_DEBUG (ebuttdrender, "Set vertical origin to %d", origin_y);
+    if ((area->style.overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
+        && (blocks_image->height > window_height)) {
+      GstBaseEbuttdOverlayRenderedImage *tmp = blocks_image;
+      blocks_image = rendered_image_crop (blocks_image, window_x, window_y,
+          window_width, window_height);
+      rendered_image_free (tmp);
+    }
 
     blocks_layer = create_new_layer (blocks_image->image, blocks_image->x,
         blocks_image->y, blocks_image->width, blocks_image->height);
