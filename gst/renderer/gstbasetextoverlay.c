@@ -3196,7 +3196,6 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   guint x, y, width, height;
   GstBuffer *bg_image;
   GstBaseEbuttdOverlayLayer *bg_layer;
-  gint origin_y = 0;
   guint padding_start, padding_end, padding_before, padding_after;
   GSList *layers = NULL;
   GstBaseEbuttdOverlayRenderedImage *blocks_image = NULL;
@@ -3242,24 +3241,25 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     }
     blocks_image = stitch_blocks (blocks);
     g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
+    blocks_image->x = x;
 
     switch (area->style.display_align) {
       case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
-        origin_y = y + padding_before;
+        blocks_image->y = y + padding_before;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_CENTER:
-        origin_y = y + ((gint)((height + padding_before)
+        blocks_image->y = y + ((gint)((height + padding_before)
               - (padding_after + blocks_image->height)))/2;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_AFTER:
-        origin_y = (y + height) - (padding_after + blocks_image->height);
+        blocks_image->y = (y + height) - (padding_after + blocks_image->height);
         break;
     }
 
     GST_CAT_DEBUG (ebuttdrender, "Set vertical origin to %d", origin_y);
 
-    blocks_layer = create_new_layer (blocks_image->image, x, origin_y,
-        blocks_image->width, blocks_image->height);
+    blocks_layer = create_new_layer (blocks_image->image, blocks_image->x,
+        blocks_image->y, blocks_image->width, blocks_image->height);
     layers = g_slist_append (layers, blocks_layer);
   }
 
