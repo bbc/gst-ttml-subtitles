@@ -3193,7 +3193,8 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   GstBuffer * text_buf)
 {
   GList *blocks = NULL;
-  guint x, y, width, height;
+  guint area_x, area_y, area_width, area_height;
+  guint window_x, window_y, window_width, window_height;
   GstBuffer *bg_image;
   GstBaseEbuttdOverlayLayer *bg_layer;
   guint padding_start, padding_end, padding_before, padding_after;
@@ -3202,10 +3203,10 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   GstBaseEbuttdOverlayLayer *blocks_layer;
   GstVideoOverlayComposition *ret = NULL;
 
-  width = (guint) (round (area->style.extent_w * overlay->width));
-  height = (guint) (round (area->style.extent_h * overlay->height));
-  x = (guint) (round (area->style.origin_x * overlay->width));
-  y = (guint) (round (area->style.origin_y * overlay->height));
+  area_width = (guint) (round (area->style.extent_w * overlay->width));
+  area_height = (guint) (round (area->style.extent_h * overlay->height));
+  area_x = (guint) (round (area->style.origin_x * overlay->width));
+  area_y = (guint) (round (area->style.origin_y * overlay->height));
 
   padding_start = (guint) (round (area->style.padding_start * overlay->width));
   padding_end = (guint) (round (area->style.padding_end * overlay->width));
@@ -3213,19 +3214,28 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     (guint) (round (area->style.padding_before * overlay->height));
   padding_after = (guint) (round (area->style.padding_after * overlay->height));
 
+  /* "window" here refers to the section of the area that we're allowed to
+   * render into. i.e., the area minus padding. */
+  window_x = area_x + padding_start;
+  window_y = area_y + padding_before;
+  window_width = area_width - (padding_start + padding_end);
+  window_height = area_height - (padding_before + padding_after);
+
   GST_CAT_DEBUG (ebuttdrender,
-      "Padding start: %u  end: %u  before: %u  after: %u",
+      "Padding: start: %u  end: %u  before: %u  after: %u",
       padding_start, padding_end, padding_before, padding_after);
 
   /* Render region background, if non-transparent. */
   if (!color_is_transparent (&area->style.bg_color)) {
-    bg_image = draw_rectangle (width, height, area->style.bg_color);
-    bg_layer = create_new_layer (bg_image, x, y, width, height);
+    bg_image = draw_rectangle (area_width, area_height, area->style.bg_color);
+    bg_layer = create_new_layer (bg_image, area_x, area_y, area_width,
+        area_height);
     layers = g_slist_append (layers, bg_layer);
   }
 
   if (area->blocks) {
     guint i;
+
     /* Render each block and append to list. */
     for (i = 0; i < area->blocks->len; ++i) {
       GstSubtitleBlock *block;
@@ -3233,7 +3243,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
 
       block = g_ptr_array_index (area->blocks, i);
       rendered_block = render_text_block (overlay, block, text_buf,
-          width - (padding_start + padding_end), TRUE);
+          window_width, TRUE);
       GST_CAT_DEBUG (ebuttdrender, "Height of rendered block is %u",
           rendered_block->height);
 
@@ -3241,18 +3251,19 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     }
     blocks_image = stitch_blocks (blocks);
     g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
-    blocks_image->x = x;
+    blocks_image->x = window_x;
 
     switch (area->style.display_align) {
       case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
-        blocks_image->y = y + padding_before;
+        blocks_image->y = window_y;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_CENTER:
-        blocks_image->y = y + ((gint)((height + padding_before)
+        blocks_image->y = area_y + ((gint)((area_height + padding_before)
               - (padding_after + blocks_image->height)))/2;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_AFTER:
-        blocks_image->y = (y + height) - (padding_after + blocks_image->height);
+        blocks_image->y = (area_y + area_height)
+          - (padding_after + blocks_image->height);
         break;
     }
 
