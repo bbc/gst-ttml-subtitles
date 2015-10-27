@@ -3295,7 +3295,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     }
     blocks_image = stitch_blocks (blocks);
     g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
-    blocks_image->x = window_x;
+    blocks_image->x += window_x;
 
     switch (area->style.display_align) {
       case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
