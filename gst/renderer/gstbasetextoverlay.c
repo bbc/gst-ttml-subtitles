@@ -2808,8 +2808,10 @@ rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
   /* Work out dimensions of combined image. */
   ret->x = MIN (image1->x, image2->x);
   ret->y = MIN (image1->y, image2->y);
-  ret->width = MAX (image1->x + image1->width, image2->x + image2->width);
-  ret->height = MAX (image1->y + image1->height, image2->y + image2->height);
+  ret->width = MAX (image1->x + image1->width, image2->x + image2->width)
+    - ret->x;
+  ret->height = MAX (image1->y + image1->height, image2->y + image2->height)
+    - ret->y;
 
   GST_CAT_DEBUG (ebuttdrender, "Dimensions of combined image:  x:%u  y:%u  "
       "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
@@ -2836,15 +2838,17 @@ rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
   state_dest = cairo_create (sfc_dest);
 
   /* Blend image1 into destination surface. */
-  cairo_set_source_surface (state_dest, sfc1, image1->x, image1->y);
-  cairo_rectangle (state_dest, image1->x, image1->y, image1->width,
-      image1->height);
+  cairo_set_source_surface (state_dest, sfc1, image1->x - ret->x,
+      image1->y - ret->y);
+  cairo_rectangle (state_dest, image1->x - ret->x, image1->y - ret->y,
+      image1->width, image1->height);
   cairo_fill (state_dest);
 
   /* Blend image2 into destination surface. */
-  cairo_set_source_surface (state_dest, sfc2, image2->x, image2->y);
-  cairo_rectangle (state_dest, image2->x, image2->y, image2->width,
-      image2->height);
+  cairo_set_source_surface (state_dest, sfc2, image2->x - ret->x,
+      image2->y - ret->y);
+  cairo_rectangle (state_dest, image2->x - ret->x, image2->y - ret->y,
+      image2->width, image2->height);
   cairo_fill (state_dest);
 
   /* Return destination image. */
