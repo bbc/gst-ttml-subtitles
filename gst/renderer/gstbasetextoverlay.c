@@ -2764,6 +2764,31 @@ rendered_image_free (GstBaseEbuttdOverlayRenderedImage * image)
 }
 
 
+static void
+output_image (const GstBaseEbuttdOverlayRenderedImage * image, const gchar * filename)
+{
+  GstMapInfo map;
+  cairo_surface_t *surface;
+  cairo_t *cairo_state;
+
+  printf ("Outputting image with following dimensions:  x:%u  y:%u  width:%u "
+          "height:%u\n", image->x, image->y, image->width, image->height);
+
+  gst_buffer_map (image->image, &map, GST_MAP_READ);
+  surface = cairo_image_surface_create_for_data (map.data,
+          CAIRO_FORMAT_ARGB32, image->width, image->height,
+          cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, image->width));
+  cairo_state = cairo_create (surface);
+
+  cairo_surface_write_to_png(surface, filename);
+  cairo_destroy(cairo_state);
+  cairo_surface_destroy(surface);
+  gst_buffer_unmap (image->image, &map);
+}
+
+
+
+
 static GstBaseEbuttdOverlayRenderedImage *
 rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
     GstBaseEbuttdOverlayRenderedImage * image2)
