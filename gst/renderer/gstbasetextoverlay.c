@@ -2816,7 +2816,7 @@ rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
   GST_CAT_DEBUG (ebuttdrender, "Dimensions of combined image:  x:%u  y:%u  "
       "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
 
-  /* Create cairo_surface from src and dest images. */
+  /* Create cairo_surface from src images. */
   gst_buffer_map (image1->image, &map1, GST_MAP_READ);
   sfc1 = cairo_image_surface_create_for_data (
       map1.data, CAIRO_FORMAT_ARGB32, image1->width, image1->height,
@@ -2868,10 +2868,59 @@ rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
     guint width, guint height)
 {
   GstBaseEbuttdOverlayRenderedImage *ret;
+  GstMapInfo map_src, map_dest;
+  cairo_surface_t *sfc_src, *sfc_dest;
+  cairo_t *state_dest;
 
-  /*ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);*/
+  if ((x <= image->x) && (y <= image->y) && (width >= image->width)
+      && (height >= image->height))
+    return rendered_image_copy (image);
 
-  return rendered_image_copy (image);
+  /* TODO: Handle case where crop rectangle doesn't intersect image. */
+
+  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+
+  ret->x = MAX (image->x, x);
+  ret->y = MAX (image->y, y);
+  ret->width = MIN ((image->x + image->width) - ret->x, (x + width) - ret->x);
+  ret->height = MIN ((image->y + image->height) - ret->y,
+      (y + height) - ret->y);
+
+  GST_CAT_DEBUG (ebuttdrender, "Dimensions of cropped image:  x:%u  y:%u  "
+      "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
+
+  /* Create cairo_surface from src image. */
+  gst_buffer_map (image->image, &map_src, GST_MAP_READ);
+  sfc_src = cairo_image_surface_create_for_data (
+      map_src.data, CAIRO_FORMAT_ARGB32, image->width, image->height,
+      cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, image->width));
+
+  cairo_surface_write_to_png(sfc_src, "precropped.png");
+
+  /* Create cairo_surface for cropped image. */
+  ret->image = gst_buffer_new_allocate (NULL, 4 * ret->width * ret->height,
+      NULL);
+  gst_buffer_memset (ret->image, 0, 0U, 4 * ret->width * ret->height);
+  gst_buffer_map (ret->image, &map_dest, GST_MAP_READWRITE);
+  sfc_dest = cairo_image_surface_create_for_data (
+      map_dest.data, CAIRO_FORMAT_ARGB32, ret->width, ret->height,
+      cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, ret->width));
+  state_dest = cairo_create (sfc_dest);
+
+  /* Copy section of image1 into destination surface. */
+  cairo_set_source_surface (state_dest, sfc_src, (image->x - ret->x),
+      (image->y - ret->y));
+  cairo_rectangle (state_dest, 0, 0, ret->width, ret->height);
+  cairo_fill (state_dest);
+
+  cairo_surface_write_to_png(sfc_dest, "cropped.png");
+
+  cairo_destroy (state_dest);
+  cairo_surface_destroy (sfc_src);
+  gst_buffer_unmap (image->image, &map_src);
+  gst_buffer_unmap (ret->image, &map_dest);
+
+  return ret;
 }
 
 
