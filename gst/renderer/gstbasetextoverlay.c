@@ -3150,7 +3150,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   PangoAlignment alignment;
   guint max_font_size;
   guint line_padding;
-  guint text_offset = 0U;
+  gint text_offset = 0;
   GstBaseEbuttdOverlayRenderedText *rendered_text;
   GstBaseEbuttdOverlayRenderedImage *text;
   GstBaseEbuttdOverlayRenderedImage *backgrounds = NULL;
@@ -3174,18 +3174,17 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
       is_wrapped (block->elements));
 
   switch (block->style.text_align) {
-    gint offset;
     case GST_SUBTITLE_TEXT_ALIGN_START:
     case GST_SUBTITLE_TEXT_ALIGN_LEFT:
       text_offset = line_padding;
       break;
     case GST_SUBTITLE_TEXT_ALIGN_CENTER:
-      offset = (gint)width - rendered_text->text_image.width;
-      text_offset = ((MAX (offset, 0))/2);
+      text_offset = ((gint)width - rendered_text->text_image.width);
+      text_offset /= 2;
       break;
     case GST_SUBTITLE_TEXT_ALIGN_END:
     case GST_SUBTITLE_TEXT_ALIGN_RIGHT:
-      text_offset = width - (rendered_text->text_image.width + line_padding);
+      text_offset = (gint)width - (rendered_text->text_image.width + line_padding);
       break;
   }
 
