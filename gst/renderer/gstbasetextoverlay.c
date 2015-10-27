@@ -2602,12 +2602,14 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
       pango_layout_get_spacing (ret->layout) / PANGO_SCALE);
 
   pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
-  GST_CAT_DEBUG (ebuttdrender, "logical_rect.width: %d  logical_rect.height:  "
-      "%d", logical_rect.width, logical_rect.height);
+  GST_CAT_DEBUG (ebuttdrender, "logical_rect.x: %d   logical_rect.y: %d "
+      "logical_rect.width: %d  logical_rect.height: %d", logical_rect.x,
+      logical_rect.y, logical_rect.width, logical_rect.height);
 
   /* Create surface for pango layout to render into. */
   surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32,
-      logical_rect.width, logical_rect.height);
+      (logical_rect.x + logical_rect.width),
+      (logical_rect.y + logical_rect.height));
   cairo_state = cairo_create (surface);
   cairo_set_operator (cairo_state, CAIRO_OPERATOR_CLEAR);
   cairo_paint (cairo_state);
@@ -2643,7 +2645,8 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
         map.data + (vertical_offset * stride), CAIRO_FORMAT_ARGB32, buf_width,
         buf_height, stride);
   cropped_state = cairo_create (cropped_surface);
-  cairo_set_source_surface (cropped_state, surface, -logical_rect.x, 0);
+  cairo_set_source_surface (cropped_state, surface, -logical_rect.x,
+      -logical_rect.y);
   cairo_rectangle (cropped_state, 0, 0, logical_rect.width,
       logical_rect.height);
   cairo_fill (cropped_state);
