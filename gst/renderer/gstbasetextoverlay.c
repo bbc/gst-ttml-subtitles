@@ -3360,7 +3360,8 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     }
 
     if ((area->style.overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
-        && (blocks_image->height > window_height)) {
+        && ((blocks_image->height > window_height)
+          || (blocks_image->width > window_width))) {
       GstBaseEbuttdOverlayRenderedImage *tmp = blocks_image;
       blocks_image = rendered_image_crop (blocks_image, window_x, window_y,
           window_width, window_height);
