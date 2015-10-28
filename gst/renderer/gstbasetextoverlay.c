@@ -2598,7 +2598,7 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
   GST_CAT_DEBUG (ebuttdrender, "Current line height is %g; changing to %g",
       cur_height, cur_height + spacing);
   pango_layout_set_spacing (ret->layout, PANGO_SCALE * spacing);
-  GST_CAT_DEBUG (ebuttdrender, "Current spacing is now %d", 
+  GST_CAT_DEBUG (ebuttdrender, "Current spacing is now %d",
       pango_layout_get_spacing (ret->layout) / PANGO_SCALE);
 
   pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
@@ -3197,7 +3197,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   /* Render background rectangles, if any. */
   backgrounds = render_element_backgrounds (block->elements, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
-      (guint) (block->style.line_height * max_font_size), line_padding, 
+      (guint) (block->style.line_height * max_font_size), line_padding,
       rendered_text->horiz_offset);
 
   /* Render block background, if non-transparent. */
