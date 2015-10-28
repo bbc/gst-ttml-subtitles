@@ -2926,6 +2926,13 @@ rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
 }
 
 
+static gboolean
+color_is_transparent (GstSubtitleColor * color)
+{
+  return (color->a == 0);
+}
+
+
 /* Render the background rectangles to be placed behind each element. */
 static GstBaseEbuttdOverlayRenderedImage *
 render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
@@ -3019,7 +3026,9 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
       GST_CAT_DEBUG (ebuttdrender, "Element bg colour: %s",
           color_to_rgba_string (element->style.bg_color));
       rect_width = (area_end - area_start);
-      if (rect_width > 0) { /* <br>s will result in zero-width rectangle */
+
+      /* <br>s will result in zero-width rectangle */
+      if (rect_width > 0 && !color_is_transparent (&element->style.bg_color)) {
         GstBaseEbuttdOverlayRenderedImage *image, *tmp;
         rectangle = draw_rectangle (rect_width, line_height,
             element->style.bg_color);
@@ -3034,13 +3043,6 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
   }
 
   return ret;
-}
-
-
-static gboolean
-color_is_transparent (GstSubtitleColor * color)
-{
-  return (color->a == 0);
 }
 
 
