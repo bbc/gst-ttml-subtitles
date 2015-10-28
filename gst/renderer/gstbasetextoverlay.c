@@ -2892,8 +2892,6 @@ rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
       map_src.data, CAIRO_FORMAT_ARGB32, image->width, image->height,
       cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, image->width));
 
-  cairo_surface_write_to_png(sfc_src, "precropped.png");
-
   /* Create cairo_surface for cropped image. */
   ret->image = gst_buffer_new_allocate (NULL, 4 * ret->width * ret->height,
       NULL);
@@ -2909,8 +2907,6 @@ rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
       (image->y - ret->y));
   cairo_rectangle (state_dest, 0, 0, ret->width, ret->height);
   cairo_fill (state_dest);
-
-  cairo_surface_write_to_png(sfc_dest, "cropped.png");
 
   cairo_destroy (state_dest);
   cairo_surface_destroy (sfc_src);
