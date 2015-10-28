@@ -2782,8 +2782,6 @@ output_image (const GstBaseEbuttdOverlayRenderedImage * image, const gchar * fil
 }
 
 
-
-
 /* The order of arguments is significant: @image2 will be rendered on top of
  * @image1. */
 static GstBaseEbuttdOverlayRenderedImage *
