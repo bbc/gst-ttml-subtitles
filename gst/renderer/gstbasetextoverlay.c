@@ -2789,6 +2789,8 @@ output_image (const GstBaseEbuttdOverlayRenderedImage * image, const gchar * fil
 
 
 
+/* The order of arguments is significant: @image2 will be rendered on top of
+ * @image1. */
 static GstBaseEbuttdOverlayRenderedImage *
 rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
     GstBaseEbuttdOverlayRenderedImage * image2)
@@ -3207,7 +3209,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
         block->style.bg_color);
     block_background = rendered_image_new (block_bg_image, 0, 0, width,
         backgrounds->height);
-    backgrounds = rendered_image_combine (backgrounds, block_background);
+    backgrounds = rendered_image_combine (block_background, backgrounds);
     rendered_image_free (tmp);
     rendered_image_free (block_background);
   }
