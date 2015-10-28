@@ -1998,11 +1998,6 @@ gst_base_ebuttd_overlay_push_frame (GstBaseEbuttdOverlay * overlay,
 
   gst_video_frame_unmap (&frame);
 
-  if (overlay->compositions)
-    g_list_free_full (overlay->compositions,
-        (GDestroyNotify) gst_video_overlay_composition_unref);
-  overlay->compositions = NULL;
-
 done:
 
   return gst_pad_push (overlay->srcpad, video_frame);
@@ -3559,23 +3554,30 @@ wait_for_text_buf:
         /* Push the video frame */
         ret = gst_pad_push (overlay->srcpad, buffer);
       } else {
-        GstSubtitleArea *area = NULL;
-        guint i;
-        GstSubtitleMeta *subtitle_meta = NULL;
+        if (overlay->need_render) {
+          GstSubtitleArea *area = NULL;
+          GstSubtitleMeta *subtitle_meta = NULL;
+          guint i;
 
-        subtitle_meta = gst_buffer_get_subtitle_meta (overlay->text_buffer);
-        g_assert (subtitle_meta != NULL);
+          if (overlay->compositions)
+            g_list_free_full (overlay->compositions,
+                (GDestroyNotify) gst_video_overlay_composition_unref);
+          overlay->compositions = NULL;
 
-        for (i = 0; i < subtitle_meta->areas->len; ++i) {
-          GstVideoOverlayComposition *composition;
-          area = g_ptr_array_index (subtitle_meta->areas, i);
-          g_assert (area != NULL);
-          composition = render_text_area (overlay, area, overlay->text_buffer);
-          overlay->compositions = g_list_append (overlay->compositions,
-              composition);
+          subtitle_meta = gst_buffer_get_subtitle_meta (overlay->text_buffer);
+          g_assert (subtitle_meta != NULL);
+
+          for (i = 0; i < subtitle_meta->areas->len; ++i) {
+            GstVideoOverlayComposition *composition;
+            area = g_ptr_array_index (subtitle_meta->areas, i);
+            g_assert (area != NULL);
+            composition = render_text_area (overlay, area,
+                overlay->text_buffer);
+            overlay->compositions = g_list_append (overlay->compositions,
+                composition);
+          }
+          overlay->need_render = FALSE;
         }
-
-        overlay->need_render = TRUE;
 
         GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
         ret = gst_base_ebuttd_overlay_push_frame (overlay, buffer);
