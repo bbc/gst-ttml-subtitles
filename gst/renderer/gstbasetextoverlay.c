@@ -3291,12 +3291,10 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   GList *blocks = NULL;
   guint area_x, area_y, area_width, area_height;
   guint window_x, window_y, window_width, window_height;
-  GstBuffer *bg_image;
-  GstBaseEbuttdOverlayLayer *bg_layer;
   guint padding_start, padding_end, padding_before, padding_after;
   GSList *layers = NULL;
-  GstBaseEbuttdOverlayRenderedImage *blocks_image = NULL;
-  GstBaseEbuttdOverlayLayer *blocks_layer;
+  GstBaseEbuttdOverlayRenderedImage *area_image = NULL;
+  GstBaseEbuttdOverlayLayer *area_layer;
   GstVideoOverlayComposition *ret = NULL;
 
   area_width = (guint) (round (area->style.extent_w * overlay->width));
@@ -3323,13 +3321,15 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
 
   /* Render region background, if non-transparent. */
   if (!color_is_transparent (&area->style.bg_color)) {
-    bg_image = draw_rectangle (area_width, area_height, area->style.bg_color);
-    bg_layer = create_new_layer (bg_image, area_x, area_y, area_width,
+    GstBuffer *bg_rect;
+
+    bg_rect = draw_rectangle (area_width, area_height, area->style.bg_color);
+    area_image = rendered_image_new (bg_rect, area_x, area_y, area_width,
         area_height);
-    layers = g_slist_append (layers, bg_layer);
   }
 
   if (area->blocks) {
+    GstBaseEbuttdOverlayRenderedImage *blocks_image, *tmp;
     guint i;
 
     /* Render each block and append to list. */
@@ -3372,13 +3372,21 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
       rendered_image_free (tmp);
     }
 
-    blocks_layer = create_new_layer (blocks_image->image, blocks_image->x,
-        blocks_image->y, blocks_image->width, blocks_image->height);
-    layers = g_slist_append (layers, blocks_layer);
+    tmp = area_image;
+    area_image = rendered_image_combine (area_image, blocks_image);
+    if (tmp) rendered_image_free (tmp);
+    rendered_image_free (blocks_image);
   }
+
+  /* XXX: Now we are combining ourselves, we don't need to handle a list of
+   * layers. */
+  area_layer = create_new_layer (gst_buffer_copy (area_image->image),
+      area_image->x, area_image->y, area_image->width, area_image->height);
+  layers = g_slist_append (layers, area_layer);
 
   ret = gst_base_ebuttd_overlay_compose_layers (layers);
   g_slist_free_full (layers, (GDestroyNotify) free_layer);
+  rendered_image_free (area_image);
   return ret;
 }
 
