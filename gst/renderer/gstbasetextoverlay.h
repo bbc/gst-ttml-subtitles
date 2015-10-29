@@ -59,17 +59,6 @@ typedef struct {
 
 typedef struct {
   GstBuffer *image;
-  GstBaseEbuttdOverlayExtents extents;
-} GstBaseEbuttdOverlayLocatedImage;
-
-typedef struct {
-  GSList *images;
-  guint width;
-  guint height;
-} GstBaseEbuttdOverlayRenderedBlock;
-
-typedef struct {
-  GstBuffer *image;
   gint x;
   gint y;
   guint width;
