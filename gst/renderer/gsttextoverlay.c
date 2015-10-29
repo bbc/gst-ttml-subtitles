@@ -89,7 +89,7 @@ static GstStaticPadTemplate text_sink_template_factory =
 GST_STATIC_PAD_TEMPLATE ("text_sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("text/x-raw, format = { pango-markup, utf8 }")
+    GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
     );
 
 G_DEFINE_TYPE (GstEbuttdOverlay, gst_text_overlay, GST_TYPE_BASE_EBUTTD_OVERLAY);
@@ -103,7 +103,7 @@ gst_text_overlay_class_init (GstEbuttdOverlayClass * klass)
       gst_static_pad_template_get (&text_sink_template_factory));
 
   gst_element_class_set_static_metadata (element_class, "Text overlay",
-      "Filter/Editor/Video",
+      "Overlay/Subtitle",
       "Adds text strings on top of a video buffer",
       "David Schleef <ds@schleef.org>, " "Zeeshan Ali <zeeshan.ali@nokia.com>");
 }

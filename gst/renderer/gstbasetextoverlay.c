@@ -737,7 +737,7 @@ gst_base_ebuttd_overlay_setcaps_txt (GstBaseEbuttdOverlay * overlay, GstCaps * c
 
   structure = gst_caps_get_structure (caps, 0);
   format = gst_structure_get_string (structure, "format");
-  overlay->have_pango_markup = (strcmp (format, "pango-markup") == 0);
+  overlay->have_pango_markup = format && (strcmp (format, "pango-markup") == 0);
 
   return TRUE;
 }
@@ -3714,7 +3714,7 @@ gst_base_ebuttd_overlay_change_state (GstElement * element,
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
-  if (!gst_element_register (plugin, "ttmlrender", GST_RANK_NONE,
+  if (!gst_element_register (plugin, "ttmlrender", GST_RANK_PRIMARY,
           GST_TYPE_EBUTTD_OVERLAY)) {
     return FALSE;
   }

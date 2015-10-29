@@ -79,7 +79,7 @@ static GstStaticPadTemplate sink_templ = GST_STATIC_PAD_TEMPLATE ("sink",
 static GstStaticPadTemplate src_templ = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("text/x-raw, format= { pango-markup, utf8 }")
+    GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
     );
 
 
@@ -1441,11 +1441,17 @@ gst_ttml_parse_format_autodetect (GstTtmlParse * self)
      * No autodetect so "application/x-subtitle-ebutt" must be provided.
      */
     case GST_TTML_PARSE_FORMAT_TTML:
+    {
+      GstCaps *caps;
+      GstCapsFeatures *features = gst_caps_features_new ("meta:GstSubtitleMeta",
+          NULL);
 
       self->parse_line = NULL;  /* parse_ebutt; ebutt_xml_parse;  */
 
-      return gst_caps_new_simple ("text/x-raw", /** TODO: is this correct? **/
-          "format", G_TYPE_STRING, "pango-markup", NULL);
+      caps = gst_caps_new_empty_simple ("text/x-raw");
+      gst_caps_set_features (caps, 0, features);
+      return caps;
+    }
 
     case GST_TTML_PARSE_FORMAT_UNKNOWN:
     default:
