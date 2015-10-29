@@ -51,13 +51,6 @@ typedef struct _GstTtmlRenderClass GstTtmlRenderClass;
 typedef struct _GstTtmlRenderLayer GstTtmlRenderLayer;
 
 typedef struct {
-  gint x;
-  gint y;
-  guint width;
-  guint height;
-} GstTtmlRenderExtents;
-
-typedef struct {
   GstBuffer *image;
   gint x;
   gint y;
