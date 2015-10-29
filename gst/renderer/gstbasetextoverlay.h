@@ -34,28 +34,28 @@
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_BASE_EBUTTD_OVERLAY            (gst_base_ebuttd_overlay_get_type())
-#define GST_BASE_EBUTTD_OVERLAY(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj),\
-                                         GST_TYPE_BASE_EBUTTD_OVERLAY, GstBaseEbuttdOverlay))
-#define GST_BASE_EBUTTD_OVERLAY_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass),\
-                                         GST_TYPE_BASE_EBUTTD_OVERLAY,GstBaseEbuttdOverlayClass))
-#define GST_BASE_EBUTTD_OVERLAY_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),\
-                                         GST_TYPE_BASE_EBUTTD_OVERLAY, GstBaseEbuttdOverlayClass))
-#define GST_IS_BASE_EBUTTD_OVERLAY(obj)         (G_TYPE_CHECK_INSTANCE_TYPE((obj),\
-                                         GST_TYPE_BASE_EBUTTD_OVERLAY))
-#define GST_IS_BASE_EBUTTD_OVERLAY_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass),\
-                                         GST_TYPE_BASE_EBUTTD_OVERLAY))
+#define GST_TYPE_TTML_RENDER            (gst_ttml_render_get_type())
+#define GST_TTML_RENDER(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj),\
+                                         GST_TYPE_TTML_RENDER, GstTtmlRender))
+#define GST_TTML_RENDER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass),\
+                                         GST_TYPE_TTML_RENDER,GstTtmlRenderClass))
+#define GST_TTML_RENDER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),\
+                                         GST_TYPE_TTML_RENDER, GstTtmlRenderClass))
+#define GST_IS_TTML_RENDER(obj)         (G_TYPE_CHECK_INSTANCE_TYPE((obj),\
+                                         GST_TYPE_TTML_RENDER))
+#define GST_IS_TTML_RENDER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass),\
+                                         GST_TYPE_TTML_RENDER))
 
-typedef struct _GstBaseEbuttdOverlay      GstBaseEbuttdOverlay;
-typedef struct _GstBaseEbuttdOverlayClass GstBaseEbuttdOverlayClass;
-typedef struct _GstBaseEbuttdOverlayLayer GstBaseEbuttdOverlayLayer;
+typedef struct _GstTtmlRender      GstTtmlRender;
+typedef struct _GstTtmlRenderClass GstTtmlRenderClass;
+typedef struct _GstTtmlRenderLayer GstTtmlRenderLayer;
 
 typedef struct {
   gint x;
   gint y;
   guint width;
   guint height;
-} GstBaseEbuttdOverlayExtents;
+} GstTtmlRenderExtents;
 
 typedef struct {
   GstBuffer *image;
@@ -63,87 +63,87 @@ typedef struct {
   gint y;
   guint width;
   guint height;
-} GstBaseEbuttdOverlayRenderedImage;
+} GstTtmlRenderRenderedImage;
 
 typedef struct {
-  GstBaseEbuttdOverlayRenderedImage text_image;
+  GstTtmlRenderRenderedImage text_image;
   PangoLayout *layout; /* TODO: Add some documentation re. why this is needed. */
 
   /* To cope with the fact that pango positions text at a different horizontal
    * location depending on whether wrapping is enabled or not. */
   guint horiz_offset;
-} GstBaseEbuttdOverlayRenderedText;
+} GstTtmlRenderRenderedText;
 
 
 /**
- * GstBaseEbuttdOverlayVAlign:
- * @GST_BASE_EBUTTD_OVERLAY_VALIGN_BASELINE: draw text on the baseline
- * @GST_BASE_EBUTTD_OVERLAY_VALIGN_BOTTOM: draw text on the bottom
- * @GST_BASE_EBUTTD_OVERLAY_VALIGN_TOP: draw text on top
- * @GST_BASE_EBUTTD_OVERLAY_VALIGN_POS: draw text according to the #GstBaseEbuttdOverlay:ypos property
- * @GST_BASE_EBUTTD_OVERLAY_VALIGN_CENTER: draw text vertically centered
+ * GstTtmlRenderVAlign:
+ * @GST_TTML_RENDER_VALIGN_BASELINE: draw text on the baseline
+ * @GST_TTML_RENDER_VALIGN_BOTTOM: draw text on the bottom
+ * @GST_TTML_RENDER_VALIGN_TOP: draw text on top
+ * @GST_TTML_RENDER_VALIGN_POS: draw text according to the #GstTtmlRender:ypos property
+ * @GST_TTML_RENDER_VALIGN_CENTER: draw text vertically centered
  *
  * Vertical alignment of the text.
  */
 typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_VALIGN_BASELINE,
-    GST_BASE_EBUTTD_OVERLAY_VALIGN_BOTTOM,
-    GST_BASE_EBUTTD_OVERLAY_VALIGN_TOP,
-    GST_BASE_EBUTTD_OVERLAY_VALIGN_POS,
-    GST_BASE_EBUTTD_OVERLAY_VALIGN_CENTER
-} GstBaseEbuttdOverlayVAlign;
+    GST_TTML_RENDER_VALIGN_BASELINE,
+    GST_TTML_RENDER_VALIGN_BOTTOM,
+    GST_TTML_RENDER_VALIGN_TOP,
+    GST_TTML_RENDER_VALIGN_POS,
+    GST_TTML_RENDER_VALIGN_CENTER
+} GstTtmlRenderVAlign;
 
 /**
- * GstBaseEbuttdOverlayHAlign:
- * @GST_BASE_EBUTTD_OVERLAY_HALIGN_LEFT: align text left
- * @GST_BASE_EBUTTD_OVERLAY_HALIGN_CENTER: align text center
- * @GST_BASE_EBUTTD_OVERLAY_HALIGN_RIGHT: align text right
- * @GST_BASE_EBUTTD_OVERLAY_HALIGN_POS: position text according to the #GstBaseEbuttdOverlay:xpos property
+ * GstTtmlRenderHAlign:
+ * @GST_TTML_RENDER_HALIGN_LEFT: align text left
+ * @GST_TTML_RENDER_HALIGN_CENTER: align text center
+ * @GST_TTML_RENDER_HALIGN_RIGHT: align text right
+ * @GST_TTML_RENDER_HALIGN_POS: position text according to the #GstTtmlRender:xpos property
  *
  * Horizontal alignment of the text.
  */
-/* FIXME 0.11: remove GST_BASE_EBUTTD_OVERLAY_HALIGN_UNUSED */
+/* FIXME 0.11: remove GST_TTML_RENDER_HALIGN_UNUSED */
 typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_HALIGN_LEFT,
-    GST_BASE_EBUTTD_OVERLAY_HALIGN_CENTER,
-    GST_BASE_EBUTTD_OVERLAY_HALIGN_RIGHT,
-    GST_BASE_EBUTTD_OVERLAY_HALIGN_UNUSED,
-    GST_BASE_EBUTTD_OVERLAY_HALIGN_POS
-} GstBaseEbuttdOverlayHAlign;
+    GST_TTML_RENDER_HALIGN_LEFT,
+    GST_TTML_RENDER_HALIGN_CENTER,
+    GST_TTML_RENDER_HALIGN_RIGHT,
+    GST_TTML_RENDER_HALIGN_UNUSED,
+    GST_TTML_RENDER_HALIGN_POS
+} GstTtmlRenderHAlign;
 
 /**
- * GstBaseEbuttdOverlayWrapMode:
- * @GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_NONE: no wrapping
- * @GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_WORD: do word wrapping
- * @GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_CHAR: do char wrapping
- * @GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_WORD_CHAR: do word and char wrapping
+ * GstTtmlRenderWrapMode:
+ * @GST_TTML_RENDER_WRAP_MODE_NONE: no wrapping
+ * @GST_TTML_RENDER_WRAP_MODE_WORD: do word wrapping
+ * @GST_TTML_RENDER_WRAP_MODE_CHAR: do char wrapping
+ * @GST_TTML_RENDER_WRAP_MODE_WORD_CHAR: do word and char wrapping
  *
  * Whether to wrap the text and if so how.
  */
 typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_NONE = -1,
-    GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_WORD = PANGO_WRAP_WORD,
-    GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_CHAR = PANGO_WRAP_CHAR,
-    GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_WORD_CHAR = PANGO_WRAP_WORD_CHAR
-} GstBaseEbuttdOverlayWrapMode;
+    GST_TTML_RENDER_WRAP_MODE_NONE = -1,
+    GST_TTML_RENDER_WRAP_MODE_WORD = PANGO_WRAP_WORD,
+    GST_TTML_RENDER_WRAP_MODE_CHAR = PANGO_WRAP_CHAR,
+    GST_TTML_RENDER_WRAP_MODE_WORD_CHAR = PANGO_WRAP_WORD_CHAR
+} GstTtmlRenderWrapMode;
 
 /**
- * GstBaseEbuttdOverlayLineAlign:
- * @GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_LEFT: lines are left-aligned
- * @GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_CENTER: lines are center-aligned
- * @GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_RIGHT: lines are right-aligned
+ * GstTtmlRenderLineAlign:
+ * @GST_TTML_RENDER_LINE_ALIGN_LEFT: lines are left-aligned
+ * @GST_TTML_RENDER_LINE_ALIGN_CENTER: lines are center-aligned
+ * @GST_TTML_RENDER_LINE_ALIGN_RIGHT: lines are right-aligned
  *
  * Alignment of text lines relative to each other
  */
 typedef enum {
-    GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_LEFT = PANGO_ALIGN_LEFT,
-    GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_CENTER = PANGO_ALIGN_CENTER,
-    GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_RIGHT = PANGO_ALIGN_RIGHT
-} GstBaseEbuttdOverlayLineAlign;
+    GST_TTML_RENDER_LINE_ALIGN_LEFT = PANGO_ALIGN_LEFT,
+    GST_TTML_RENDER_LINE_ALIGN_CENTER = PANGO_ALIGN_CENTER,
+    GST_TTML_RENDER_LINE_ALIGN_RIGHT = PANGO_ALIGN_RIGHT
+} GstTtmlRenderLineAlign;
 
 
 
-struct _GstBaseEbuttdOverlayLayer {
+struct _GstTtmlRenderLayer {
   GstBuffer *image;
   gint xpos;
   gint ypos;
@@ -153,11 +153,11 @@ struct _GstBaseEbuttdOverlayLayer {
 };
 
 /**
- * GstBaseEbuttdOverlay:
+ * GstTtmlRender:
  *
  * Opaque textoverlay object structure
  */
-struct _GstBaseEbuttdOverlay {
+struct _GstTtmlRender {
     GstElement               element;
 
     GstPad                  *video_sinkpad;
@@ -184,10 +184,10 @@ struct _GstBaseEbuttdOverlay {
     gint                     width;
     gint                     height;
 
-    GstBaseEbuttdOverlayVAlign     valign;
-    GstBaseEbuttdOverlayHAlign     halign;
-    GstBaseEbuttdOverlayWrapMode   wrap_mode;
-    GstBaseEbuttdOverlayLineAlign  line_align;
+    GstTtmlRenderVAlign     valign;
+    GstTtmlRenderHAlign     halign;
+    GstTtmlRenderWrapMode   wrap_mode;
+    GstTtmlRenderLineAlign  line_align;
 
     gint                     xpad;
     gint                     ypad;
@@ -226,16 +226,16 @@ struct _GstBaseEbuttdOverlay {
     GList * compositions;
 };
 
-struct _GstBaseEbuttdOverlayClass {
+struct _GstTtmlRenderClass {
     GstElementClass parent_class;
 
     PangoContext *pango_context;
     GMutex       *pango_lock;
 
-    gchar *     (*get_text) (GstBaseEbuttdOverlay *overlay, GstBuffer *video_frame);
+    gchar *     (*get_text) (GstTtmlRender *overlay, GstBuffer *video_frame);
 };
 
-GType gst_base_ebuttd_overlay_get_type(void) G_GNUC_CONST;
+GType gst_ttml_render_get_type(void) G_GNUC_CONST;
 
 G_END_DECLS
 

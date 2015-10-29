@@ -90,22 +90,22 @@
  *    clipped properly during blitting (if wrapping is disabled)
  */
 
-GST_DEBUG_CATEGORY_STATIC (ebuttdrender);
+GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
 #define DEFAULT_PROP_TEXT 	""
 #define DEFAULT_PROP_SHADING	FALSE
-#define DEFAULT_PROP_VALIGNMENT	GST_BASE_EBUTTD_OVERLAY_VALIGN_BASELINE
-#define DEFAULT_PROP_HALIGNMENT	GST_BASE_EBUTTD_OVERLAY_HALIGN_CENTER
+#define DEFAULT_PROP_VALIGNMENT	GST_TTML_RENDER_VALIGN_BASELINE
+#define DEFAULT_PROP_HALIGNMENT	GST_TTML_RENDER_HALIGN_CENTER
 #define DEFAULT_PROP_XPAD	25
 #define DEFAULT_PROP_YPAD	25
 #define DEFAULT_PROP_DELTAX	0
 #define DEFAULT_PROP_DELTAY	0
 #define DEFAULT_PROP_XPOS       0.5
 #define DEFAULT_PROP_YPOS       0.5
-#define DEFAULT_PROP_WRAP_MODE  GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_WORD_CHAR
+#define DEFAULT_PROP_WRAP_MODE  GST_TTML_RENDER_WRAP_MODE_WORD_CHAR
 #define DEFAULT_PROP_FONT_DESC	""
 #define DEFAULT_PROP_SILENT	FALSE
-#define DEFAULT_PROP_LINE_ALIGNMENT GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_CENTER
+#define DEFAULT_PROP_LINE_ALIGNMENT GST_TTML_RENDER_LINE_ALIGN_CENTER
 #define DEFAULT_PROP_WAIT_TEXT	TRUE
 #define DEFAULT_PROP_AUTO_ADJUST_SIZE TRUE
 #define DEFAULT_PROP_VERTICAL_RENDER  FALSE
@@ -150,197 +150,197 @@ enum
 
 #define VIDEO_FORMATS GST_VIDEO_OVERLAY_COMPOSITION_BLEND_FORMATS
 
-#define BASE_EBUTTD_OVERLAY_CAPS GST_VIDEO_CAPS_MAKE (VIDEO_FORMATS)
+#define TTML_RENDER_CAPS GST_VIDEO_CAPS_MAKE (VIDEO_FORMATS)
 
-#define BASE_EBUTTD_OVERLAY_ALL_CAPS BASE_EBUTTD_OVERLAY_CAPS ";" \
+#define TTML_RENDER_ALL_CAPS TTML_RENDER_CAPS ";" \
     GST_VIDEO_CAPS_MAKE_WITH_FEATURES ("ANY", GST_VIDEO_FORMATS_ALL)
 
 static GstStaticCaps sw_template_caps =
-GST_STATIC_CAPS (BASE_EBUTTD_OVERLAY_CAPS);
+GST_STATIC_CAPS (TTML_RENDER_CAPS);
 
 static GstStaticPadTemplate src_template_factory =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (BASE_EBUTTD_OVERLAY_ALL_CAPS)
+    GST_STATIC_CAPS (TTML_RENDER_ALL_CAPS)
     );
 
 static GstStaticPadTemplate video_sink_template_factory =
 GST_STATIC_PAD_TEMPLATE ("video_sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (BASE_EBUTTD_OVERLAY_ALL_CAPS)
+    GST_STATIC_CAPS (TTML_RENDER_ALL_CAPS)
     );
 
-#define GST_TYPE_BASE_EBUTTD_OVERLAY_VALIGN (gst_base_ebuttd_overlay_valign_get_type())
+#define GST_TYPE_TTML_RENDER_VALIGN (gst_ttml_render_valign_get_type())
 static GType
-gst_base_ebuttd_overlay_valign_get_type (void)
+gst_ttml_render_valign_get_type (void)
 {
-  static GType base_ebuttd_overlay_valign_type = 0;
-  static const GEnumValue base_ebuttd_overlay_valign[] = {
-    {GST_BASE_EBUTTD_OVERLAY_VALIGN_BASELINE, "baseline", "baseline"},
-    {GST_BASE_EBUTTD_OVERLAY_VALIGN_BOTTOM, "bottom", "bottom"},
-    {GST_BASE_EBUTTD_OVERLAY_VALIGN_TOP, "top", "top"},
-    {GST_BASE_EBUTTD_OVERLAY_VALIGN_POS, "position", "position"},
-    {GST_BASE_EBUTTD_OVERLAY_VALIGN_CENTER, "center", "center"},
+  static GType ttml_render_valign_type = 0;
+  static const GEnumValue ttml_render_valign[] = {
+    {GST_TTML_RENDER_VALIGN_BASELINE, "baseline", "baseline"},
+    {GST_TTML_RENDER_VALIGN_BOTTOM, "bottom", "bottom"},
+    {GST_TTML_RENDER_VALIGN_TOP, "top", "top"},
+    {GST_TTML_RENDER_VALIGN_POS, "position", "position"},
+    {GST_TTML_RENDER_VALIGN_CENTER, "center", "center"},
     {0, NULL, NULL},
   };
 
-  if (!base_ebuttd_overlay_valign_type) {
-    base_ebuttd_overlay_valign_type =
-        g_enum_register_static ("GstBaseEbuttdOverlayVAlign",
-        base_ebuttd_overlay_valign);
+  if (!ttml_render_valign_type) {
+    ttml_render_valign_type =
+        g_enum_register_static ("GstTtmlRenderVAlign",
+        ttml_render_valign);
   }
-  return base_ebuttd_overlay_valign_type;
+  return ttml_render_valign_type;
 }
 
-#define GST_TYPE_BASE_EBUTTD_OVERLAY_HALIGN (gst_base_ebuttd_overlay_halign_get_type())
+#define GST_TYPE_TTML_RENDER_HALIGN (gst_ttml_render_halign_get_type())
 static GType
-gst_base_ebuttd_overlay_halign_get_type (void)
+gst_ttml_render_halign_get_type (void)
 {
-  static GType base_ebuttd_overlay_halign_type = 0;
-  static const GEnumValue base_ebuttd_overlay_halign[] = {
-    {GST_BASE_EBUTTD_OVERLAY_HALIGN_LEFT, "left", "left"},
-    {GST_BASE_EBUTTD_OVERLAY_HALIGN_CENTER, "center", "center"},
-    {GST_BASE_EBUTTD_OVERLAY_HALIGN_RIGHT, "right", "right"},
-    {GST_BASE_EBUTTD_OVERLAY_HALIGN_POS, "position", "position"},
+  static GType ttml_render_halign_type = 0;
+  static const GEnumValue ttml_render_halign[] = {
+    {GST_TTML_RENDER_HALIGN_LEFT, "left", "left"},
+    {GST_TTML_RENDER_HALIGN_CENTER, "center", "center"},
+    {GST_TTML_RENDER_HALIGN_RIGHT, "right", "right"},
+    {GST_TTML_RENDER_HALIGN_POS, "position", "position"},
     {0, NULL, NULL},
   };
 
-  if (!base_ebuttd_overlay_halign_type) {
-    base_ebuttd_overlay_halign_type =
-        g_enum_register_static ("GstBaseEbuttdOverlayHAlign",
-        base_ebuttd_overlay_halign);
+  if (!ttml_render_halign_type) {
+    ttml_render_halign_type =
+        g_enum_register_static ("GstTtmlRenderHAlign",
+        ttml_render_halign);
   }
-  return base_ebuttd_overlay_halign_type;
+  return ttml_render_halign_type;
 }
 
 
-#define GST_TYPE_BASE_EBUTTD_OVERLAY_WRAP_MODE (gst_base_ebuttd_overlay_wrap_mode_get_type())
+#define GST_TYPE_TTML_RENDER_WRAP_MODE (gst_ttml_render_wrap_mode_get_type())
 static GType
-gst_base_ebuttd_overlay_wrap_mode_get_type (void)
+gst_ttml_render_wrap_mode_get_type (void)
 {
-  static GType base_ebuttd_overlay_wrap_mode_type = 0;
-  static const GEnumValue base_ebuttd_overlay_wrap_mode[] = {
-    {GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_NONE, "none", "none"},
-    {GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_WORD, "word", "word"},
-    {GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_CHAR, "char", "char"},
-    {GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_WORD_CHAR, "wordchar", "wordchar"},
+  static GType ttml_render_wrap_mode_type = 0;
+  static const GEnumValue ttml_render_wrap_mode[] = {
+    {GST_TTML_RENDER_WRAP_MODE_NONE, "none", "none"},
+    {GST_TTML_RENDER_WRAP_MODE_WORD, "word", "word"},
+    {GST_TTML_RENDER_WRAP_MODE_CHAR, "char", "char"},
+    {GST_TTML_RENDER_WRAP_MODE_WORD_CHAR, "wordchar", "wordchar"},
     {0, NULL, NULL},
   };
 
-  if (!base_ebuttd_overlay_wrap_mode_type) {
-    base_ebuttd_overlay_wrap_mode_type =
-        g_enum_register_static ("GstBaseEbuttdOverlayWrapMode",
-        base_ebuttd_overlay_wrap_mode);
+  if (!ttml_render_wrap_mode_type) {
+    ttml_render_wrap_mode_type =
+        g_enum_register_static ("GstTtmlRenderWrapMode",
+        ttml_render_wrap_mode);
   }
-  return base_ebuttd_overlay_wrap_mode_type;
+  return ttml_render_wrap_mode_type;
 }
 
-#define GST_TYPE_BASE_EBUTTD_OVERLAY_LINE_ALIGN (gst_base_ebuttd_overlay_line_align_get_type())
+#define GST_TYPE_TTML_RENDER_LINE_ALIGN (gst_ttml_render_line_align_get_type())
 static GType
-gst_base_ebuttd_overlay_line_align_get_type (void)
+gst_ttml_render_line_align_get_type (void)
 {
-  static GType base_ebuttd_overlay_line_align_type = 0;
-  static const GEnumValue base_ebuttd_overlay_line_align[] = {
-    {GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_LEFT, "left", "left"},
-    {GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_CENTER, "center", "center"},
-    {GST_BASE_EBUTTD_OVERLAY_LINE_ALIGN_RIGHT, "right", "right"},
+  static GType ttml_render_line_align_type = 0;
+  static const GEnumValue ttml_render_line_align[] = {
+    {GST_TTML_RENDER_LINE_ALIGN_LEFT, "left", "left"},
+    {GST_TTML_RENDER_LINE_ALIGN_CENTER, "center", "center"},
+    {GST_TTML_RENDER_LINE_ALIGN_RIGHT, "right", "right"},
     {0, NULL, NULL}
   };
 
-  if (!base_ebuttd_overlay_line_align_type) {
-    base_ebuttd_overlay_line_align_type =
-        g_enum_register_static ("GstBaseEbuttdOverlayLineAlign",
-        base_ebuttd_overlay_line_align);
+  if (!ttml_render_line_align_type) {
+    ttml_render_line_align_type =
+        g_enum_register_static ("GstTtmlRenderLineAlign",
+        ttml_render_line_align);
   }
-  return base_ebuttd_overlay_line_align_type;
+  return ttml_render_line_align_type;
 }
 
-#define GST_BASE_EBUTTD_OVERLAY_GET_LOCK(ov) (&GST_BASE_EBUTTD_OVERLAY (ov)->lock)
-#define GST_BASE_EBUTTD_OVERLAY_GET_COND(ov) (&GST_BASE_EBUTTD_OVERLAY (ov)->cond)
-#define GST_BASE_EBUTTD_OVERLAY_LOCK(ov)     (g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_LOCK (ov)))
-#define GST_BASE_EBUTTD_OVERLAY_UNLOCK(ov)   (g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_LOCK (ov)))
-#define GST_BASE_EBUTTD_OVERLAY_WAIT(ov)     (g_cond_wait (GST_BASE_EBUTTD_OVERLAY_GET_COND (ov), GST_BASE_EBUTTD_OVERLAY_GET_LOCK (ov)))
-#define GST_BASE_EBUTTD_OVERLAY_SIGNAL(ov)   (g_cond_signal (GST_BASE_EBUTTD_OVERLAY_GET_COND (ov)))
-#define GST_BASE_EBUTTD_OVERLAY_BROADCAST(ov)(g_cond_broadcast (GST_BASE_EBUTTD_OVERLAY_GET_COND (ov)))
+#define GST_TTML_RENDER_GET_LOCK(ov) (&GST_TTML_RENDER (ov)->lock)
+#define GST_TTML_RENDER_GET_COND(ov) (&GST_TTML_RENDER (ov)->cond)
+#define GST_TTML_RENDER_LOCK(ov)     (g_mutex_lock (GST_TTML_RENDER_GET_LOCK (ov)))
+#define GST_TTML_RENDER_UNLOCK(ov)   (g_mutex_unlock (GST_TTML_RENDER_GET_LOCK (ov)))
+#define GST_TTML_RENDER_WAIT(ov)     (g_cond_wait (GST_TTML_RENDER_GET_COND (ov), GST_TTML_RENDER_GET_LOCK (ov)))
+#define GST_TTML_RENDER_SIGNAL(ov)   (g_cond_signal (GST_TTML_RENDER_GET_COND (ov)))
+#define GST_TTML_RENDER_BROADCAST(ov)(g_cond_broadcast (GST_TTML_RENDER_GET_COND (ov)))
 
 static GstElementClass *parent_class = NULL;
-static void gst_base_ebuttd_overlay_base_init (gpointer g_class);
-static void gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass);
-static void gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
-    GstBaseEbuttdOverlayClass * klass);
+static void gst_ttml_render_base_init (gpointer g_class);
+static void gst_ttml_render_class_init (GstTtmlRenderClass * klass);
+static void gst_ttml_render_init (GstTtmlRender * overlay,
+    GstTtmlRenderClass * klass);
 
-static GstStateChangeReturn gst_base_ebuttd_overlay_change_state (GstElement *
+static GstStateChangeReturn gst_ttml_render_change_state (GstElement *
     element, GstStateChange transition);
 
-static GstCaps *gst_base_ebuttd_overlay_get_videosink_caps (GstPad * pad,
-    GstBaseEbuttdOverlay * overlay, GstCaps * filter);
-static GstCaps *gst_base_ebuttd_overlay_get_src_caps (GstPad * pad,
-    GstBaseEbuttdOverlay * overlay, GstCaps * filter);
-static gboolean gst_base_ebuttd_overlay_setcaps (GstBaseEbuttdOverlay * overlay,
+static GstCaps *gst_ttml_render_get_videosink_caps (GstPad * pad,
+    GstTtmlRender * overlay, GstCaps * filter);
+static GstCaps *gst_ttml_render_get_src_caps (GstPad * pad,
+    GstTtmlRender * overlay, GstCaps * filter);
+static gboolean gst_ttml_render_setcaps (GstTtmlRender * overlay,
     GstCaps * caps);
-static gboolean gst_base_ebuttd_overlay_setcaps_txt (GstBaseEbuttdOverlay * overlay,
+static gboolean gst_ttml_render_setcaps_txt (GstTtmlRender * overlay,
     GstCaps * caps);
-static gboolean gst_base_ebuttd_overlay_src_event (GstPad * pad,
+static gboolean gst_ttml_render_src_event (GstPad * pad,
     GstObject * parent, GstEvent * event);
-static gboolean gst_base_ebuttd_overlay_src_query (GstPad * pad,
+static gboolean gst_ttml_render_src_query (GstPad * pad,
     GstObject * parent, GstQuery * query);
 
-static gboolean gst_base_ebuttd_overlay_video_event (GstPad * pad,
+static gboolean gst_ttml_render_video_event (GstPad * pad,
     GstObject * parent, GstEvent * event);
-static gboolean gst_base_ebuttd_overlay_video_query (GstPad * pad,
+static gboolean gst_ttml_render_video_query (GstPad * pad,
     GstObject * parent, GstQuery * query);
-static GstFlowReturn gst_base_ebuttd_overlay_video_chain (GstPad * pad,
+static GstFlowReturn gst_ttml_render_video_chain (GstPad * pad,
     GstObject * parent, GstBuffer * buffer);
 
-static gboolean gst_base_ebuttd_overlay_text_event (GstPad * pad,
+static gboolean gst_ttml_render_text_event (GstPad * pad,
     GstObject * parent, GstEvent * event);
-static GstFlowReturn gst_base_ebuttd_overlay_text_chain (GstPad * pad,
+static GstFlowReturn gst_ttml_render_text_chain (GstPad * pad,
     GstObject * parent, GstBuffer * buffer);
-static GstPadLinkReturn gst_base_ebuttd_overlay_text_pad_link (GstPad * pad,
+static GstPadLinkReturn gst_ttml_render_text_pad_link (GstPad * pad,
     GstObject * parent, GstPad * peer);
-static void gst_base_ebuttd_overlay_text_pad_unlink (GstPad * pad,
+static void gst_ttml_render_text_pad_unlink (GstPad * pad,
     GstObject * parent);
-static void gst_base_ebuttd_overlay_pop_text (GstBaseEbuttdOverlay * overlay);
-static void gst_base_ebuttd_overlay_update_render_mode (GstBaseEbuttdOverlay *
+static void gst_ttml_render_pop_text (GstTtmlRender * overlay);
+static void gst_ttml_render_update_render_mode (GstTtmlRender *
     overlay);
 
-static void gst_base_ebuttd_overlay_finalize (GObject * object);
-static void gst_base_ebuttd_overlay_set_property (GObject * object, guint prop_id,
+static void gst_ttml_render_finalize (GObject * object);
+static void gst_ttml_render_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
-static void gst_base_ebuttd_overlay_get_property (GObject * object, guint prop_id,
+static void gst_ttml_render_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static void
-gst_base_ebuttd_overlay_adjust_values_with_fontdesc (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * overlay,
     PangoFontDescription * desc);
-static gboolean gst_base_ebuttd_overlay_can_handle_caps (GstCaps * incaps);
+static gboolean gst_ttml_render_can_handle_caps (GstCaps * incaps);
 
 
 static gboolean gst_text_overlay_filter_foreground_attr (PangoAttribute * attr,
     gpointer data);
 
 GType
-gst_base_ebuttd_overlay_get_type (void)
+gst_ttml_render_get_type (void)
 {
   static GType type = 0;
 
   if (g_once_init_enter ((gsize *) & type)) {
     static const GTypeInfo info = {
-      sizeof (GstBaseEbuttdOverlayClass),
-      (GBaseInitFunc) gst_base_ebuttd_overlay_base_init,
+      sizeof (GstTtmlRenderClass),
+      (GBaseInitFunc) gst_ttml_render_base_init,
       NULL,
-      (GClassInitFunc) gst_base_ebuttd_overlay_class_init,
+      (GClassInitFunc) gst_ttml_render_class_init,
       NULL,
       NULL,
-      sizeof (GstBaseEbuttdOverlay),
+      sizeof (GstTtmlRender),
       0,
-      (GInstanceInitFunc) gst_base_ebuttd_overlay_init,
+      (GInstanceInitFunc) gst_ttml_render_init,
     };
 
     g_once_init_leave ((gsize *) & type,
-        g_type_register_static (GST_TYPE_ELEMENT, "GstBaseEbuttdOverlay", &info,
+        g_type_register_static (GST_TYPE_ELEMENT, "GstTtmlRender", &info,
             0));
   }
 
@@ -348,16 +348,16 @@ gst_base_ebuttd_overlay_get_type (void)
 }
 
 static gchar *
-gst_base_ebuttd_overlay_get_text (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_get_text (GstTtmlRender * overlay,
     GstBuffer * video_frame)
 {
   return g_strdup (overlay->default_text);
 }
 
 static void
-gst_base_ebuttd_overlay_base_init (gpointer g_class)
+gst_ttml_render_base_init (gpointer g_class)
 {
-  GstBaseEbuttdOverlayClass *klass = GST_BASE_EBUTTD_OVERLAY_CLASS (g_class);
+  GstTtmlRenderClass *klass = GST_TTML_RENDER_CLASS (g_class);
   PangoFontMap *fontmap;
 
   /* Only lock for the subclasses here, the base class
@@ -373,7 +373,7 @@ gst_base_ebuttd_overlay_base_init (gpointer g_class)
 }
 
 static void
-gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
+gst_ttml_render_class_init (GstTtmlRenderClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
@@ -383,9 +383,9 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
 
   parent_class = g_type_class_peek_parent (klass);
 
-  gobject_class->finalize = gst_base_ebuttd_overlay_finalize;
-  gobject_class->set_property = gst_base_ebuttd_overlay_set_property;
-  gobject_class->get_property = gst_base_ebuttd_overlay_get_property;
+  gobject_class->finalize = gst_ttml_render_finalize;
+  gobject_class->set_property = gst_ttml_render_set_property;
+  gobject_class->get_property = gst_ttml_render_get_property;
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template_factory));
@@ -393,12 +393,12 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
       gst_static_pad_template_get (&video_sink_template_factory));
 
   gstelement_class->change_state =
-      GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_change_state);
+      GST_DEBUG_FUNCPTR (gst_ttml_render_change_state);
 
   klass->pango_lock = g_slice_new (GMutex);
   g_mutex_init (klass->pango_lock);
 
-  klass->get_text = gst_base_ebuttd_overlay_get_text;
+  klass->get_text = gst_ttml_render_get_text;
 
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_TEXT,
       g_param_spec_string ("text", "text",
@@ -415,11 +415,11 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_VALIGNMENT,
       g_param_spec_enum ("valignment", "vertical alignment",
-          "Vertical alignment of the text", GST_TYPE_BASE_EBUTTD_OVERLAY_VALIGN,
+          "Vertical alignment of the text", GST_TYPE_TTML_RENDER_VALIGN,
           DEFAULT_PROP_VALIGNMENT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_HALIGNMENT,
       g_param_spec_enum ("halignment", "horizontal alignment",
-          "Horizontal alignment of the text", GST_TYPE_BASE_EBUTTD_OVERLAY_HALIGN,
+          "Horizontal alignment of the text", GST_TYPE_TTML_RENDER_HALIGN,
           DEFAULT_PROP_HALIGNMENT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_XPAD,
       g_param_spec_int ("xpad", "horizontal paddding",
@@ -439,7 +439,7 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
           "Shift Y position up or down. Unit is pixels.", G_MININT, G_MAXINT,
           DEFAULT_PROP_DELTAY, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
-   * GstBaseEbuttdOverlay:xpos:
+   * GstTtmlRender:xpos:
    *
    * Horizontal position of the rendered text when using positioned alignment.
    */
@@ -449,7 +449,7 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
           DEFAULT_PROP_XPOS,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
   /**
-   * GstBaseEbuttdOverlay:ypos:
+   * GstTtmlRender:ypos:
    *
    * Vertical position of the rendered text when using positioned alignment.
    */
@@ -461,7 +461,7 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_WRAP_MODE,
       g_param_spec_enum ("wrap-mode", "wrap mode",
           "Whether to wrap the text and if so how.",
-          GST_TYPE_BASE_EBUTTD_OVERLAY_WRAP_MODE, DEFAULT_PROP_WRAP_MODE,
+          GST_TYPE_TTML_RENDER_WRAP_MODE, DEFAULT_PROP_WRAP_MODE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_FONT_DESC,
       g_param_spec_string ("font-desc", "font description",
@@ -470,7 +470,7 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
           "for syntax.", DEFAULT_PROP_FONT_DESC,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
-   * GstBaseEbuttdOverlay:color:
+   * GstTtmlRender:color:
    *
    * Color of the rendered text.
    */
@@ -491,17 +491,17 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   /**
-   * GstBaseEbuttdOverlay:line-alignment:
+   * GstTtmlRender:line-alignment:
    *
    * Alignment of text lines relative to each other (for multi-line text)
    */
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LINE_ALIGNMENT,
       g_param_spec_enum ("line-alignment", "line alignment",
           "Alignment of text lines relative to each other.",
-          GST_TYPE_BASE_EBUTTD_OVERLAY_LINE_ALIGN, DEFAULT_PROP_LINE_ALIGNMENT,
+          GST_TYPE_TTML_RENDER_LINE_ALIGN, DEFAULT_PROP_LINE_ALIGNMENT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
-   * GstBaseEbuttdOverlay:silent:
+   * GstTtmlRender:silent:
    *
    * If set, no text is rendered. Useful to switch off text rendering
    * temporarily without removing the textoverlay element from the pipeline.
@@ -513,7 +513,7 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
           DEFAULT_PROP_SILENT,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
   /**
-   * GstBaseEbuttdOverlay:wait-text:
+   * GstTtmlRender:wait-text:
    *
    * If set, the video will block until a subtitle is received on the text pad.
    * If video and subtitles are sent in sync, like from the same demuxer, this
@@ -537,9 +537,9 @@ gst_base_ebuttd_overlay_class_init (GstBaseEbuttdOverlayClass * klass)
 }
 
 static void
-gst_base_ebuttd_overlay_finalize (GObject * object)
+gst_ttml_render_finalize (GObject * object)
 {
-  GstBaseEbuttdOverlay *overlay = GST_BASE_EBUTTD_OVERLAY (object);
+  GstTtmlRender *overlay = GST_TTML_RENDER (object);
 
   g_free (overlay->default_text);
 
@@ -570,13 +570,13 @@ gst_base_ebuttd_overlay_finalize (GObject * object)
 }
 
 static void
-gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
-    GstBaseEbuttdOverlayClass * klass)
+gst_ttml_render_init (GstTtmlRender * overlay,
+    GstTtmlRenderClass * klass)
 {
   GstPadTemplate *template;
   PangoFontDescription *desc;
 
-  GST_DEBUG_CATEGORY_INIT (ebuttdrender, "ebuttdrender", 0,
+  GST_DEBUG_CATEGORY_INIT (ttmlrender, "ttmlrender", 0,
       "EBU-TT-D renderer debug category");
 
   /* video sink */
@@ -584,11 +584,11 @@ gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
   overlay->video_sinkpad = gst_pad_new_from_template (template, "video_sink");
   gst_object_unref (template);
   gst_pad_set_event_function (overlay->video_sinkpad,
-      GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_video_event));
+      GST_DEBUG_FUNCPTR (gst_ttml_render_video_event));
   gst_pad_set_chain_function (overlay->video_sinkpad,
-      GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_video_chain));
+      GST_DEBUG_FUNCPTR (gst_ttml_render_video_chain));
   gst_pad_set_query_function (overlay->video_sinkpad,
-      GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_video_query));
+      GST_DEBUG_FUNCPTR (gst_ttml_render_video_query));
   GST_PAD_SET_PROXY_ALLOCATION (overlay->video_sinkpad);
   gst_element_add_pad (GST_ELEMENT (overlay), overlay->video_sinkpad);
 
@@ -600,13 +600,13 @@ gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
     overlay->text_sinkpad = gst_pad_new_from_template (template, "text_sink");
 
     gst_pad_set_event_function (overlay->text_sinkpad,
-        GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_text_event));
+        GST_DEBUG_FUNCPTR (gst_ttml_render_text_event));
     gst_pad_set_chain_function (overlay->text_sinkpad,
-        GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_text_chain));
+        GST_DEBUG_FUNCPTR (gst_ttml_render_text_chain));
     gst_pad_set_link_function (overlay->text_sinkpad,
-        GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_text_pad_link));
+        GST_DEBUG_FUNCPTR (gst_ttml_render_text_pad_link));
     gst_pad_set_unlink_function (overlay->text_sinkpad,
-        GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_text_pad_unlink));
+        GST_DEBUG_FUNCPTR (gst_ttml_render_text_pad_unlink));
     gst_element_add_pad (GST_ELEMENT (overlay), overlay->text_sinkpad);
   }
 
@@ -615,20 +615,20 @@ gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
   overlay->srcpad = gst_pad_new_from_template (template, "src");
   gst_object_unref (template);
   gst_pad_set_event_function (overlay->srcpad,
-      GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_src_event));
+      GST_DEBUG_FUNCPTR (gst_ttml_render_src_event));
   gst_pad_set_query_function (overlay->srcpad,
-      GST_DEBUG_FUNCPTR (gst_base_ebuttd_overlay_src_query));
+      GST_DEBUG_FUNCPTR (gst_ttml_render_src_query));
   gst_element_add_pad (GST_ELEMENT (overlay), overlay->srcpad);
 
-  g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
   overlay->line_align = DEFAULT_PROP_LINE_ALIGNMENT;
   overlay->layout =
-      pango_layout_new (GST_BASE_EBUTTD_OVERLAY_GET_CLASS
+      pango_layout_new (GST_TTML_RENDER_GET_CLASS
       (overlay)->pango_context);
   desc =
-      pango_context_get_font_description (GST_BASE_EBUTTD_OVERLAY_GET_CLASS
+      pango_context_get_font_description (GST_TTML_RENDER_GET_CLASS
       (overlay)->pango_context);
-  gst_base_ebuttd_overlay_adjust_values_with_fontdesc (overlay, desc);
+  gst_ttml_render_adjust_values_with_fontdesc (overlay, desc);
 
   overlay->color = DEFAULT_PROP_COLOR;
   overlay->outline_color = DEFAULT_PROP_OUTLINE_COLOR;
@@ -653,7 +653,7 @@ gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
   overlay->need_render = TRUE;
   overlay->text_image = NULL;
   overlay->use_vertical_render = DEFAULT_PROP_VERTICAL_RENDER;
-  gst_base_ebuttd_overlay_update_render_mode (overlay);
+  gst_ttml_render_update_render_mode (overlay);
 
   overlay->text_buffer = NULL;
   overlay->text_linked = FALSE;
@@ -663,16 +663,16 @@ gst_base_ebuttd_overlay_init (GstBaseEbuttdOverlay * overlay,
   g_mutex_init (&overlay->lock);
   g_cond_init (&overlay->cond);
   gst_segment_init (&overlay->segment, GST_FORMAT_TIME);
-  g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
 }
 
 
 static void
-gst_base_ebuttd_overlay_layer_free (GstBaseEbuttdOverlayLayer * layer)
+gst_ttml_render_layer_free (GstTtmlRenderLayer * layer)
 {
   g_return_if_fail (layer != NULL);
 
-  GST_CAT_DEBUG (ebuttdrender, "Freeing layer %p...", layer);
+  GST_CAT_DEBUG (ttmlrender, "Freeing layer %p...", layer);
   if (layer->image) {
     gst_buffer_unref (layer->image);
   }
@@ -684,9 +684,9 @@ gst_base_ebuttd_overlay_layer_free (GstBaseEbuttdOverlayLayer * layer)
 
 
 static void
-gst_base_ebuttd_overlay_update_wrap_mode (GstBaseEbuttdOverlay * overlay)
+gst_ttml_render_update_wrap_mode (GstTtmlRender * overlay)
 {
-  if (overlay->wrap_mode == GST_BASE_EBUTTD_OVERLAY_WRAP_MODE_NONE) {
+  if (overlay->wrap_mode == GST_TTML_RENDER_WRAP_MODE_NONE) {
     GST_DEBUG_OBJECT (overlay, "Set wrap mode NONE");
     pango_layout_set_width (overlay->layout, -1);
   } else {
@@ -711,7 +711,7 @@ gst_base_ebuttd_overlay_update_wrap_mode (GstBaseEbuttdOverlay * overlay)
 }
 
 static void
-gst_base_ebuttd_overlay_update_render_mode (GstBaseEbuttdOverlay * overlay)
+gst_ttml_render_update_render_mode (GstTtmlRender * overlay)
 {
   PangoMatrix matrix = PANGO_MATRIX_INIT;
   PangoContext *context = pango_layout_get_context (overlay->layout);
@@ -730,7 +730,7 @@ gst_base_ebuttd_overlay_update_render_mode (GstBaseEbuttdOverlay * overlay)
 }
 
 static gboolean
-gst_base_ebuttd_overlay_setcaps_txt (GstBaseEbuttdOverlay * overlay, GstCaps * caps)
+gst_ttml_render_setcaps_txt (GstTtmlRender * overlay, GstCaps * caps)
 {
   GstStructure *structure;
   const gchar *format;
@@ -744,7 +744,7 @@ gst_base_ebuttd_overlay_setcaps_txt (GstBaseEbuttdOverlay * overlay, GstCaps * c
 
 /* only negotiate/query video overlay composition support for now */
 static gboolean
-gst_base_ebuttd_overlay_negotiate (GstBaseEbuttdOverlay * overlay, GstCaps * caps)
+gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
 {
   GstQuery *query;
   gboolean attach = FALSE;
@@ -832,7 +832,7 @@ gst_base_ebuttd_overlay_negotiate (GstBaseEbuttdOverlay * overlay, GstCaps * cap
       gst_caps_unref (caps);
       caps = gst_caps_ref (original_caps);
       ret = gst_pad_set_caps (overlay->srcpad, caps);
-      if (ret && !gst_base_ebuttd_overlay_can_handle_caps (caps))
+      if (ret && !gst_ttml_render_can_handle_caps (caps))
         ret = FALSE;
     }
   }
@@ -855,11 +855,11 @@ no_format:
 }
 
 static gboolean
-gst_base_ebuttd_overlay_can_handle_caps (GstCaps * incaps)
+gst_ttml_render_can_handle_caps (GstCaps * incaps)
 {
   gboolean ret;
   GstCaps *caps;
-  static GstStaticCaps static_caps = GST_STATIC_CAPS (BASE_EBUTTD_OVERLAY_CAPS);
+  static GstStaticCaps static_caps = GST_STATIC_CAPS (TTML_RENDER_CAPS);
 
   caps = gst_static_caps_get (&static_caps);
   ret = gst_caps_is_subset (incaps, caps);
@@ -869,7 +869,7 @@ gst_base_ebuttd_overlay_can_handle_caps (GstCaps * incaps)
 }
 
 static gboolean
-gst_base_ebuttd_overlay_setcaps (GstBaseEbuttdOverlay * overlay, GstCaps * caps)
+gst_ttml_render_setcaps (GstTtmlRender * overlay, GstCaps * caps)
 {
   GstVideoInfo info;
   gboolean ret = FALSE;
@@ -882,19 +882,19 @@ gst_base_ebuttd_overlay_setcaps (GstBaseEbuttdOverlay * overlay, GstCaps * caps)
   overlay->width = GST_VIDEO_INFO_WIDTH (&info);
   overlay->height = GST_VIDEO_INFO_HEIGHT (&info);
 
-  ret = gst_base_ebuttd_overlay_negotiate (overlay, caps);
+  ret = gst_ttml_render_negotiate (overlay, caps);
 
-  GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
-  g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+  GST_TTML_RENDER_LOCK (overlay);
+  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
   if (!overlay->attach_compo_to_buffer &&
-      !gst_base_ebuttd_overlay_can_handle_caps (caps)) {
+      !gst_ttml_render_can_handle_caps (caps)) {
     GST_DEBUG_OBJECT (overlay, "unsupported caps %" GST_PTR_FORMAT, caps);
     ret = FALSE;
   }
 
-  gst_base_ebuttd_overlay_update_wrap_mode (overlay);
-  g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
-  GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+  gst_ttml_render_update_wrap_mode (overlay);
+  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+  GST_TTML_RENDER_UNLOCK (overlay);
 
   return ret;
 
@@ -907,12 +907,12 @@ invalid_caps:
 }
 
 static void
-gst_base_ebuttd_overlay_set_property (GObject * object, guint prop_id,
+gst_ttml_render_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstBaseEbuttdOverlay *overlay = GST_BASE_EBUTTD_OVERLAY (object);
+  GstTtmlRender *overlay = GST_TTML_RENDER (object);
 
-  GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (overlay);
   switch (prop_id) {
     case PROP_TEXT:
       g_free (overlay->default_text);
@@ -948,9 +948,9 @@ gst_base_ebuttd_overlay_set_property (GObject * object, guint prop_id,
       break;
     case PROP_WRAP_MODE:
       overlay->wrap_mode = g_value_get_enum (value);
-      g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
-      gst_base_ebuttd_overlay_update_wrap_mode (overlay);
-      g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+      gst_ttml_render_update_wrap_mode (overlay);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       break;
     case PROP_FONT_DESC:
     {
@@ -958,18 +958,18 @@ gst_base_ebuttd_overlay_set_property (GObject * object, guint prop_id,
       const gchar *fontdesc_str;
 
       fontdesc_str = g_value_get_string (value);
-      g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       desc = pango_font_description_from_string (fontdesc_str);
       if (desc) {
         GST_LOG_OBJECT (overlay, "font description set: %s", fontdesc_str);
         pango_layout_set_font_description (overlay->layout, desc);
-        gst_base_ebuttd_overlay_adjust_values_with_fontdesc (overlay, desc);
+        gst_ttml_render_adjust_values_with_fontdesc (overlay, desc);
         pango_font_description_free (desc);
       } else {
         GST_WARNING_OBJECT (overlay, "font description parse failed: %s",
             fontdesc_str);
       }
-      g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       break;
     }
     case PROP_COLOR:
@@ -983,10 +983,10 @@ gst_base_ebuttd_overlay_set_property (GObject * object, guint prop_id,
       break;
     case PROP_LINE_ALIGNMENT:
       overlay->line_align = g_value_get_enum (value);
-      g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       pango_layout_set_alignment (overlay->layout,
           (PangoAlignment) overlay->line_align);
-      g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       break;
     case PROP_WAIT_TEXT:
       overlay->wait_text = g_value_get_boolean (value);
@@ -997,9 +997,9 @@ gst_base_ebuttd_overlay_set_property (GObject * object, guint prop_id,
       break;
     case PROP_VERTICAL_RENDER:
       overlay->use_vertical_render = g_value_get_boolean (value);
-      g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
-      gst_base_ebuttd_overlay_update_render_mode (overlay);
-      g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+      gst_ttml_render_update_render_mode (overlay);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       overlay->need_render = TRUE;
       break;
     case PROP_SHADING_VALUE:
@@ -1012,16 +1012,16 @@ gst_base_ebuttd_overlay_set_property (GObject * object, guint prop_id,
   }
 
   overlay->need_render = TRUE;
-  GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+  GST_TTML_RENDER_UNLOCK (overlay);
 }
 
 static void
-gst_base_ebuttd_overlay_get_property (GObject * object, guint prop_id,
+gst_ttml_render_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstBaseEbuttdOverlay *overlay = GST_BASE_EBUTTD_OVERLAY (object);
+  GstTtmlRender *overlay = GST_TTML_RENDER (object);
 
-  GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (overlay);
   switch (prop_id) {
     case PROP_TEXT:
       g_value_set_string (value, overlay->default_text);
@@ -1084,14 +1084,14 @@ gst_base_ebuttd_overlay_get_property (GObject * object, guint prop_id,
     {
       const PangoFontDescription *desc;
 
-      g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       desc = pango_layout_get_font_description (overlay->layout);
       if (!desc)
         g_value_set_string (value, "");
       else {
         g_value_take_string (value, pango_font_description_to_string (desc));
       }
-      g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
       break;
     }
     default:
@@ -1100,17 +1100,17 @@ gst_base_ebuttd_overlay_get_property (GObject * object, guint prop_id,
   }
 
   overlay->need_render = TRUE;
-  GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+  GST_TTML_RENDER_UNLOCK (overlay);
 }
 
 static gboolean
-gst_base_ebuttd_overlay_src_query (GstPad * pad, GstObject * parent,
+gst_ttml_render_src_query (GstPad * pad, GstObject * parent,
     GstQuery * query)
 {
   gboolean ret = FALSE;
-  GstBaseEbuttdOverlay *overlay;
+  GstTtmlRender *overlay;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -1118,7 +1118,7 @@ gst_base_ebuttd_overlay_src_query (GstPad * pad, GstObject * parent,
       GstCaps *filter, *caps;
 
       gst_query_parse_caps (query, &filter);
-      caps = gst_base_ebuttd_overlay_get_src_caps (pad, overlay, filter);
+      caps = gst_ttml_render_get_src_caps (pad, overlay, filter);
       gst_query_set_caps_result (query, caps);
       gst_caps_unref (caps);
       ret = TRUE;
@@ -1133,13 +1133,13 @@ gst_base_ebuttd_overlay_src_query (GstPad * pad, GstObject * parent,
 }
 
 static gboolean
-gst_base_ebuttd_overlay_src_event (GstPad * pad, GstObject * parent,
+gst_ttml_render_src_event (GstPad * pad, GstObject * parent,
     GstEvent * event)
 {
-  GstBaseEbuttdOverlay *overlay;
+  GstTtmlRender *overlay;
   gboolean ret;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
 
   if (overlay->text_linked) {
     gst_event_ref (event);
@@ -1153,7 +1153,7 @@ gst_base_ebuttd_overlay_src_event (GstPad * pad, GstObject * parent,
 }
 
 /**
- * gst_base_ebuttd_overlay_add_feature_and_intersect:
+ * gst_ttml_render_add_feature_and_intersect:
  *
  * Creates a new #GstCaps containing the (given caps +
  * given caps feature) + (given caps intersected by the
@@ -1162,7 +1162,7 @@ gst_base_ebuttd_overlay_src_event (GstPad * pad, GstObject * parent,
  * Returns: the new #GstCaps
  */
 static GstCaps *
-gst_base_ebuttd_overlay_add_feature_and_intersect (GstCaps * caps,
+gst_ttml_render_add_feature_and_intersect (GstCaps * caps,
     const gchar * feature, GstCaps * filter)
 {
   int i, caps_size;
@@ -1186,7 +1186,7 @@ gst_base_ebuttd_overlay_add_feature_and_intersect (GstCaps * caps,
 }
 
 /**
- * gst_base_ebuttd_overlay_intersect_by_feature:
+ * gst_ttml_render_intersect_by_feature:
  *
  * Creates a new #GstCaps based on the following filtering rule.
  *
@@ -1198,7 +1198,7 @@ gst_base_ebuttd_overlay_add_feature_and_intersect (GstCaps * caps,
  * Returns: the new #GstCaps
  */
 static GstCaps *
-gst_base_ebuttd_overlay_intersect_by_feature (GstCaps * caps,
+gst_ttml_render_intersect_by_feature (GstCaps * caps,
     const gchar * feature, GstCaps * filter)
 {
   int i, caps_size;
@@ -1234,8 +1234,8 @@ gst_base_ebuttd_overlay_intersect_by_feature (GstCaps * caps,
 }
 
 static GstCaps *
-gst_base_ebuttd_overlay_get_videosink_caps (GstPad * pad,
-    GstBaseEbuttdOverlay * overlay, GstCaps * filter)
+gst_ttml_render_get_videosink_caps (GstPad * pad,
+    GstTtmlRender * overlay, GstCaps * filter)
 {
   GstPad *srcpad = overlay->srcpad;
   GstCaps *peer_caps = NULL, *caps = NULL, *overlay_filter = NULL;
@@ -1247,7 +1247,7 @@ gst_base_ebuttd_overlay_get_videosink_caps (GstPad * pad,
     /* filter caps + composition feature + filter caps
      * filtered by the software caps. */
     GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
-    overlay_filter = gst_base_ebuttd_overlay_add_feature_and_intersect (filter,
+    overlay_filter = gst_ttml_render_add_feature_and_intersect (filter,
         GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
     gst_caps_unref (sw_caps);
 
@@ -1272,7 +1272,7 @@ gst_base_ebuttd_overlay_get_videosink_caps (GstPad * pad,
       /* duplicate caps which contains the composition into one version with
        * the meta and one without. Filter the other caps by the software caps */
       GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
-      caps = gst_base_ebuttd_overlay_intersect_by_feature (peer_caps,
+      caps = gst_ttml_render_intersect_by_feature (peer_caps,
           GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
       gst_caps_unref (sw_caps);
     }
@@ -1297,7 +1297,7 @@ gst_base_ebuttd_overlay_get_videosink_caps (GstPad * pad,
 }
 
 static GstCaps *
-gst_base_ebuttd_overlay_get_src_caps (GstPad * pad, GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * overlay,
     GstCaps * filter)
 {
   GstPad *sinkpad = overlay->video_sinkpad;
@@ -1312,7 +1312,7 @@ gst_base_ebuttd_overlay_get_src_caps (GstPad * pad, GstBaseEbuttdOverlay * overl
      * caps */
     GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
     overlay_filter =
-        gst_base_ebuttd_overlay_intersect_by_feature (filter,
+        gst_ttml_render_intersect_by_feature (filter,
         GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
     gst_caps_unref (sw_caps);
   }
@@ -1336,7 +1336,7 @@ gst_base_ebuttd_overlay_get_src_caps (GstPad * pad, GstBaseEbuttdOverlay * overl
       /* return upstream caps + composition feature + upstream caps
        * filtered by the software caps. */
       GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
-      caps = gst_base_ebuttd_overlay_add_feature_and_intersect (peer_caps,
+      caps = gst_ttml_render_add_feature_and_intersect (peer_caps,
           GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
       gst_caps_unref (sw_caps);
     }
@@ -1362,7 +1362,7 @@ gst_base_ebuttd_overlay_get_src_caps (GstPad * pad, GstBaseEbuttdOverlay * overl
 }
 
 static void
-gst_base_ebuttd_overlay_adjust_values_with_fontdesc (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * overlay,
     PangoFontDescription * desc)
 {
   gint font_size = pango_font_description_get_size (desc) / PANGO_SCALE;
@@ -1373,32 +1373,32 @@ gst_base_ebuttd_overlay_adjust_values_with_fontdesc (GstBaseEbuttdOverlay * over
 }
 
 static void
-gst_base_ebuttd_overlay_get_pos (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_get_pos (GstTtmlRender * overlay,
     gint * xpos, gint * ypos)
 {
   gint width, height;
-  GstBaseEbuttdOverlayVAlign valign;
-  GstBaseEbuttdOverlayHAlign halign;
+  GstTtmlRenderVAlign valign;
+  GstTtmlRenderHAlign halign;
 
   width = overlay->image_width;
   height = overlay->image_height;
 
   if (overlay->use_vertical_render)
-    halign = GST_BASE_EBUTTD_OVERLAY_HALIGN_RIGHT;
+    halign = GST_TTML_RENDER_HALIGN_RIGHT;
   else
     halign = overlay->halign;
 
   switch (halign) {
-    case GST_BASE_EBUTTD_OVERLAY_HALIGN_LEFT:
+    case GST_TTML_RENDER_HALIGN_LEFT:
       *xpos = overlay->xpad;
       break;
-    case GST_BASE_EBUTTD_OVERLAY_HALIGN_CENTER:
+    case GST_TTML_RENDER_HALIGN_CENTER:
       *xpos = (overlay->width - width) / 2;
       break;
-    case GST_BASE_EBUTTD_OVERLAY_HALIGN_RIGHT:
+    case GST_TTML_RENDER_HALIGN_RIGHT:
       *xpos = overlay->width - width - overlay->xpad;
       break;
-    case GST_BASE_EBUTTD_OVERLAY_HALIGN_POS:
+    case GST_TTML_RENDER_HALIGN_POS:
       *xpos = (gint) (overlay->width * overlay->xpos) - width / 2;
       *xpos = CLAMP (*xpos, 0, overlay->width - width);
       if (*xpos < 0)
@@ -1410,25 +1410,25 @@ gst_base_ebuttd_overlay_get_pos (GstBaseEbuttdOverlay * overlay,
   *xpos += overlay->deltax;
 
   if (overlay->use_vertical_render)
-    valign = GST_BASE_EBUTTD_OVERLAY_VALIGN_TOP;
+    valign = GST_TTML_RENDER_VALIGN_TOP;
   else
     valign = overlay->valign;
 
   switch (valign) {
-    case GST_BASE_EBUTTD_OVERLAY_VALIGN_BOTTOM:
+    case GST_TTML_RENDER_VALIGN_BOTTOM:
       *ypos = overlay->height - height - overlay->ypad;
       break;
-    case GST_BASE_EBUTTD_OVERLAY_VALIGN_BASELINE:
+    case GST_TTML_RENDER_VALIGN_BASELINE:
       *ypos = overlay->height - (height + overlay->ypad);
       break;
-    case GST_BASE_EBUTTD_OVERLAY_VALIGN_TOP:
+    case GST_TTML_RENDER_VALIGN_TOP:
       *ypos = overlay->ypad;
       break;
-    case GST_BASE_EBUTTD_OVERLAY_VALIGN_POS:
+    case GST_TTML_RENDER_VALIGN_POS:
       *ypos = (gint) (overlay->height * overlay->ypos) - height / 2;
       *ypos = CLAMP (*ypos, 0, overlay->height - height);
       break;
-    case GST_BASE_EBUTTD_OVERLAY_VALIGN_CENTER:
+    case GST_TTML_RENDER_VALIGN_CENTER:
       *ypos = (overlay->height - height) / 2;
       break;
     default:
@@ -1439,12 +1439,12 @@ gst_base_ebuttd_overlay_get_pos (GstBaseEbuttdOverlay * overlay,
 }
 
 static inline void
-gst_base_ebuttd_overlay_set_composition (GstBaseEbuttdOverlay * overlay)
+gst_ttml_render_set_composition (GstTtmlRender * overlay)
 {
   gint xpos, ypos;
   GstVideoOverlayRectangle *rectangle;
 
-  gst_base_ebuttd_overlay_get_pos (overlay, &xpos, &ypos);
+  gst_ttml_render_get_pos (overlay, &xpos, &ypos);
 
   if (overlay->text_image) {
     g_assert (gst_buffer_is_writable (overlay->text_image));
@@ -1467,24 +1467,24 @@ gst_base_ebuttd_overlay_set_composition (GstBaseEbuttdOverlay * overlay)
 
 
 static GstVideoOverlayComposition *
-gst_base_ebuttd_overlay_compose_layers (GSList * layers)
+gst_ttml_render_compose_layers (GSList * layers)
 {
-  GstBaseEbuttdOverlayLayer *layer = NULL;
+  GstTtmlRenderLayer *layer = NULL;
   GstVideoOverlayComposition *ret = NULL;
 
-  GST_CAT_DEBUG (ebuttdrender, "Composing layers...");
+  GST_CAT_DEBUG (ttmlrender, "Composing layers...");
 
   g_return_if_fail (layers != NULL);
 
-  layer = (GstBaseEbuttdOverlayLayer *)layers->data;
+  layer = (GstTtmlRenderLayer *)layers->data;
   g_assert (layer != NULL);
 
   ret = gst_video_overlay_composition_new (layer->rectangle);
 
   while ((layers = g_slist_next (layers))) {
-    layer = (GstBaseEbuttdOverlayLayer *)layers->data;
+    layer = (GstTtmlRenderLayer *)layers->data;
     g_assert (layer != NULL);
-    GST_CAT_DEBUG (ebuttdrender, "Adding layer to composition...");
+    GST_CAT_DEBUG (ttmlrender, "Adding layer to composition...");
     gst_video_overlay_composition_add_rectangle (ret, layer->rectangle);
   }
 
@@ -1503,7 +1503,7 @@ gst_text_overlay_filter_foreground_attr (PangoAttribute * attr, gpointer data)
 }
 
 static void
-gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_render_pangocairo (GstTtmlRender * overlay,
     const gchar * string, gint textlen)
 {
   cairo_t *cr;
@@ -1516,8 +1516,8 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
   GstBuffer *buffer;
   GstMapInfo map;
 
-  GST_CAT_DEBUG (ebuttdrender, "Input string: %s", string);
-  g_mutex_lock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+  GST_CAT_DEBUG (ttmlrender, "Input string: %s", string);
+  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
 
   if (overlay->auto_adjust_size) {
     /* 640 pixel is default
@@ -1531,7 +1531,7 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
 
   /* get subtitle image size */
   pango_layout_get_pixel_extents (overlay->layout, &ink_rect, &logical_rect);
-  GST_CAT_DEBUG (ebuttdrender, "Pixel extents - w: %d  h: %d  x: %d  y: %d", logical_rect.width, logical_rect.height, logical_rect.x, logical_rect.y);
+  GST_CAT_DEBUG (ttmlrender, "Pixel extents - w: %d  h: %d  x: %d  y: %d", logical_rect.width, logical_rect.height, logical_rect.x, logical_rect.y);
 
   /* apply scale to get the correct font_size */
   /* This bit added by PT. */
@@ -1556,9 +1556,9 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
 #endif
 
   /* CB: Why is the width being scaled? Is it to fit some predeclared overlay size? */
-  GST_CAT_DEBUG (ebuttdrender, "shadow_offset: %f  scalef: %f", overlay->shadow_offset, scalef);
+  GST_CAT_DEBUG (ttmlrender, "shadow_offset: %f  scalef: %f", overlay->shadow_offset, scalef);
   width = (logical_rect.width + overlay->shadow_offset) * scalef;
-  GST_CAT_DEBUG (ebuttdrender, "width 1: %d", width);
+  GST_CAT_DEBUG (ttmlrender, "width 1: %d", width);
 
   if (width + overlay->deltax >
       (overlay->use_vertical_render ? overlay->height : overlay->width)) {
@@ -1566,11 +1566,11 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
      * subtitle image width is larger then overlay width
      * so rearrange overlay wrap mode.
      */
-    gst_base_ebuttd_overlay_update_wrap_mode (overlay);
+    gst_ttml_render_update_wrap_mode (overlay);
     pango_layout_get_pixel_extents (overlay->layout, &ink_rect, &logical_rect);
     width = overlay->width;
   }
-  GST_CAT_DEBUG (ebuttdrender, "width 2: %d", width);
+  GST_CAT_DEBUG (ttmlrender, "width 2: %d", width);
 
   height =
       (logical_rect.height + logical_rect.y + overlay->shadow_offset) * scalef;
@@ -1617,7 +1617,7 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
     cairo_matrix_init_scale (&cairo_matrix, scalef, scalef);
   }
 
-  GST_CAT_DEBUG (ebuttdrender, "Creating text image buffer with width %d and height %d",
+  GST_CAT_DEBUG (ttmlrender, "Creating text image buffer with width %d and height %d",
       width, height);
 
   /* reallocate overlay buffer */
@@ -1681,14 +1681,14 @@ gst_base_ebuttd_overlay_render_pangocairo (GstBaseEbuttdOverlay * overlay,
   overlay->image_width = width;
   overlay->image_height = height;
   overlay->baseline_y = ink_rect.y;
-  g_mutex_unlock (GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay)->pango_lock);
+  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
 
-  gst_base_ebuttd_overlay_set_composition (overlay);
+  gst_ttml_render_set_composition (overlay);
 }
 
 
 static inline void
-gst_base_ebuttd_overlay_shade_planar_Y (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_shade_planar_Y (GstTtmlRender * overlay,
     GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
 {
   gint i, j, dest_stride;
@@ -1707,7 +1707,7 @@ gst_base_ebuttd_overlay_shade_planar_Y (GstBaseEbuttdOverlay * overlay,
 }
 
 static inline void
-gst_base_ebuttd_overlay_shade_packed_Y (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_shade_packed_Y (GstTtmlRender * overlay,
     GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
 {
   gint i, j;
@@ -1741,11 +1741,11 @@ gst_base_ebuttd_overlay_shade_packed_Y (GstBaseEbuttdOverlay * overlay,
   }
 }
 
-#define gst_base_ebuttd_overlay_shade_BGRx gst_base_ebuttd_overlay_shade_xRGB
-#define gst_base_ebuttd_overlay_shade_RGBx gst_base_ebuttd_overlay_shade_xRGB
-#define gst_base_ebuttd_overlay_shade_xBGR gst_base_ebuttd_overlay_shade_xRGB
+#define gst_ttml_render_shade_BGRx gst_ttml_render_shade_xRGB
+#define gst_ttml_render_shade_RGBx gst_ttml_render_shade_xRGB
+#define gst_ttml_render_shade_xBGR gst_ttml_render_shade_xRGB
 static inline void
-gst_base_ebuttd_overlay_shade_xRGB (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_shade_xRGB (GstTtmlRender * overlay,
     GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
 {
   gint i, j;
@@ -1775,7 +1775,7 @@ gst_base_ebuttd_overlay_shade_xRGB (GstBaseEbuttdOverlay * overlay,
 
 /* FIXME: orcify */
 static void
-gst_base_ebuttd_overlay_shade_rgb24 (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_shade_rgb24 (GstTtmlRender * overlay,
     GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
 {
   const int pstride = 3;
@@ -1800,7 +1800,7 @@ gst_base_ebuttd_overlay_shade_rgb24 (GstBaseEbuttdOverlay * overlay,
 }
 
 static void
-gst_base_ebuttd_overlay_shade_IYU1 (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_shade_IYU1 (GstTtmlRender * overlay,
     GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
 {
   gint y, x, stride, shading_val, tmp;
@@ -1829,7 +1829,7 @@ gst_base_ebuttd_overlay_shade_IYU1 (GstBaseEbuttdOverlay * overlay,
 
 #define ARGB_SHADE_FUNCTION(name, OFFSET)	\
 static inline void \
-gst_base_ebuttd_overlay_shade_##name (GstBaseEbuttdOverlay * overlay, GstVideoFrame * dest, \
+gst_ttml_render_shade_##name (GstTtmlRender * overlay, GstVideoFrame * dest, \
 gint x0, gint x1, gint y0, gint y1) \
 { \
   gint i, j;\
@@ -1854,7 +1854,7 @@ ARGB_SHADE_FUNCTION (RGBA, 0);
 ARGB_SHADE_FUNCTION (BGRA, 0);
 
 static void
-gst_base_ebuttd_overlay_render_text (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_render_text (GstTtmlRender * overlay,
     const gchar * text, gint textlen)
 {
   gchar *string;
@@ -1880,7 +1880,7 @@ gst_base_ebuttd_overlay_render_text (GstBaseEbuttdOverlay * overlay,
   /* FIXME: should we check for UTF-8 here? */
 
   GST_DEBUG ("Rendering '%s'", string);
-  gst_base_ebuttd_overlay_render_pangocairo (overlay, string, textlen);
+  gst_ttml_render_render_pangocairo (overlay, string, textlen);
 
   g_free (string);
 
@@ -1893,7 +1893,7 @@ gst_base_ebuttd_overlay_render_text (GstBaseEbuttdOverlay * overlay,
 #define BOX_YPAD  6
 
 static void
-gst_base_ebuttd_overlay_shade_background (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_shade_background (GstTtmlRender * overlay,
     GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
 {
   x0 = CLAMP (x0 - BOX_XPAD, 0, overlay->width);
@@ -1914,44 +1914,44 @@ gst_base_ebuttd_overlay_shade_background (GstBaseEbuttdOverlay * overlay,
     case GST_VIDEO_FORMAT_YVU9:
     case GST_VIDEO_FORMAT_GRAY8:
     case GST_VIDEO_FORMAT_A420:
-      gst_base_ebuttd_overlay_shade_planar_Y (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_planar_Y (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_AYUV:
     case GST_VIDEO_FORMAT_UYVY:
     case GST_VIDEO_FORMAT_YUY2:
     case GST_VIDEO_FORMAT_v308:
-      gst_base_ebuttd_overlay_shade_packed_Y (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_packed_Y (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_xRGB:
-      gst_base_ebuttd_overlay_shade_xRGB (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_xRGB (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_xBGR:
-      gst_base_ebuttd_overlay_shade_xBGR (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_xBGR (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_BGRx:
-      gst_base_ebuttd_overlay_shade_BGRx (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_BGRx (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_RGBx:
-      gst_base_ebuttd_overlay_shade_RGBx (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_RGBx (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_ARGB:
-      gst_base_ebuttd_overlay_shade_ARGB (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_ARGB (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_ABGR:
-      gst_base_ebuttd_overlay_shade_ABGR (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_ABGR (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_RGBA:
-      gst_base_ebuttd_overlay_shade_RGBA (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_RGBA (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_BGRA:
-      gst_base_ebuttd_overlay_shade_BGRA (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_BGRA (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_BGR:
     case GST_VIDEO_FORMAT_RGB:
-      gst_base_ebuttd_overlay_shade_rgb24 (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_rgb24 (overlay, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_IYU1:
-      gst_base_ebuttd_overlay_shade_IYU1 (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_IYU1 (overlay, frame, x0, x1, y0, y1);
       break;
     default:
       GST_FIXME_OBJECT (overlay, "implement background shading for format %s",
@@ -1961,19 +1961,19 @@ gst_base_ebuttd_overlay_shade_background (GstBaseEbuttdOverlay * overlay,
 }
 
 static GstFlowReturn
-gst_base_ebuttd_overlay_push_frame (GstBaseEbuttdOverlay * overlay,
+gst_ttml_render_push_frame (GstTtmlRender * overlay,
     GstBuffer * video_frame)
 {
   GstVideoFrame frame;
   GList *compositions = overlay->compositions;
 
   if (compositions == NULL) {
-    GST_CAT_DEBUG (ebuttdrender, "No compositions.");
+    GST_CAT_DEBUG (ttmlrender, "No compositions.");
     goto done;
   }
 
   if (gst_pad_check_reconfigure (overlay->srcpad))
-    gst_base_ebuttd_overlay_negotiate (overlay, NULL);
+    gst_ttml_render_negotiate (overlay, NULL);
 
   video_frame = gst_buffer_make_writable (video_frame);
 
@@ -1991,7 +1991,7 @@ gst_base_ebuttd_overlay_push_frame (GstBaseEbuttdOverlay * overlay,
 
   while (compositions) {
     GstVideoOverlayComposition *composition = compositions->data;
-    GST_CAT_DEBUG (ebuttdrender, "Blending composition...");
+    GST_CAT_DEBUG (ttmlrender, "Blending composition...");
     gst_video_overlay_composition_blend (composition, &frame);
     compositions = compositions->next;
   }
@@ -2012,12 +2012,12 @@ invalid_frame:
 }
 
 static GstPadLinkReturn
-gst_base_ebuttd_overlay_text_pad_link (GstPad * pad, GstObject * parent,
+gst_ttml_render_text_pad_link (GstPad * pad, GstObject * parent,
     GstPad * peer)
 {
-  GstBaseEbuttdOverlay *overlay;
+  GstTtmlRender *overlay;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
   if (G_UNLIKELY (!overlay))
     return GST_PAD_LINK_REFUSED;
 
@@ -2029,12 +2029,12 @@ gst_base_ebuttd_overlay_text_pad_link (GstPad * pad, GstObject * parent,
 }
 
 static void
-gst_base_ebuttd_overlay_text_pad_unlink (GstPad * pad, GstObject * parent)
+gst_ttml_render_text_pad_unlink (GstPad * pad, GstObject * parent)
 {
-  GstBaseEbuttdOverlay *overlay;
+  GstTtmlRender *overlay;
 
   /* don't use gst_pad_get_parent() here, will deadlock */
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
 
   GST_DEBUG_OBJECT (overlay, "Text pad unlinked");
 
@@ -2044,13 +2044,13 @@ gst_base_ebuttd_overlay_text_pad_unlink (GstPad * pad, GstObject * parent)
 }
 
 static gboolean
-gst_base_ebuttd_overlay_text_event (GstPad * pad, GstObject * parent,
+gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
     GstEvent * event)
 {
   gboolean ret = FALSE;
-  GstBaseEbuttdOverlay *overlay = NULL;
+  GstTtmlRender *overlay = NULL;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
 
   GST_LOG_OBJECT (pad, "received event %s", GST_EVENT_TYPE_NAME (event));
 
@@ -2060,7 +2060,7 @@ gst_base_ebuttd_overlay_text_event (GstPad * pad, GstObject * parent,
       GstCaps *caps;
 
       gst_event_parse_caps (event, &caps);
-      ret = gst_base_ebuttd_overlay_setcaps_txt (overlay, caps);
+      ret = gst_ttml_render_setcaps_txt (overlay, caps);
       gst_event_unref (event);
       break;
     }
@@ -2073,11 +2073,11 @@ gst_base_ebuttd_overlay_text_event (GstPad * pad, GstObject * parent,
       gst_event_parse_segment (event, &segment);
 
       if (segment->format == GST_FORMAT_TIME) {
-        GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+        GST_TTML_RENDER_LOCK (overlay);
         gst_segment_copy_into (segment, &overlay->text_segment);
         GST_DEBUG_OBJECT (overlay, "TEXT SEGMENT now: %" GST_SEGMENT_FORMAT,
             &overlay->text_segment);
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+        GST_TTML_RENDER_UNLOCK (overlay);
       } else {
         GST_ELEMENT_WARNING (overlay, STREAM, MUX, (NULL),
             ("received non-TIME newsegment event on text input"));
@@ -2088,9 +2088,9 @@ gst_base_ebuttd_overlay_text_event (GstPad * pad, GstObject * parent,
 
       /* wake up the video chain, it might be waiting for a text buffer or
        * a text segment update */
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
-      GST_BASE_EBUTTD_OVERLAY_BROADCAST (overlay);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
+      GST_TTML_RENDER_BROADCAST (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       break;
     }
     case GST_EVENT_GAP:
@@ -2106,42 +2106,42 @@ gst_base_ebuttd_overlay_text_event (GstPad * pad, GstObject * parent,
 
       /* wake up the video chain, it might be waiting for a text buffer or
        * a text segment update */
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
-      GST_BASE_EBUTTD_OVERLAY_BROADCAST (overlay);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
+      GST_TTML_RENDER_BROADCAST (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
 
       gst_event_unref (event);
       ret = TRUE;
       break;
     }
     case GST_EVENT_FLUSH_STOP:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       GST_INFO_OBJECT (overlay, "text flush stop");
       overlay->text_flushing = FALSE;
       overlay->text_eos = FALSE;
-      gst_base_ebuttd_overlay_pop_text (overlay);
+      gst_ttml_render_pop_text (overlay);
       gst_segment_init (&overlay->text_segment, GST_FORMAT_TIME);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       gst_event_unref (event);
       ret = TRUE;
       break;
     case GST_EVENT_FLUSH_START:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       GST_INFO_OBJECT (overlay, "text flush start");
       overlay->text_flushing = TRUE;
-      GST_BASE_EBUTTD_OVERLAY_BROADCAST (overlay);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_BROADCAST (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       gst_event_unref (event);
       ret = TRUE;
       break;
     case GST_EVENT_EOS:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       overlay->text_eos = TRUE;
       GST_INFO_OBJECT (overlay, "text EOS");
       /* wake up the video chain, it might be waiting for a text buffer or
        * a text segment update */
-      GST_BASE_EBUTTD_OVERLAY_BROADCAST (overlay);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_BROADCAST (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       gst_event_unref (event);
       ret = TRUE;
       break;
@@ -2154,13 +2154,13 @@ gst_base_ebuttd_overlay_text_event (GstPad * pad, GstObject * parent,
 }
 
 static gboolean
-gst_base_ebuttd_overlay_video_event (GstPad * pad, GstObject * parent,
+gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
     GstEvent * event)
 {
   gboolean ret = FALSE;
-  GstBaseEbuttdOverlay *overlay = NULL;
+  GstTtmlRender *overlay = NULL;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
 
   GST_DEBUG_OBJECT (pad, "received event %s", GST_EVENT_TYPE_NAME (event));
 
@@ -2170,7 +2170,7 @@ gst_base_ebuttd_overlay_video_event (GstPad * pad, GstObject * parent,
       GstCaps *caps;
 
       gst_event_parse_caps (event, &caps);
-      ret = gst_base_ebuttd_overlay_setcaps (overlay, caps);
+      ret = gst_ttml_render_setcaps (overlay, caps);
       gst_event_unref (event);
       break;
     }
@@ -2196,27 +2196,27 @@ gst_base_ebuttd_overlay_video_event (GstPad * pad, GstObject * parent,
       break;
     }
     case GST_EVENT_EOS:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       GST_INFO_OBJECT (overlay, "video EOS");
       overlay->video_eos = TRUE;
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       ret = gst_pad_event_default (pad, parent, event);
       break;
     case GST_EVENT_FLUSH_START:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       GST_INFO_OBJECT (overlay, "video flush start");
       overlay->video_flushing = TRUE;
-      GST_BASE_EBUTTD_OVERLAY_BROADCAST (overlay);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_BROADCAST (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       ret = gst_pad_event_default (pad, parent, event);
       break;
     case GST_EVENT_FLUSH_STOP:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       GST_INFO_OBJECT (overlay, "video flush stop");
       overlay->video_flushing = FALSE;
       overlay->video_eos = FALSE;
       gst_segment_init (&overlay->segment, GST_FORMAT_TIME);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       ret = gst_pad_event_default (pad, parent, event);
       break;
     default:
@@ -2228,13 +2228,13 @@ gst_base_ebuttd_overlay_video_event (GstPad * pad, GstObject * parent,
 }
 
 static gboolean
-gst_base_ebuttd_overlay_video_query (GstPad * pad, GstObject * parent,
+gst_ttml_render_video_query (GstPad * pad, GstObject * parent,
     GstQuery * query)
 {
   gboolean ret = FALSE;
-  GstBaseEbuttdOverlay *overlay;
+  GstTtmlRender *overlay;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -2242,7 +2242,7 @@ gst_base_ebuttd_overlay_video_query (GstPad * pad, GstObject * parent,
       GstCaps *filter, *caps;
 
       gst_query_parse_caps (query, &filter);
-      caps = gst_base_ebuttd_overlay_get_videosink_caps (pad, overlay, filter);
+      caps = gst_ttml_render_get_videosink_caps (pad, overlay, filter);
       gst_query_set_caps_result (query, caps);
       gst_caps_unref (caps);
       ret = TRUE;
@@ -2258,9 +2258,9 @@ gst_base_ebuttd_overlay_video_query (GstPad * pad, GstObject * parent,
 
 /* Called with lock held */
 static void
-gst_base_ebuttd_overlay_pop_text (GstBaseEbuttdOverlay * overlay)
+gst_ttml_render_pop_text (GstTtmlRender * overlay)
 {
-  g_return_if_fail (GST_IS_BASE_EBUTTD_OVERLAY (overlay));
+  g_return_if_fail (GST_IS_TTML_RENDER (overlay));
 
   if (overlay->text_buffer) {
     GST_DEBUG_OBJECT (overlay, "releasing text buffer %p",
@@ -2270,34 +2270,34 @@ gst_base_ebuttd_overlay_pop_text (GstBaseEbuttdOverlay * overlay)
   }
 
   /* Let the text task know we used that buffer */
-  GST_BASE_EBUTTD_OVERLAY_BROADCAST (overlay);
+  GST_TTML_RENDER_BROADCAST (overlay);
 }
 
 /* We receive text buffers here. If they are out of segment we just ignore them.
    If the buffer is in our segment we keep it internally except if another one
    is already waiting here, in that case we wait that it gets kicked out */
 static GstFlowReturn
-gst_base_ebuttd_overlay_text_chain (GstPad * pad, GstObject * parent,
+gst_ttml_render_text_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer)
 {
   GstFlowReturn ret = GST_FLOW_OK;
-  GstBaseEbuttdOverlay *overlay = NULL;
+  GstTtmlRender *overlay = NULL;
   gboolean in_seg = FALSE;
   guint64 clip_start = 0, clip_stop = 0;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
+  overlay = GST_TTML_RENDER (parent);
 
-  GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (overlay);
 
   if (overlay->text_flushing) {
-    GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+    GST_TTML_RENDER_UNLOCK (overlay);
     ret = GST_FLOW_FLUSHING;
     GST_LOG_OBJECT (overlay, "text flushing");
     goto beach;
   }
 
   if (overlay->text_eos) {
-    GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+    GST_TTML_RENDER_UNLOCK (overlay);
     ret = GST_FLOW_EOS;
     GST_LOG_OBJECT (overlay, "text EOS");
     goto beach;
@@ -2333,10 +2333,10 @@ gst_base_ebuttd_overlay_text_chain (GstPad * pad, GstObject * parent,
     while (overlay->text_buffer != NULL) {
       GST_DEBUG ("Pad %s:%s has a buffer queued, waiting",
           GST_DEBUG_PAD_NAME (pad));
-      GST_BASE_EBUTTD_OVERLAY_WAIT (overlay);
+      GST_TTML_RENDER_WAIT (overlay);
       GST_DEBUG ("Pad %s:%s resuming", GST_DEBUG_PAD_NAME (pad));
       if (overlay->text_flushing) {
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+        GST_TTML_RENDER_UNLOCK (overlay);
         ret = GST_FLOW_FLUSHING;
         goto beach;
       }
@@ -2350,10 +2350,10 @@ gst_base_ebuttd_overlay_text_chain (GstPad * pad, GstObject * parent,
     overlay->need_render = TRUE;
 
     /* in case the video chain is waiting for a text buffer, wake it up */
-    GST_BASE_EBUTTD_OVERLAY_BROADCAST (overlay);
+    GST_TTML_RENDER_BROADCAST (overlay);
   }
 
-  GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+  GST_TTML_RENDER_UNLOCK (overlay);
 
 beach:
 
@@ -2406,20 +2406,20 @@ draw_rectangle (guint width, guint height, GstSubtitleColor color)
 }
 
 
-static GstBaseEbuttdOverlayLayer *
+static GstTtmlRenderLayer *
 create_new_layer (GstBuffer * image, gint xpos, gint ypos, guint width,
     guint height)
 {
-  GstBaseEbuttdOverlayLayer *layer;
+  GstTtmlRenderLayer *layer;
 
-  layer = g_slice_new0 (GstBaseEbuttdOverlayLayer);
+  layer = g_slice_new0 (GstTtmlRenderLayer);
   layer->image = image;
   layer->xpos = xpos;
   layer->ypos = ypos;
   layer->width = width;
   layer->height = height;
 
-  GST_CAT_DEBUG (ebuttdrender, "Creating layer - x: %d  y: %d  w: %u  h: %u, "
+  GST_CAT_DEBUG (ttmlrender, "Creating layer - x: %d  y: %d  w: %u  h: %u, "
       "buffer-size: %u", xpos, ypos, width, height,
       gst_buffer_get_size (image));
 
@@ -2445,7 +2445,7 @@ text_range_free (TextRange * range)
 }
 
 static gchar *
-generate_marked_up_string (GstBaseEbuttdOverlay * overlay,
+generate_marked_up_string (GstTtmlRender * overlay,
     GPtrArray * elements, GstBuffer * text_buf, GPtrArray ** text_ranges)
 {
   GstSubtitleElement *element;
@@ -2469,13 +2469,13 @@ generate_marked_up_string (GstBaseEbuttdOverlay * overlay,
     element = g_ptr_array_index (elements, i);
     mem = gst_buffer_get_memory (text_buf, element->text_index);
     if (!mem || !gst_memory_map (mem, &map, GST_MAP_READ)) {
-      GST_CAT_ERROR (ebuttdrender, "Failed to access element memory.");
+      GST_CAT_ERROR (ttmlrender, "Failed to access element memory.");
       g_slice_free (TextRange, range);
       continue;
     }
 
     buf_text = g_strndup ((const gchar *)map.data, map.size);
-    GST_CAT_DEBUG (ebuttdrender, "Text from buffer is: %s", buf_text);
+    GST_CAT_DEBUG (ttmlrender, "Text from buffer is: %s", buf_text);
     g_assert (buf_text != NULL);
     /* XXX: check that text is valid UTF-8? */
 
@@ -2505,11 +2505,11 @@ generate_marked_up_string (GstBaseEbuttdOverlay * overlay,
           "font_weight=\"", font_weight, "\" ",
           "underline=\"", underline, "\" ",
         ">", buf_text, "</span>", NULL);
-    GST_CAT_DEBUG (ebuttdrender, "Joined text is now: %s", joined_text);
+    GST_CAT_DEBUG (ttmlrender, "Joined text is now: %s", joined_text);
 
     total_text_length += strlen (buf_text);
     range->last_char = total_text_length - 1;
-    GST_CAT_DEBUG (ebuttdrender, "First character index: %u; last character  "
+    GST_CAT_DEBUG (ttmlrender, "First character index: %u; last character  "
         "index: %u", range->first_char, range->last_char);
     g_ptr_array_insert (*text_ranges, i, range);
 
@@ -2525,13 +2525,13 @@ generate_marked_up_string (GstBaseEbuttdOverlay * overlay,
 }
 
 
-static GstBaseEbuttdOverlayRenderedText *
-draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
+static GstTtmlRenderRenderedText *
+draw_text (GstTtmlRender * overlay, const gchar * text, guint max_width,
     PangoAlignment alignment, guint line_height, guint max_font_size,
     gboolean wrap)
 {
-  GstBaseEbuttdOverlayClass *class;
-  GstBaseEbuttdOverlayRenderedText *ret;
+  GstTtmlRenderClass *class;
+  GstTtmlRenderRenderedText *ret;
   cairo_surface_t *surface, *cropped_surface;
   cairo_t *cairo_state, *cropped_state;
   GstMapInfo map;
@@ -2544,12 +2544,12 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
   guint vertical_offset;
   gint stride;
 
-  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedText);
-  class = GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay);
+  ret = g_slice_new0 (GstTtmlRenderRenderedText);
+  class = GST_TTML_RENDER_GET_CLASS (overlay);
 
   ret->layout = pango_layout_new (class->pango_context);
   pango_layout_set_markup (ret->layout, text, strlen (text));
-  GST_CAT_DEBUG (ebuttdrender, "Layout text: %s",
+  GST_CAT_DEBUG (ttmlrender, "Layout text: %s",
       pango_layout_get_text (ret->layout));
   if (wrap) {
     pango_layout_set_width (ret->layout, max_width * PANGO_SCALE);
@@ -2578,17 +2578,17 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
    * this downward shift, the text looks too high. */
   vertical_offset =
     (guint) round ((padding - cur_spacing) + (0.1 * max_font_size));
-  GST_CAT_DEBUG (ebuttdrender, "offset: %g   spacing: %d", cur_spacing,
+  GST_CAT_DEBUG (ttmlrender, "offset: %g   spacing: %d", cur_spacing,
       spacing);
-  GST_CAT_DEBUG (ebuttdrender, "line_height: %u", line_height);
-  GST_CAT_DEBUG (ebuttdrender, "Current line height is %g; changing to %g",
+  GST_CAT_DEBUG (ttmlrender, "line_height: %u", line_height);
+  GST_CAT_DEBUG (ttmlrender, "Current line height is %g; changing to %g",
       cur_height, cur_height + spacing);
   pango_layout_set_spacing (ret->layout, PANGO_SCALE * spacing);
-  GST_CAT_DEBUG (ebuttdrender, "Current spacing is now %d",
+  GST_CAT_DEBUG (ttmlrender, "Current spacing is now %d",
       pango_layout_get_spacing (ret->layout) / PANGO_SCALE);
 
   pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
-  GST_CAT_DEBUG (ebuttdrender, "logical_rect.x: %d   logical_rect.y: %d "
+  GST_CAT_DEBUG (ttmlrender, "logical_rect.x: %d   logical_rect.y: %d "
       "logical_rect.width: %d  logical_rect.height: %d", logical_rect.x,
       logical_rect.y, logical_rect.width, logical_rect.height);
 
@@ -2603,14 +2603,14 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
 
   /* Render layout. */
   cairo_save (cairo_state);
-  GST_CAT_DEBUG (ebuttdrender, "Layout text is: %s",
+  GST_CAT_DEBUG (ttmlrender, "Layout text is: %s",
       pango_layout_get_text (ret->layout));
   pango_cairo_show_layout (cairo_state, ret->layout);
   cairo_restore (cairo_state);
 
   buf_width = logical_rect.width;
   buf_height = logical_rect.height + vertical_offset;
-  GST_CAT_DEBUG (ebuttdrender, "buf_width: %u  buf_height: %u",
+  GST_CAT_DEBUG (ttmlrender, "buf_width: %u  buf_height: %u",
       buf_width, buf_height);
 
   /* Depending on whether the text is wrapped and its alignment, the image
@@ -2625,7 +2625,7 @@ draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
   gst_buffer_map (ret->text_image.image, &map, GST_MAP_READWRITE);
 
   stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
-  GST_CAT_DEBUG (ebuttdrender, "stride:%d", stride);
+  GST_CAT_DEBUG (ttmlrender, "stride:%d", stride);
   cropped_surface =
     cairo_image_surface_create_for_data (
         map.data + (vertical_offset * stride), CAIRO_FORMAT_ARGB32, buf_width,
@@ -2686,13 +2686,13 @@ get_max_font_size (GPtrArray * elements)
 }
 
 
-static GstBaseEbuttdOverlayRenderedImage *
+static GstTtmlRenderRenderedImage *
 rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
     guint height)
 {
-  GstBaseEbuttdOverlayRenderedImage *ret;
+  GstTtmlRenderRenderedImage *ret;
 
-  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+  ret = g_slice_new0 (GstTtmlRenderRenderedImage);
   /*gst_mini_object_init (GST_MINI_OBJECT_CAST (element), 0,
       rendered_image_get_type (), NULL, NULL,
       (GstMiniObjectFreeFunction) rendered_image_free);*/
@@ -2707,11 +2707,11 @@ rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
 }
 
 
-static GstBaseEbuttdOverlayRenderedImage *
-rendered_image_copy (GstBaseEbuttdOverlayRenderedImage * image)
+static GstTtmlRenderRenderedImage *
+rendered_image_copy (GstTtmlRenderRenderedImage * image)
 {
-  GstBaseEbuttdOverlayRenderedImage *ret
-    = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+  GstTtmlRenderRenderedImage *ret
+    = g_slice_new0 (GstTtmlRenderRenderedImage);
 
   ret->image = gst_buffer_ref (image->image);
   ret->x = image->x;
@@ -2724,16 +2724,16 @@ rendered_image_copy (GstBaseEbuttdOverlayRenderedImage * image)
 
 
 static void
-rendered_image_free (GstBaseEbuttdOverlayRenderedImage * image)
+rendered_image_free (GstTtmlRenderRenderedImage * image)
 {
   if (!image) return;
   gst_buffer_unref (image->image);
-  g_slice_free (GstBaseEbuttdOverlayRenderedImage, image);
+  g_slice_free (GstTtmlRenderRenderedImage, image);
 }
 
 
 static void
-output_image (const GstBaseEbuttdOverlayRenderedImage * image, const gchar * filename)
+output_image (const GstTtmlRenderRenderedImage * image, const gchar * filename)
 {
   GstMapInfo map;
   cairo_surface_t *surface;
@@ -2757,11 +2757,11 @@ output_image (const GstBaseEbuttdOverlayRenderedImage * image, const gchar * fil
 
 /* The order of arguments is significant: @image2 will be rendered on top of
  * @image1. */
-static GstBaseEbuttdOverlayRenderedImage *
-rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
-    GstBaseEbuttdOverlayRenderedImage * image2)
+static GstTtmlRenderRenderedImage *
+rendered_image_combine (GstTtmlRenderRenderedImage * image1,
+    GstTtmlRenderRenderedImage * image2)
 {
-  GstBaseEbuttdOverlayRenderedImage *ret;
+  GstTtmlRenderRenderedImage *ret;
   GstMapInfo map1, map2, map_dest;
   cairo_surface_t *sfc1, *sfc2, *sfc_dest;
   cairo_t *state_dest;
@@ -2771,7 +2771,7 @@ rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
   if (image2 && !image1)
     return rendered_image_copy (image2);
 
-  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+  ret = g_slice_new0 (GstTtmlRenderRenderedImage);
 
   /* Work out dimensions of combined image. */
   ret->x = MIN (image1->x, image2->x);
@@ -2781,7 +2781,7 @@ rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
   ret->height = MAX (image1->y + image1->height, image2->y + image2->height)
     - ret->y;
 
-  GST_CAT_DEBUG (ebuttdrender, "Dimensions of combined image:  x:%u  y:%u  "
+  GST_CAT_DEBUG (ttmlrender, "Dimensions of combined image:  x:%u  y:%u  "
       "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
 
   /* Create cairo_surface from src images. */
@@ -2831,11 +2831,11 @@ rendered_image_combine (GstBaseEbuttdOverlayRenderedImage * image1,
 }
 
 
-static GstBaseEbuttdOverlayRenderedImage *
-rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
+static GstTtmlRenderRenderedImage *
+rendered_image_crop (GstTtmlRenderRenderedImage * image, gint x, gint y,
     guint width, guint height)
 {
-  GstBaseEbuttdOverlayRenderedImage *ret;
+  GstTtmlRenderRenderedImage *ret;
   GstMapInfo map_src, map_dest;
   cairo_surface_t *sfc_src, *sfc_dest;
   cairo_t *state_dest;
@@ -2846,7 +2846,7 @@ rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
 
   /* TODO: Handle case where crop rectangle doesn't intersect image. */
 
-  ret = g_slice_new0 (GstBaseEbuttdOverlayRenderedImage);
+  ret = g_slice_new0 (GstTtmlRenderRenderedImage);
 
   ret->x = MAX (image->x, x);
   ret->y = MAX (image->y, y);
@@ -2854,7 +2854,7 @@ rendered_image_crop (GstBaseEbuttdOverlayRenderedImage * image, gint x, gint y,
   ret->height = MIN ((image->y + image->height) - ret->y,
       (y + height) - ret->y);
 
-  GST_CAT_DEBUG (ebuttdrender, "Dimensions of cropped image:  x:%u  y:%u  "
+  GST_CAT_DEBUG (ttmlrender, "Dimensions of cropped image:  x:%u  y:%u  "
       "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
 
   /* Create cairo_surface from src image. */
@@ -2896,7 +2896,7 @@ color_is_transparent (GstSubtitleColor * color)
 
 
 /* Render the background rectangles to be placed behind each element. */
-static GstBaseEbuttdOverlayRenderedImage *
+static GstTtmlRenderRenderedImage *
 render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
     PangoLayout * layout, guint origin_x, guint origin_y, guint line_height,
     guint line_padding, guint horiz_offset)
@@ -2911,13 +2911,13 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
   GstBuffer *rectangle;
   guint first_char_start, last_char_end;
   guint i;
-  GstBaseEbuttdOverlayRenderedImage *ret = NULL;
+  GstTtmlRenderRenderedImage *ret = NULL;
 
   for (i = 0; i < char_ranges->len; ++i) {
     range = g_ptr_array_index (char_ranges, i);
     element = g_ptr_array_index (elements, i);
 
-    GST_CAT_DEBUG (ebuttdrender, "First char index: %u   Last char index: %u",
+    GST_CAT_DEBUG (ttmlrender, "First char index: %u   Last char index: %u",
         range->first_char, range->last_char);
     pango_layout_index_to_pos (layout, range->first_char, &first_char_pos);
     pango_layout_index_to_pos (layout, range->last_char, &last_char_pos);
@@ -2931,9 +2931,9 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
     last_char_end = PANGO_PIXELS (last_char_pos.x + last_char_pos.width)
       - horiz_offset;
 
-    GST_CAT_DEBUG (ebuttdrender, "First char start: %u  Last char end: %u",
+    GST_CAT_DEBUG (ttmlrender, "First char start: %u  Last char end: %u",
         first_char_start, last_char_end);
-    GST_CAT_DEBUG (ebuttdrender, "First line: %u  Last line: %u", first_line,
+    GST_CAT_DEBUG (ttmlrender, "First line: %u  Last line: %u", first_line,
         last_line);
 
     for (cur_line = first_line; cur_line <= last_line; ++cur_line) {
@@ -2948,7 +2948,7 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
 
       pango_layout_line_x_to_index (line, 0, &first_char_index, NULL);
       pango_layout_index_to_pos (layout, first_char_index, &line_pos);
-      GST_CAT_DEBUG (ebuttdrender, "First char index:%d  position_X:%d  "
+      GST_CAT_DEBUG (ttmlrender, "First char index:%d  position_X:%d  "
           "position_Y:%d", first_char_index, PANGO_PIXELS (line_pos.x),
           PANGO_PIXELS (line_pos.y));
 
@@ -2956,42 +2956,42 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
       line_end = (PANGO_PIXELS (line_pos.x) + line_extents.width)
         - horiz_offset;
 
-      GST_CAT_DEBUG (ebuttdrender, "line_extents.x:%d  line_extents.y:%d  "
+      GST_CAT_DEBUG (ttmlrender, "line_extents.x:%d  line_extents.y:%d  "
           "line_extents.width:%d  line_extents.height:%d", line_extents.x,
           line_extents.y, line_extents.width, line_extents.height);
-      GST_CAT_DEBUG (ebuttdrender, "cur_line:%u  line start:%u  line end:%u "
+      GST_CAT_DEBUG (ttmlrender, "cur_line:%u  line start:%u  line end:%u "
           "first_char_start: %u  last_char_end: %u", cur_line, line_start,
           line_end, first_char_start, last_char_end);
 
       if ((cur_line == first_line) && (first_char_start != line_start)) {
         area_start = first_char_start + line_padding;
-        GST_CAT_DEBUG (ebuttdrender,
+        GST_CAT_DEBUG (ttmlrender,
             "First line, but there is preceding text in line.");
       } else {
-        GST_CAT_DEBUG (ebuttdrender,
+        GST_CAT_DEBUG (ttmlrender,
             "Area contains first text on the line; adding padding...");
         ++padding;
         area_start = line_start;
       }
 
       if ((cur_line == last_line) && (last_char_end != line_end)) {
-        GST_CAT_DEBUG (ebuttdrender,
+        GST_CAT_DEBUG (ttmlrender,
             "Last line, but there is following text in line.");
         area_end = last_char_end + line_padding;
       } else {
-        GST_CAT_DEBUG (ebuttdrender,
+        GST_CAT_DEBUG (ttmlrender,
             "Area contains last text on the line; adding padding...");
         ++padding;
         area_end = line_end + (2 * line_padding);
       }
 
-      GST_CAT_DEBUG (ebuttdrender, "Element bg colour: %s",
+      GST_CAT_DEBUG (ttmlrender, "Element bg colour: %s",
           color_to_rgba_string (element->style.bg_color));
       rect_width = (area_end - area_start);
 
       /* <br>s will result in zero-width rectangle */
       if (rect_width > 0 && !color_is_transparent (&element->style.bg_color)) {
-        GstBaseEbuttdOverlayRenderedImage *image, *tmp;
+        GstTtmlRenderRenderedImage *image, *tmp;
         rectangle = draw_rectangle (rect_width, line_height,
             element->style.bg_color);
         image = rendered_image_new (rectangle, origin_x + area_start,
@@ -3037,13 +3037,13 @@ get_alignment (GstSubtitleStyleSet * style)
           align = PANGO_ALIGN_RIGHT;
           break;
         default:
-          GST_CAT_ERROR (ebuttdrender, "Illegal text_align value (%d)",
+          GST_CAT_ERROR (ttmlrender, "Illegal text_align value (%d)",
               style->text_align);
           break;
       }
       break;
     default:
-      GST_CAT_ERROR (ebuttdrender, "Illegal multi_row_align value (%d)",
+      GST_CAT_ERROR (ttmlrender, "Illegal multi_row_align value (%d)",
           style->multi_row_align);
       break;
   }
@@ -3051,35 +3051,35 @@ get_alignment (GstSubtitleStyleSet * style)
 }
 
 
-static GstBaseEbuttdOverlayRenderedImage *
+static GstTtmlRenderRenderedImage *
 stitch_blocks (GList * blocks)
 {
   guint vert_offset = 0;
   GList *block_entry;
-  GstBaseEbuttdOverlayRenderedImage *ret = NULL;
+  GstTtmlRenderRenderedImage *ret = NULL;
 
   for (block_entry = g_list_first (blocks); block_entry;
       block_entry = block_entry->next) {
-    GstBaseEbuttdOverlayRenderedImage *block, *tmp;
-    block = (GstBaseEbuttdOverlayRenderedImage *)block_entry->data;
+    GstTtmlRenderRenderedImage *block, *tmp;
+    block = (GstTtmlRenderRenderedImage *)block_entry->data;
     tmp = ret;
 
     block->y += vert_offset;
-    GST_CAT_DEBUG (ebuttdrender, "Rendering block at vertical offset %u",
+    GST_CAT_DEBUG (ttmlrender, "Rendering block at vertical offset %u",
         vert_offset);
     vert_offset = block->y + block->height;
     ret = rendered_image_combine (ret, block);
     if (tmp) rendered_image_free (tmp);
   }
 
-  GST_CAT_DEBUG (ebuttdrender, "Height of stitched image: %u", ret->height);
+  GST_CAT_DEBUG (ttmlrender, "Height of stitched image: %u", ret->height);
   ret->image = gst_buffer_make_writable (ret->image);
   return ret;
 }
 
 
-static GstBaseEbuttdOverlayRenderedImage *
-render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
+static GstTtmlRenderRenderedImage *
+render_text_block (GstTtmlRender * overlay, GstSubtitleBlock * block,
     GstBuffer * text_buf, guint width, gboolean overflow)
 {
   GPtrArray *char_ranges = NULL;
@@ -3088,10 +3088,10 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   guint max_font_size;
   guint line_padding;
   gint text_offset = 0;
-  GstBaseEbuttdOverlayRenderedText *rendered_text;
-  GstBaseEbuttdOverlayRenderedImage *text;
-  GstBaseEbuttdOverlayRenderedImage *backgrounds = NULL;
-  GstBaseEbuttdOverlayRenderedImage *ret;
+  GstTtmlRenderRenderedText *rendered_text;
+  GstTtmlRenderRenderedImage *text;
+  GstTtmlRenderRenderedImage *backgrounds = NULL;
+  GstTtmlRenderRenderedImage *ret;
 
   /* Join text from elements to form a single marked-up string. */
   marked_up_string = generate_marked_up_string (overlay, block->elements,
@@ -3099,7 +3099,7 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
 
   max_font_size = (guint) (get_max_font_size (block->elements)
       * overlay->height);
-  GST_CAT_DEBUG (ebuttdrender, "Max font size: %u", max_font_size);
+  GST_CAT_DEBUG (ttmlrender, "Max font size: %u", max_font_size);
 
   line_padding = (guint) (block->style.line_padding * overlay->width);
   alignment = get_alignment (&block->style);
@@ -3137,8 +3137,8 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
 
   /* Render block background, if non-transparent. */
   if (!color_is_transparent (&block->style.bg_color)) {
-    GstBaseEbuttdOverlayRenderedImage *block_background;
-    GstBaseEbuttdOverlayRenderedImage *tmp = backgrounds;
+    GstTtmlRenderRenderedImage *block_background;
+    GstTtmlRenderRenderedImage *tmp = backgrounds;
 
     GstBuffer *block_bg_image = draw_rectangle (width, backgrounds->height,
         block->style.bg_color);
@@ -3155,25 +3155,25 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
   rendered_image_free (text);
 
   g_ptr_array_unref (char_ranges);
-  GST_CAT_DEBUG (ebuttdrender, "block width: %u   block height: %u",
+  GST_CAT_DEBUG (ttmlrender, "block width: %u   block height: %u",
       ret->width, ret->height);
   return ret;
 }
 
 
 static void
-free_layer (GstBaseEbuttdOverlayLayer * layer)
+free_layer (GstTtmlRenderLayer * layer)
 {
   if (layer->image)
     gst_buffer_unref (layer->image);
   if (layer->rectangle)
     gst_video_overlay_rectangle_unref (layer->rectangle);
-  g_slice_free (GstBaseEbuttdOverlayLayer, layer);
+  g_slice_free (GstTtmlRenderLayer, layer);
 }
 
 
 static GstVideoOverlayComposition *
-render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
+render_text_area (GstTtmlRender * overlay, GstSubtitleArea * area,
   GstBuffer * text_buf)
 {
   GList *blocks = NULL;
@@ -3181,8 +3181,8 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   guint window_x, window_y, window_width, window_height;
   guint padding_start, padding_end, padding_before, padding_after;
   GSList *layers = NULL;
-  GstBaseEbuttdOverlayRenderedImage *area_image = NULL;
-  GstBaseEbuttdOverlayLayer *area_layer;
+  GstTtmlRenderRenderedImage *area_image = NULL;
+  GstTtmlRenderLayer *area_layer;
   GstVideoOverlayComposition *ret = NULL;
 
   area_width = (guint) (round (area->style.extent_w * overlay->width));
@@ -3203,7 +3203,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   window_width = area_width - (padding_start + padding_end);
   window_height = area_height - (padding_before + padding_after);
 
-  GST_CAT_DEBUG (ebuttdrender,
+  GST_CAT_DEBUG (ttmlrender,
       "Padding: start: %u  end: %u  before: %u  after: %u",
       padding_start, padding_end, padding_before, padding_after);
 
@@ -3217,18 +3217,18 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
   }
 
   if (area->blocks) {
-    GstBaseEbuttdOverlayRenderedImage *blocks_image, *tmp;
+    GstTtmlRenderRenderedImage *blocks_image, *tmp;
     guint i;
 
     /* Render each block and append to list. */
     for (i = 0; i < area->blocks->len; ++i) {
       GstSubtitleBlock *block;
-      GstBaseEbuttdOverlayRenderedImage *rendered_block;
+      GstTtmlRenderRenderedImage *rendered_block;
 
       block = g_ptr_array_index (area->blocks, i);
       rendered_block = render_text_block (overlay, block, text_buf,
           window_width, TRUE);
-      GST_CAT_DEBUG (ebuttdrender, "Height of rendered block is %u",
+      GST_CAT_DEBUG (ttmlrender, "Height of rendered block is %u",
           rendered_block->height);
 
       blocks = g_list_append (blocks, rendered_block);
@@ -3254,7 +3254,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
     if ((area->style.overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
         && ((blocks_image->height > window_height)
           || (blocks_image->width > window_width))) {
-      GstBaseEbuttdOverlayRenderedImage *tmp = blocks_image;
+      GstTtmlRenderRenderedImage *tmp = blocks_image;
       blocks_image = rendered_image_crop (blocks_image, window_x, window_y,
           window_width, window_height);
       rendered_image_free (tmp);
@@ -3272,7 +3272,7 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
       area_image->x, area_image->y, area_image->width, area_image->height);
   layers = g_slist_append (layers, area_layer);
 
-  ret = gst_base_ebuttd_overlay_compose_layers (layers);
+  ret = gst_ttml_render_compose_layers (layers);
   g_slist_free_full (layers, (GDestroyNotify) free_layer);
   rendered_image_free (area_image);
   return ret;
@@ -3280,18 +3280,18 @@ render_text_area (GstBaseEbuttdOverlay * overlay, GstSubtitleArea * area,
 
 
 static GstFlowReturn
-gst_base_ebuttd_overlay_video_chain (GstPad * pad, GstObject * parent,
+gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer)
 {
-  GstBaseEbuttdOverlayClass *klass;
-  GstBaseEbuttdOverlay *overlay;
+  GstTtmlRenderClass *klass;
+  GstTtmlRender *overlay;
   GstFlowReturn ret = GST_FLOW_OK;
   gboolean in_seg = FALSE;
   guint64 start, stop, clip_start = 0, clip_stop = 0;
   gchar *text = NULL;
 
-  overlay = GST_BASE_EBUTTD_OVERLAY (parent);
-  klass = GST_BASE_EBUTTD_OVERLAY_GET_CLASS (overlay);
+  overlay = GST_TTML_RENDER (parent);
+  klass = GST_TTML_RENDER_GET_CLASS (overlay);
 
   if (!GST_BUFFER_TIMESTAMP_IS_VALID (buffer))
     goto missing_timestamp;
@@ -3347,7 +3347,7 @@ gst_base_ebuttd_overlay_video_chain (GstPad * pad, GstObject * parent,
 
 wait_for_text_buf:
 
-  GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (overlay);
 
   if (overlay->video_flushing)
     goto flushing;
@@ -3356,7 +3356,7 @@ wait_for_text_buf:
     goto have_eos;
 
   if (overlay->silent) {
-    GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+    GST_TTML_RENDER_UNLOCK (overlay);
     ret = gst_pad_push (overlay->srcpad, buffer);
 
     /* Update position */
@@ -3376,12 +3376,12 @@ wait_for_text_buf:
     GST_LOG_OBJECT (overlay, "Text pad not linked, rendering default "
         "text: '%s'", GST_STR_NULL (text));
 
-    GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+    GST_TTML_RENDER_UNLOCK (overlay);
 
     if (text != NULL && *text != '\0') {
       /* Render and push */
-      gst_base_ebuttd_overlay_render_text (overlay, text, -1);
-      ret = gst_base_ebuttd_overlay_push_frame (overlay, buffer);
+      gst_ttml_render_render_text (overlay, text, -1);
+      ret = gst_ttml_render_push_frame (overlay, buffer);
     } else {
       /* Invalid or empty string */
       ret = gst_pad_push (overlay->srcpad, buffer);
@@ -3438,12 +3438,12 @@ wait_for_text_buf:
         /* text buffer too old, get rid of it and do nothing  */
         GST_LOG_OBJECT (overlay, "text buffer too old, popping");
         pop_text = FALSE;
-        gst_base_ebuttd_overlay_pop_text (overlay);
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+        gst_ttml_render_pop_text (overlay);
+        GST_TTML_RENDER_UNLOCK (overlay);
         goto wait_for_text_buf;
       } else if (valid_text_time && vid_running_time_end <= text_running_time) {
         GST_LOG_OBJECT (overlay, "text in future, pushing video buf");
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+        GST_TTML_RENDER_UNLOCK (overlay);
         /* Push the video frame */
         ret = gst_pad_push (overlay->srcpad, buffer);
       } else {
@@ -3472,8 +3472,8 @@ wait_for_text_buf:
           overlay->need_render = FALSE;
         }
 
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
-        ret = gst_base_ebuttd_overlay_push_frame (overlay, buffer);
+        GST_TTML_RENDER_UNLOCK (overlay);
+        ret = gst_ttml_render_push_frame (overlay, buffer);
 
         if (valid_text_time && text_running_time_end <= vid_running_time_end) {
           GST_LOG_OBJECT (overlay, "text buffer not needed any longer");
@@ -3481,9 +3481,9 @@ wait_for_text_buf:
         }
       }
       if (pop_text) {
-        GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
-        gst_base_ebuttd_overlay_pop_text (overlay);
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+        GST_TTML_RENDER_LOCK (overlay);
+        gst_ttml_render_pop_text (overlay);
+        GST_TTML_RENDER_UNLOCK (overlay);
       }
     } else {
       gboolean wait_for_text_buf = TRUE;
@@ -3519,12 +3519,12 @@ wait_for_text_buf:
 
       if (wait_for_text_buf) {
         GST_DEBUG_OBJECT (overlay, "no text buffer, need to wait for one");
-        GST_BASE_EBUTTD_OVERLAY_WAIT (overlay);
+        GST_TTML_RENDER_WAIT (overlay);
         GST_DEBUG_OBJECT (overlay, "resuming");
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+        GST_TTML_RENDER_UNLOCK (overlay);
         goto wait_for_text_buf;
       } else {
-        GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+        GST_TTML_RENDER_UNLOCK (overlay);
         GST_LOG_OBJECT (overlay, "no need to wait for a text buffer");
         ret = gst_pad_push (overlay->srcpad, buffer);
       }
@@ -3547,14 +3547,14 @@ missing_timestamp:
 
 flushing:
   {
-    GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+    GST_TTML_RENDER_UNLOCK (overlay);
     GST_DEBUG_OBJECT (overlay, "flushing, discarding buffer");
     gst_buffer_unref (buffer);
     return GST_FLOW_FLUSHING;
   }
 have_eos:
   {
-    GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+    GST_TTML_RENDER_UNLOCK (overlay);
     GST_DEBUG_OBJECT (overlay, "eos, discarding buffer");
     gst_buffer_unref (buffer);
     return GST_FLOW_EOS;
@@ -3568,21 +3568,21 @@ out_of_segment:
 }
 
 static GstStateChangeReturn
-gst_base_ebuttd_overlay_change_state (GstElement * element,
+gst_ttml_render_change_state (GstElement * element,
     GstStateChange transition)
 {
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-  GstBaseEbuttdOverlay *overlay = GST_BASE_EBUTTD_OVERLAY (element);
+  GstTtmlRender *overlay = GST_TTML_RENDER (element);
 
   switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       overlay->text_flushing = TRUE;
       overlay->video_flushing = TRUE;
       /* pop_text will broadcast on the GCond and thus also make the video
        * chain exit if it's waiting for a text buffer */
-      gst_base_ebuttd_overlay_pop_text (overlay);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      gst_ttml_render_pop_text (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       break;
     default:
       break;
@@ -3594,14 +3594,14 @@ gst_base_ebuttd_overlay_change_state (GstElement * element,
 
   switch (transition) {
     case GST_STATE_CHANGE_READY_TO_PAUSED:
-      GST_BASE_EBUTTD_OVERLAY_LOCK (overlay);
+      GST_TTML_RENDER_LOCK (overlay);
       overlay->text_flushing = FALSE;
       overlay->video_flushing = FALSE;
       overlay->video_eos = FALSE;
       overlay->text_eos = FALSE;
       gst_segment_init (&overlay->segment, GST_FORMAT_TIME);
       gst_segment_init (&overlay->text_segment, GST_FORMAT_TIME);
-      GST_BASE_EBUTTD_OVERLAY_UNLOCK (overlay);
+      GST_TTML_RENDER_UNLOCK (overlay);
       break;
     default:
       break;
@@ -3614,7 +3614,7 @@ static gboolean
 plugin_init (GstPlugin * plugin)
 {
   if (!gst_element_register (plugin, "ttmlrender", GST_RANK_PRIMARY,
-          GST_TYPE_EBUTTD_OVERLAY)) {
+          GST_TYPE_TEXT_OVERLAY)) {
     return FALSE;
   }
 

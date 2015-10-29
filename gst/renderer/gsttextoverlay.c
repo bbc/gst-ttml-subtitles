@@ -25,7 +25,7 @@
 
 /**
  * SECTION:element-textoverlay
- * @see_also: #GstTextRender, #GstEbuttdOverlay, #GstTimeOverlay, #GstSubParse
+ * @see_also: #GstTextRender, #GstTextOverlay, #GstTimeOverlay, #GstSubParse
  *
  * This plugin renders text on top of a video stream. This can be either
  * static text or text from buffers received on the text sink pad, e.g.
@@ -74,7 +74,7 @@
  * ]| This shows new text as entered on the terminal (stdin). This is not suited
  * for subtitles as the test overlay is not timed. Subtitles should use
  * timestamped formats. For the above use case one can also read the text from
- * the application as set the #GstEbuttdOverlay:text property.
+ * the application as set the #GstTextOverlay:text property.
  * </para>
  * </refsect2>
  */
@@ -92,10 +92,10 @@ GST_STATIC_PAD_TEMPLATE ("text_sink",
     GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
     );
 
-G_DEFINE_TYPE (GstEbuttdOverlay, gst_text_overlay, GST_TYPE_BASE_EBUTTD_OVERLAY);
+G_DEFINE_TYPE (GstTextOverlay, gst_text_overlay, GST_TYPE_TTML_RENDER);
 
 static void
-gst_text_overlay_class_init (GstEbuttdOverlayClass * klass)
+gst_text_overlay_class_init (GstTextOverlayClass * klass)
 {
   GstElementClass *element_class = (GstElementClass *) klass;
 
@@ -109,6 +109,6 @@ gst_text_overlay_class_init (GstEbuttdOverlayClass * klass)
 }
 
 static void
-gst_text_overlay_init (GstEbuttdOverlay * overlay)
+gst_text_overlay_init (GstTextOverlay * overlay)
 {
 }

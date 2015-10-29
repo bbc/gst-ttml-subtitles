@@ -25,31 +25,31 @@
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_EBUTTD_OVERLAY \
+#define GST_TYPE_TEXT_OVERLAY \
   (gst_text_overlay_get_type())
-#define GST_EBUTTD_OVERLAY(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_EBUTTD_OVERLAY,GstEbuttdOverlay))
-#define GST_EBUTTD_OVERLAY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_EBUTTD_OVERLAY,GstEbuttdOverlayClass))
-#define GST_IS_EBUTTD_OVERLAY(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_EBUTTD_OVERLAY))
-#define GST_IS_EBUTTD_OVERLAY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_EBUTTD_OVERLAY))
+#define GST_TEXT_OVERLAY(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_TEXT_OVERLAY,GstTextOverlay))
+#define GST_TEXT_OVERLAY_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_TEXT_OVERLAY,GstTextOverlayClass))
+#define GST_IS_TEXT_OVERLAY(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_TEXT_OVERLAY))
+#define GST_IS_TEXT_OVERLAY_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_TEXT_OVERLAY))
 
-typedef struct _GstEbuttdOverlay GstEbuttdOverlay;
-typedef struct _GstEbuttdOverlayClass GstEbuttdOverlayClass;
+typedef struct _GstTextOverlay GstTextOverlay;
+typedef struct _GstTextOverlayClass GstTextOverlayClass;
 
 /**
- * GstEbuttdOverlay:
+ * GstTextOverlay:
  *
  * Opaque textoverlay data structure.
  */
-struct _GstEbuttdOverlay {
-  GstBaseEbuttdOverlay parent;
+struct _GstTextOverlay {
+  GstTtmlRender parent;
 };
 
-struct _GstEbuttdOverlayClass {
-  GstBaseEbuttdOverlayClass parent_class;
+struct _GstTextOverlayClass {
+  GstTtmlRenderClass parent_class;
 };
 
 GType gst_text_overlay_get_type (void);
