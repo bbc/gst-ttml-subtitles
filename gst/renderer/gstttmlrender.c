@@ -79,7 +79,7 @@
 #include <gst/video/video.h>
 #include <gst/video/gstvideometa.h>
 
-#include "gstbasetextoverlay.h"
+#include "gstttmlrender.h"
 #include "gsttextoverlay.h"
 #include <string.h>
 #include <math.h>

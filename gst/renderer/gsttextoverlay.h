@@ -21,7 +21,7 @@
 #ifndef __GST_TEXT_OVERLAY_H__
 #define __GST_TEXT_OVERLAY_H__
 
-#include "gstbasetextoverlay.h"
+#include "gstttmlrender.h"
 
 G_BEGIN_DECLS
 

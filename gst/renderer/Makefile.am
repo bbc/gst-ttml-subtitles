@@ -2,7 +2,7 @@ plugin_LTLIBRARIES = libgstttmlrender.la
 
 # sources used to compile this plug-in
 libgstttmlrender_la_SOURCES = \
-	gstbasetextoverlay.c \
+	gstttmlrender.c \
 	gsttextoverlay.c
 
 
@@ -27,6 +27,6 @@ libgstttmlrender_la_LIBTOOLFLAGS = $(GST_PLUGIN_LIBTOOLFLAGS)
 
 # headers we need but don't want installed
 noinst_HEADERS = \
-	gstbasetextoverlay.h \
+	gstttmlrender.h \
 	gsttextoverlay.h
 
