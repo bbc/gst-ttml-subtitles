@@ -2525,15 +2525,6 @@ generate_marked_up_string (GstBaseEbuttdOverlay * overlay,
 }
 
 
-static void
-gst_base_ebuttd_overlay_rendered_text_free (
-    GstBaseEbuttdOverlayRenderedText * text)
-{
-  gst_buffer_unref (text->text_image.image);
-  g_object_unref (text->layout);
-}
-
-
 static GstBaseEbuttdOverlayRenderedText *
 draw_text (GstBaseEbuttdOverlay * overlay, const gchar * text, guint max_width,
     PangoAlignment alignment, guint line_height, guint max_font_size,
@@ -2692,24 +2683,6 @@ get_max_font_size (GPtrArray * elements)
   }
 
   return max_size;
-}
-
-
-static GstBaseEbuttdOverlayLocatedImage *
-create_located_image (GstBuffer * image, gint x, gint y, guint width,
-    guint height)
-{
-  GstBaseEbuttdOverlayLocatedImage *ret;
-
-  ret = g_slice_new0 (GstBaseEbuttdOverlayLocatedImage);
-
-  ret->image = image;
-  ret->extents.x = x;
-  ret->extents.y = y;
-  ret->extents.width = width;
-  ret->extents.height = height;
-
-  return ret;
 }
 
 
@@ -3035,35 +3008,6 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
 }
 
 
-static GstBaseEbuttdOverlayExtents
-calculate_block_extents (GSList * layers)
-{
-  GstBaseEbuttdOverlayLayer *layer;
-  guint leftmost_edge = G_MAXUINT, rightmost_edge = 0U,
-        topmost_edge = G_MAXUINT, bottommost_edge = 0U;
-  GstBaseEbuttdOverlayExtents ret;
-  guint i;
-
-  for (i = 0; i < g_slist_length (layers); ++i) {
-    layer = (GstBaseEbuttdOverlayLayer *)g_slist_nth_data (layers, i);
-    if (layer->xpos < leftmost_edge)
-      leftmost_edge = layer->xpos;
-    if ((layer->xpos + layer->width) > rightmost_edge)
-      rightmost_edge = (layer->xpos + layer->width);
-    if (layer->ypos < topmost_edge)
-      topmost_edge = layer->ypos;
-    if ((layer->ypos + layer->height) > bottommost_edge)
-      bottommost_edge = (layer->ypos + layer->height);
-  }
-
-  ret.x = (gint) leftmost_edge;
-  ret.y = (gint) topmost_edge;
-  ret.width = rightmost_edge - leftmost_edge;
-  ret.height = bottommost_edge - topmost_edge;
-  return  ret;
-}
-
-
 static PangoAlignment
 get_alignment (GstSubtitleStyleSet * style)
 {
@@ -3217,42 +3161,6 @@ render_text_block (GstBaseEbuttdOverlay * overlay, GstSubtitleBlock * block,
 }
 
 
-static GSList *
-create_layers (GstBaseEbuttdOverlayRenderedBlock * block, guint offset_x,
-    guint offset_y)
-{
-  /* Create a layer for each located image that makes up the block area,
-   * offsetting them according to offset_x and offset_y.  */
-  GSList *located_images;
-  GstBaseEbuttdOverlayLocatedImage *located_image;
-  GstBaseEbuttdOverlayLayer *layer;
-  GSList *ret = NULL;
-
-  GST_CAT_DEBUG (ebuttdrender, "offset_x:%u  offset_y:%u", offset_x, offset_y);
-
-  for (located_images = block->images; located_images != NULL;
-      located_images = located_images->next) {
-    located_image = located_images->data;
-    layer = create_new_layer (located_image->image,
-        located_image->extents.x + offset_x,
-        located_image->extents.y + offset_y,
-        located_image->extents.width, located_image->extents.height);
-    ret = g_slist_append (ret, layer);
-  }
-
-  return ret;
-}
-
-
-static void
-free_located_image (GstBaseEbuttdOverlayLocatedImage * image)
-{
-  if (image->image)
-    gst_buffer_unref (image->image);
-  g_slice_free (GstBaseEbuttdOverlayLocatedImage, image);
-}
-
-
 static void
 free_layer (GstBaseEbuttdOverlayLayer * layer)
 {
@@ -3261,15 +3169,6 @@ free_layer (GstBaseEbuttdOverlayLayer * layer)
   if (layer->rectangle)
     gst_video_overlay_rectangle_unref (layer->rectangle);
   g_slice_free (GstBaseEbuttdOverlayLayer, layer);
-}
-
-
-static void
-free_rendered_block (GstBaseEbuttdOverlayRenderedBlock * block)
-{
-  if (block->images)
-    g_slist_free_full (block->images, (GDestroyNotify) free_located_image);
-  g_slice_free (GstBaseEbuttdOverlayRenderedBlock, block);
 }
 
 
