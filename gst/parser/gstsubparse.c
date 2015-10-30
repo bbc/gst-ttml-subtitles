@@ -1575,6 +1575,7 @@ handle_buffer (GstTtmlParse * self, GstBuffer * buf)
   }
 
   if (g_strcmp0 (self->subtitle_codec, "EBUTT") == 0) {
+    GList *subtitle;
     GTimer *timer = g_timer_new ();
 
     /* use libxml2 instead of line by line parsing
@@ -1588,8 +1589,8 @@ handle_buffer (GstTtmlParse * self, GstBuffer * buf)
         g_timer_elapsed (timer, NULL) * 1000.0);
     g_timer_destroy (timer);
 
-    while (subtitle_list) {
-      GstBuffer *op_buffer = subtitle_list->data;
+    for (subtitle = subtitle_list; subtitle; subtitle = subtitle->next) {
+      GstBuffer *op_buffer = subtitle->data;
       self->segment.position = GST_BUFFER_PTS (op_buffer);
 
       GST_DEBUG_OBJECT (self, "Sending buffer %p, %llu %llu",
@@ -1600,8 +1601,6 @@ handle_buffer (GstTtmlParse * self, GstBuffer * buf)
 
       if (ret != GST_FLOW_OK)
         GST_DEBUG_OBJECT (self, "flow: %s", gst_flow_get_name (ret));
-
-      subtitle_list = subtitle_list->next;
     }
 
     g_list_free (subtitle_list);

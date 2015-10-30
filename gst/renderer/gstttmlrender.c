@@ -321,6 +321,10 @@ static gboolean gst_ttml_render_can_handle_caps (GstCaps * incaps);
 static gboolean gst_text_overlay_filter_foreground_attr (PangoAttribute * attr,
     gpointer data);
 
+static GstTtmlRenderRenderedImage * rendered_image_new (GstBuffer * image,
+    gint x, gint y, guint width, guint height);
+static GstTtmlRenderRenderedImage * rendered_image_new_empty ();
+
 GType
 gst_ttml_render_get_type (void)
 {
@@ -546,6 +550,12 @@ gst_ttml_render_finalize (GObject * object)
   if (overlay->composition) {
     gst_video_overlay_composition_unref (overlay->composition);
     overlay->composition = NULL;
+  }
+
+  if (overlay->compositions) {
+    g_list_free_full (overlay->compositions,
+        (GDestroyNotify) gst_video_overlay_composition_unref);
+    overlay->compositions = NULL;
   }
 
   if (overlay->text_image) {
@@ -2545,9 +2555,11 @@ draw_text (GstTtmlRender * overlay, const gchar * text, guint max_width,
   gint stride;
 
   ret = g_slice_new0 (GstTtmlRenderRenderedText);
-  class = GST_TTML_RENDER_GET_CLASS (overlay);
+  ret->text_image = rendered_image_new_empty ();
 
+  class = GST_TTML_RENDER_GET_CLASS (overlay);
   ret->layout = pango_layout_new (class->pango_context);
+
   pango_layout_set_markup (ret->layout, text, strlen (text));
   GST_CAT_DEBUG (ttmlrender, "Layout text: %s",
       pango_layout_get_text (ret->layout));
@@ -2619,10 +2631,10 @@ draw_text (GstTtmlRender * overlay, const gchar * text, guint max_width,
    * The following code crops blankspace from around the rendered text,
    * returning only the rendered text itself in a GstBuffer. */
   /* TODO: move into a separate function? */
-  ret->text_image.image =
+  ret->text_image->image =
     gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
-  gst_buffer_memset (ret->text_image.image, 0, 0U, 4 * buf_width * buf_height);
-  gst_buffer_map (ret->text_image.image, &map, GST_MAP_READWRITE);
+  gst_buffer_memset (ret->text_image->image, 0, 0U, 4 * buf_width * buf_height);
+  gst_buffer_map (ret->text_image->image, &map, GST_MAP_READWRITE);
 
   stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
   GST_CAT_DEBUG (ttmlrender, "stride:%d", stride);
@@ -2641,10 +2653,10 @@ draw_text (GstTtmlRender * overlay, const gchar * text, guint max_width,
   cairo_surface_destroy (surface);
   cairo_destroy (cropped_state);
   cairo_surface_destroy (cropped_surface);
-  gst_buffer_unmap (ret->text_image.image, &map);
+  gst_buffer_unmap (ret->text_image->image, &map);
 
-  ret->text_image.width = buf_width;
-  ret->text_image.height = buf_height;
+  ret->text_image->width = buf_width;
+  ret->text_image->height = buf_height;
   ret->horiz_offset = logical_rect.x;
 
   return ret;
@@ -2704,6 +2716,12 @@ rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
   ret->height = height;
 
   return ret;
+}
+
+static GstTtmlRenderRenderedImage *
+rendered_image_new_empty ()
+{
+  return rendered_image_new (NULL, 0, 0, 0, 0);
 }
 
 
@@ -2823,6 +2841,7 @@ rendered_image_combine (GstTtmlRenderRenderedImage * image1,
   cairo_destroy (state_dest);
   cairo_surface_destroy (sfc1);
   cairo_surface_destroy (sfc2);
+  cairo_surface_destroy (sfc_dest);
   gst_buffer_unmap (image1->image, &map1);
   gst_buffer_unmap (image2->image, &map2);
   gst_buffer_unmap (ret->image, &map_dest);
@@ -2881,6 +2900,7 @@ rendered_image_crop (GstTtmlRenderRenderedImage * image, gint x, gint y,
 
   cairo_destroy (state_dest);
   cairo_surface_destroy (sfc_src);
+  cairo_surface_destroy (sfc_dest);
   gst_buffer_unmap (image->image, &map_src);
   gst_buffer_unmap (ret->image, &map_dest);
 
@@ -2985,8 +3005,6 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
         area_end = line_end + (2 * line_padding);
       }
 
-      GST_CAT_DEBUG (ttmlrender, "Element bg colour: %s",
-          color_to_rgba_string (element->style.bg_color));
       rect_width = (area_end - area_start);
 
       /* <br>s will result in zero-width rectangle */
@@ -3078,6 +3096,17 @@ stitch_blocks (GList * blocks)
 }
 
 
+static void
+rendered_text_free (GstTtmlRenderRenderedText * text)
+{
+  if (text->text_image)
+    rendered_image_free (text->text_image);
+  if (text->layout)
+    g_object_unref (text->layout);
+  g_slice_free (GstTtmlRenderRenderedText, text);
+}
+
+
 static GstTtmlRenderRenderedImage *
 render_text_block (GstTtmlRender * overlay, GstSubtitleBlock * block,
     GstBuffer * text_buf, guint width, gboolean overflow)
@@ -3089,7 +3118,6 @@ render_text_block (GstTtmlRender * overlay, GstSubtitleBlock * block,
   guint line_padding;
   gint text_offset = 0;
   GstTtmlRenderRenderedText *rendered_text;
-  GstTtmlRenderRenderedImage *text;
   GstTtmlRenderRenderedImage *backgrounds = NULL;
   GstTtmlRenderRenderedImage *ret;
 
@@ -3116,18 +3144,17 @@ render_text_block (GstTtmlRender * overlay, GstSubtitleBlock * block,
       text_offset = line_padding;
       break;
     case GST_SUBTITLE_TEXT_ALIGN_CENTER:
-      text_offset = ((gint)width - rendered_text->text_image.width);
+      text_offset = ((gint)width - rendered_text->text_image->width);
       text_offset /= 2;
       break;
     case GST_SUBTITLE_TEXT_ALIGN_END:
     case GST_SUBTITLE_TEXT_ALIGN_RIGHT:
-      text_offset = (gint)width - (rendered_text->text_image.width + line_padding);
+      text_offset = (gint)width
+        - (rendered_text->text_image->width + line_padding);
       break;
   }
 
-  text = rendered_image_new (rendered_text->text_image.image,
-      text_offset, 0, rendered_text->text_image.width,
-      rendered_text->text_image.height);
+  rendered_text->text_image->x = text_offset;
 
   /* Render background rectangles, if any. */
   backgrounds = render_element_backgrounds (block->elements, char_ranges,
@@ -3150,10 +3177,11 @@ render_text_block (GstTtmlRender * overlay, GstSubtitleBlock * block,
   }
 
   /* Combine text and background images. */
-  ret = rendered_image_combine (backgrounds, text);
+  ret = rendered_image_combine (backgrounds, rendered_text->text_image);
   rendered_image_free (backgrounds);
-  rendered_image_free (text);
+  rendered_text_free (rendered_text);
 
+  g_free (marked_up_string);
   g_ptr_array_unref (char_ranges);
   GST_CAT_DEBUG (ttmlrender, "block width: %u   block height: %u",
       ret->width, ret->height);
@@ -3452,10 +3480,11 @@ wait_for_text_buf:
           GstSubtitleMeta *subtitle_meta = NULL;
           guint i;
 
-          if (overlay->compositions)
+          if (overlay->compositions) {
             g_list_free_full (overlay->compositions,
                 (GDestroyNotify) gst_video_overlay_composition_unref);
-          overlay->compositions = NULL;
+            overlay->compositions = NULL;
+          }
 
           subtitle_meta = gst_buffer_get_subtitle_meta (overlay->text_buffer);
           g_assert (subtitle_meta != NULL);

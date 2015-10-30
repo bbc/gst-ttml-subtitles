@@ -60,6 +60,12 @@ gst_subtitle_style_set_new ()
   return ret;
 }
 
+void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset)
+{
+  g_return_if_fail (styleset != NULL);
+  g_slice_free (GstSubtitleStyleSet, styleset);
+}
+
 void
 gst_subtitle_style_set_copy (const GstSubtitleStyleSet * src,
     GstSubtitleStyleSet * dest)

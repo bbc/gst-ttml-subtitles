@@ -59,7 +59,7 @@ typedef struct {
 } GstTtmlRenderRenderedImage;
 
 typedef struct {
-  GstTtmlRenderRenderedImage text_image;
+  GstTtmlRenderRenderedImage *text_image;
   PangoLayout *layout; /* TODO: Add some documentation re. why this is needed. */
 
   /* To cope with the fact that pango positions text at a different horizontal
