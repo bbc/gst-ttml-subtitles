@@ -111,15 +111,11 @@ GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 #define DEFAULT_PROP_VERTICAL_RENDER  FALSE
 #define DEFAULT_PROP_COLOR      0xffffffff
 #define DEFAULT_PROP_OUTLINE_COLOR 0xff000000
-#define DEFAULT_PROP_BACKGROUND_YPAD 5
-
-#define DEFAULT_PROP_CELL_RESOLUTION_X 40
-#define DEFAULT_PROP_CELL_RESOLUTION_Y 24
 
 #define DEFAULT_PROP_SHADING_VALUE    80
 
 #define MINIMUM_OUTLINE_OFFSET 1.0
-#define DEFAULT_SCALE_BASIS    1024
+#define DEFAULT_SCALE_BASIS    640
 
 enum
 {
@@ -268,19 +264,19 @@ gst_ttml_render_line_align_get_type (void)
 static GstElementClass *parent_class = NULL;
 static void gst_ttml_render_base_init (gpointer g_class);
 static void gst_ttml_render_class_init (GstTtmlRenderClass * klass);
-static void gst_ttml_render_init (GstTtmlRender * overlay,
+static void gst_ttml_render_init (GstTtmlRender * render,
     GstTtmlRenderClass * klass);
 
 static GstStateChangeReturn gst_ttml_render_change_state (GstElement *
     element, GstStateChange transition);
 
 static GstCaps *gst_ttml_render_get_videosink_caps (GstPad * pad,
-    GstTtmlRender * overlay, GstCaps * filter);
+    GstTtmlRender * render, GstCaps * filter);
 static GstCaps *gst_ttml_render_get_src_caps (GstPad * pad,
-    GstTtmlRender * overlay, GstCaps * filter);
-static gboolean gst_ttml_render_setcaps (GstTtmlRender * overlay,
+    GstTtmlRender * render, GstCaps * filter);
+static gboolean gst_ttml_render_setcaps (GstTtmlRender * render,
     GstCaps * caps);
-static gboolean gst_ttml_render_setcaps_txt (GstTtmlRender * overlay,
+static gboolean gst_ttml_render_setcaps_txt (GstTtmlRender * render,
     GstCaps * caps);
 static gboolean gst_ttml_render_src_event (GstPad * pad,
     GstObject * parent, GstEvent * event);
@@ -302,9 +298,9 @@ static GstPadLinkReturn gst_ttml_render_text_pad_link (GstPad * pad,
     GstObject * parent, GstPad * peer);
 static void gst_ttml_render_text_pad_unlink (GstPad * pad,
     GstObject * parent);
-static void gst_ttml_render_pop_text (GstTtmlRender * overlay);
+static void gst_ttml_render_pop_text (GstTtmlRender * render);
 static void gst_ttml_render_update_render_mode (GstTtmlRender *
-    overlay);
+    render);
 
 static void gst_ttml_render_finalize (GObject * object);
 static void gst_ttml_render_set_property (GObject * object, guint prop_id,
@@ -313,7 +309,7 @@ static void gst_ttml_render_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static void
-gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * overlay,
+gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * render,
     PangoFontDescription * desc);
 static gboolean gst_ttml_render_can_handle_caps (GstCaps * incaps);
 
@@ -352,10 +348,10 @@ gst_ttml_render_get_type (void)
 }
 
 static gchar *
-gst_ttml_render_get_text (GstTtmlRender * overlay,
+gst_ttml_render_get_text (GstTtmlRender * render,
     GstBuffer * video_frame)
 {
-  return g_strdup (overlay->default_text);
+  return g_strdup (render->default_text);
 }
 
 static void
@@ -543,137 +539,134 @@ gst_ttml_render_class_init (GstTtmlRenderClass * klass)
 static void
 gst_ttml_render_finalize (GObject * object)
 {
-  GstTtmlRender *overlay = GST_TTML_RENDER (object);
+  GstTtmlRender *render = GST_TTML_RENDER (object);
 
-  g_free (overlay->default_text);
+  g_free (render->default_text);
 
-  if (overlay->composition) {
-    gst_video_overlay_composition_unref (overlay->composition);
-    overlay->composition = NULL;
+  if (render->composition) {
+    gst_video_overlay_composition_unref (render->composition);
+    render->composition = NULL;
   }
 
-  if (overlay->compositions) {
-    g_list_free_full (overlay->compositions,
+  if (render->compositions) {
+    g_list_free_full (render->compositions,
         (GDestroyNotify) gst_video_overlay_composition_unref);
-    overlay->compositions = NULL;
+    render->compositions = NULL;
   }
 
-  if (overlay->text_image) {
-    gst_buffer_unref (overlay->text_image);
-    overlay->text_image = NULL;
+  if (render->text_image) {
+    gst_buffer_unref (render->text_image);
+    render->text_image = NULL;
   }
 
-  if (overlay->layout) {
-    g_object_unref (overlay->layout);
-    overlay->layout = NULL;
+  if (render->layout) {
+    g_object_unref (render->layout);
+    render->layout = NULL;
   }
 
-  if (overlay->text_buffer) {
-    gst_buffer_unref (overlay->text_buffer);
-    overlay->text_buffer = NULL;
+  if (render->text_buffer) {
+    gst_buffer_unref (render->text_buffer);
+    render->text_buffer = NULL;
   }
 
-  g_mutex_clear (&overlay->lock);
-  g_cond_clear (&overlay->cond);
+  g_mutex_clear (&render->lock);
+  g_cond_clear (&render->cond);
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
 static void
-gst_ttml_render_init (GstTtmlRender * overlay,
+gst_ttml_render_init (GstTtmlRender * render,
     GstTtmlRenderClass * klass)
 {
   GstPadTemplate *template;
   PangoFontDescription *desc;
 
-  GST_DEBUG_CATEGORY_INIT (ttmlrender, "ttmlrender", 0,
-      "EBU-TT-D renderer debug category");
-
   /* video sink */
   template = gst_static_pad_template_get (&video_sink_template_factory);
-  overlay->video_sinkpad = gst_pad_new_from_template (template, "video_sink");
+  render->video_sinkpad = gst_pad_new_from_template (template, "video_sink");
   gst_object_unref (template);
-  gst_pad_set_event_function (overlay->video_sinkpad,
+  gst_pad_set_event_function (render->video_sinkpad,
       GST_DEBUG_FUNCPTR (gst_ttml_render_video_event));
-  gst_pad_set_chain_function (overlay->video_sinkpad,
+  gst_pad_set_chain_function (render->video_sinkpad,
       GST_DEBUG_FUNCPTR (gst_ttml_render_video_chain));
-  gst_pad_set_query_function (overlay->video_sinkpad,
+  gst_pad_set_query_function (render->video_sinkpad,
       GST_DEBUG_FUNCPTR (gst_ttml_render_video_query));
-  GST_PAD_SET_PROXY_ALLOCATION (overlay->video_sinkpad);
-  gst_element_add_pad (GST_ELEMENT (overlay), overlay->video_sinkpad);
+  GST_PAD_SET_PROXY_ALLOCATION (render->video_sinkpad);
+  gst_element_add_pad (GST_ELEMENT (render), render->video_sinkpad);
 
   template =
       gst_element_class_get_pad_template (GST_ELEMENT_CLASS (klass),
       "text_sink");
   if (template) {
     /* text sink */
-    overlay->text_sinkpad = gst_pad_new_from_template (template, "text_sink");
+    render->text_sinkpad = gst_pad_new_from_template (template, "text_sink");
 
-    gst_pad_set_event_function (overlay->text_sinkpad,
+    gst_pad_set_event_function (render->text_sinkpad,
         GST_DEBUG_FUNCPTR (gst_ttml_render_text_event));
-    gst_pad_set_chain_function (overlay->text_sinkpad,
+    gst_pad_set_chain_function (render->text_sinkpad,
         GST_DEBUG_FUNCPTR (gst_ttml_render_text_chain));
-    gst_pad_set_link_function (overlay->text_sinkpad,
+    gst_pad_set_link_function (render->text_sinkpad,
         GST_DEBUG_FUNCPTR (gst_ttml_render_text_pad_link));
-    gst_pad_set_unlink_function (overlay->text_sinkpad,
+    gst_pad_set_unlink_function (render->text_sinkpad,
         GST_DEBUG_FUNCPTR (gst_ttml_render_text_pad_unlink));
-    gst_element_add_pad (GST_ELEMENT (overlay), overlay->text_sinkpad);
+    gst_element_add_pad (GST_ELEMENT (render), render->text_sinkpad);
   }
 
   /* (video) source */
   template = gst_static_pad_template_get (&src_template_factory);
-  overlay->srcpad = gst_pad_new_from_template (template, "src");
+  render->srcpad = gst_pad_new_from_template (template, "src");
   gst_object_unref (template);
-  gst_pad_set_event_function (overlay->srcpad,
+  gst_pad_set_event_function (render->srcpad,
       GST_DEBUG_FUNCPTR (gst_ttml_render_src_event));
-  gst_pad_set_query_function (overlay->srcpad,
+  gst_pad_set_query_function (render->srcpad,
       GST_DEBUG_FUNCPTR (gst_ttml_render_src_query));
-  gst_element_add_pad (GST_ELEMENT (overlay), overlay->srcpad);
+  gst_element_add_pad (GST_ELEMENT (render), render->srcpad);
 
-  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-  overlay->line_align = DEFAULT_PROP_LINE_ALIGNMENT;
-  overlay->layout =
+  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+  render->line_align = DEFAULT_PROP_LINE_ALIGNMENT;
+  render->layout =
       pango_layout_new (GST_TTML_RENDER_GET_CLASS
-      (overlay)->pango_context);
+      (render)->pango_context);
   desc =
       pango_context_get_font_description (GST_TTML_RENDER_GET_CLASS
-      (overlay)->pango_context);
-  gst_ttml_render_adjust_values_with_fontdesc (overlay, desc);
+      (render)->pango_context);
+  gst_ttml_render_adjust_values_with_fontdesc (render, desc);
 
-  overlay->color = DEFAULT_PROP_COLOR;
-  overlay->outline_color = DEFAULT_PROP_OUTLINE_COLOR;
-  overlay->halign = DEFAULT_PROP_HALIGNMENT;
-  overlay->valign = DEFAULT_PROP_VALIGNMENT;
-  overlay->xpad = DEFAULT_PROP_XPAD;
-  overlay->ypad = DEFAULT_PROP_YPAD;
-  overlay->deltax = DEFAULT_PROP_DELTAX;
-  overlay->deltay = DEFAULT_PROP_DELTAY;
-  overlay->xpos = DEFAULT_PROP_XPOS;
-  overlay->ypos = DEFAULT_PROP_YPOS;
+  render->color = DEFAULT_PROP_COLOR;
+  render->outline_color = DEFAULT_PROP_OUTLINE_COLOR;
+  render->halign = DEFAULT_PROP_HALIGNMENT;
+  render->valign = DEFAULT_PROP_VALIGNMENT;
+  render->xpad = DEFAULT_PROP_XPAD;
+  render->ypad = DEFAULT_PROP_YPAD;
+  render->deltax = DEFAULT_PROP_DELTAX;
+  render->deltay = DEFAULT_PROP_DELTAY;
+  render->xpos = DEFAULT_PROP_XPOS;
+  render->ypos = DEFAULT_PROP_YPOS;
 
-  overlay->wrap_mode = DEFAULT_PROP_WRAP_MODE;
+  render->wrap_mode = DEFAULT_PROP_WRAP_MODE;
 
-  overlay->want_shading = DEFAULT_PROP_SHADING;
-  overlay->shading_value = DEFAULT_PROP_SHADING_VALUE;
-  overlay->silent = DEFAULT_PROP_SILENT;
-  overlay->wait_text = DEFAULT_PROP_WAIT_TEXT;
-  overlay->auto_adjust_size = DEFAULT_PROP_AUTO_ADJUST_SIZE;
+  render->want_shading = DEFAULT_PROP_SHADING;
+  render->shading_value = DEFAULT_PROP_SHADING_VALUE;
+  render->silent = DEFAULT_PROP_SILENT;
+  render->wait_text = DEFAULT_PROP_WAIT_TEXT;
+  render->auto_adjust_size = DEFAULT_PROP_AUTO_ADJUST_SIZE;
 
-  overlay->default_text = g_strdup (DEFAULT_PROP_TEXT);
-  overlay->need_render = TRUE;
-  overlay->text_image = NULL;
-  overlay->use_vertical_render = DEFAULT_PROP_VERTICAL_RENDER;
-  gst_ttml_render_update_render_mode (overlay);
+  render->default_text = g_strdup (DEFAULT_PROP_TEXT);
+  render->need_render = TRUE;
+  render->text_image = NULL;
+  render->use_vertical_render = DEFAULT_PROP_VERTICAL_RENDER;
+  gst_ttml_render_update_render_mode (render);
 
-  overlay->text_buffer = NULL;
-  overlay->text_linked = FALSE;
+  render->text_buffer = NULL;
+  render->text_linked = FALSE;
 
-  overlay->compositions = NULL;
+  render->compositions = NULL;
 
-  g_mutex_init (&overlay->lock);
-  g_cond_init (&overlay->cond);
-  gst_segment_init (&overlay->segment, GST_FORMAT_TIME);
-  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+  g_mutex_init (&render->lock);
+  g_cond_init (&render->cond);
+  gst_segment_init (&render->segment, GST_FORMAT_TIME);
+  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
 }
 
 
@@ -694,67 +687,67 @@ gst_ttml_render_layer_free (GstTtmlRenderLayer * layer)
 
 
 static void
-gst_ttml_render_update_wrap_mode (GstTtmlRender * overlay)
+gst_ttml_render_update_wrap_mode (GstTtmlRender * render)
 {
-  if (overlay->wrap_mode == GST_TTML_RENDER_WRAP_MODE_NONE) {
-    GST_DEBUG_OBJECT (overlay, "Set wrap mode NONE");
-    pango_layout_set_width (overlay->layout, -1);
+  if (render->wrap_mode == GST_TTML_RENDER_WRAP_MODE_NONE) {
+    GST_DEBUG_OBJECT (render, "Set wrap mode NONE");
+    pango_layout_set_width (render->layout, -1);
   } else {
     int width;
 
-    if (overlay->auto_adjust_size) {
+    if (render->auto_adjust_size) {
       width = DEFAULT_SCALE_BASIS * PANGO_SCALE;
-      if (overlay->use_vertical_render) {
-        width = width * (overlay->height - overlay->ypad * 2) / overlay->width;
+      if (render->use_vertical_render) {
+        width = width * (render->height - render->ypad * 2) / render->width;
       }
     } else {
       width =
-          (overlay->use_vertical_render ? overlay->height : overlay->width) *
+          (render->use_vertical_render ? render->height : render->width) *
           PANGO_SCALE;
     }
 
-    GST_DEBUG_OBJECT (overlay, "Set layout width %d", overlay->width);
-    GST_DEBUG_OBJECT (overlay, "Set wrap mode    %d", overlay->wrap_mode);
-    pango_layout_set_width (overlay->layout, width);
-    pango_layout_set_wrap (overlay->layout, (PangoWrapMode) overlay->wrap_mode);
+    GST_DEBUG_OBJECT (render, "Set layout width %d", render->width);
+    GST_DEBUG_OBJECT (render, "Set wrap mode    %d", render->wrap_mode);
+    pango_layout_set_width (render->layout, width);
+    pango_layout_set_wrap (render->layout, (PangoWrapMode) render->wrap_mode);
   }
 }
 
 static void
-gst_ttml_render_update_render_mode (GstTtmlRender * overlay)
+gst_ttml_render_update_render_mode (GstTtmlRender * render)
 {
   PangoMatrix matrix = PANGO_MATRIX_INIT;
-  PangoContext *context = pango_layout_get_context (overlay->layout);
+  PangoContext *context = pango_layout_get_context (render->layout);
 
-  if (overlay->use_vertical_render) {
+  if (render->use_vertical_render) {
     pango_matrix_rotate (&matrix, -90);
     pango_context_set_base_gravity (context, PANGO_GRAVITY_AUTO);
     pango_context_set_matrix (context, &matrix);
-    pango_layout_set_alignment (overlay->layout, PANGO_ALIGN_LEFT);
+    pango_layout_set_alignment (render->layout, PANGO_ALIGN_LEFT);
   } else {
     pango_context_set_base_gravity (context, PANGO_GRAVITY_SOUTH);
     pango_context_set_matrix (context, &matrix);
-    pango_layout_set_alignment (overlay->layout,
-        (PangoAlignment) overlay->line_align);
+    pango_layout_set_alignment (render->layout,
+        (PangoAlignment) render->line_align);
   }
 }
 
 static gboolean
-gst_ttml_render_setcaps_txt (GstTtmlRender * overlay, GstCaps * caps)
+gst_ttml_render_setcaps_txt (GstTtmlRender * render, GstCaps * caps)
 {
   GstStructure *structure;
   const gchar *format;
 
   structure = gst_caps_get_structure (caps, 0);
   format = gst_structure_get_string (structure, "format");
-  overlay->have_pango_markup = format && (strcmp (format, "pango-markup") == 0);
+  render->have_pango_markup = format && (strcmp (format, "pango-markup") == 0);
 
   return TRUE;
 }
 
-/* only negotiate/query video overlay composition support for now */
+/* only negotiate/query video render composition support for now */
 static gboolean
-gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
+gst_ttml_render_negotiate (GstTtmlRender * render, GstCaps * caps)
 {
   GstQuery *query;
   gboolean attach = FALSE;
@@ -765,10 +758,10 @@ gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
   gboolean original_has_meta = FALSE;
   gboolean allocation_ret = TRUE;
 
-  GST_DEBUG_OBJECT (overlay, "performing negotiation");
+  GST_DEBUG_OBJECT (render, "performing negotiation");
 
   if (!caps)
-    caps = gst_pad_get_current_caps (overlay->video_sinkpad);
+    caps = gst_pad_get_current_caps (render->video_sinkpad);
   else
     gst_caps_ref (caps);
 
@@ -777,10 +770,10 @@ gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
 
   original_caps = caps;
 
-  /* Try to use the overlay meta if possible */
+  /* Try to use the render meta if possible */
   f = gst_caps_get_features (caps, 0);
 
-  /* if the caps doesn't have the overlay meta, we query if downstream
+  /* if the caps doesn't have the render meta, we query if downstream
    * accepts it before trying the version without the meta
    * If upstream already is using the meta then we can only use it */
   if (!f
@@ -796,8 +789,8 @@ gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
     gst_caps_features_add (f,
         GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION);
 
-    ret = gst_pad_peer_query_accept_caps (overlay->srcpad, overlay_caps);
-    GST_DEBUG_OBJECT (overlay, "Downstream accepts the overlay meta: %d", ret);
+    ret = gst_pad_peer_query_accept_caps (render->srcpad, overlay_caps);
+    GST_DEBUG_OBJECT (render, "Downstream accepts the render meta: %d", ret);
     if (ret) {
       gst_caps_unref (caps);
       caps = overlay_caps;
@@ -810,16 +803,16 @@ gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
   } else {
     original_has_meta = TRUE;
   }
-  GST_DEBUG_OBJECT (overlay, "Using caps %" GST_PTR_FORMAT, caps);
-  ret = gst_pad_set_caps (overlay->srcpad, caps);
+  GST_DEBUG_OBJECT (render, "Using caps %" GST_PTR_FORMAT, caps);
+  ret = gst_pad_set_caps (render->srcpad, caps);
 
   if (ret) {
     /* find supported meta */
     query = gst_query_new_allocation (caps, FALSE);
 
-    if (!gst_pad_peer_query (overlay->srcpad, query)) {
+    if (!gst_pad_peer_query (render->srcpad, query)) {
       /* no problem, we use the query defaults */
-      GST_DEBUG_OBJECT (overlay, "ALLOCATION query failed");
+      GST_DEBUG_OBJECT (render, "ALLOCATION query failed");
       allocation_ret = FALSE;
     }
 
@@ -830,9 +823,9 @@ gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
     gst_query_unref (query);
   }
 
-  overlay->attach_compo_to_buffer = attach;
+  render->attach_compo_to_buffer = attach;
 
-  if (!allocation_ret && overlay->video_flushing) {
+  if (!allocation_ret && render->video_flushing) {
     ret = FALSE;
   } else if (original_caps && !original_has_meta && !attach) {
     if (caps_has_meta) {
@@ -841,15 +834,15 @@ gst_ttml_render_negotiate (GstTtmlRender * overlay, GstCaps * caps)
          check to fail. Prevent this by removing the meta from caps */
       gst_caps_unref (caps);
       caps = gst_caps_ref (original_caps);
-      ret = gst_pad_set_caps (overlay->srcpad, caps);
+      ret = gst_pad_set_caps (render->srcpad, caps);
       if (ret && !gst_ttml_render_can_handle_caps (caps))
         ret = FALSE;
     }
   }
 
   if (!ret) {
-    GST_DEBUG_OBJECT (overlay, "negotiation failed, schedule reconfigure");
-    gst_pad_mark_reconfigure (overlay->srcpad);
+    GST_DEBUG_OBJECT (render, "negotiation failed, schedule reconfigure");
+    gst_pad_mark_reconfigure (render->srcpad);
   }
 
   gst_caps_unref (caps);
@@ -879,7 +872,7 @@ gst_ttml_render_can_handle_caps (GstCaps * incaps)
 }
 
 static gboolean
-gst_ttml_render_setcaps (GstTtmlRender * overlay, GstCaps * caps)
+gst_ttml_render_setcaps (GstTtmlRender * render, GstCaps * caps)
 {
   GstVideoInfo info;
   gboolean ret = FALSE;
@@ -887,31 +880,31 @@ gst_ttml_render_setcaps (GstTtmlRender * overlay, GstCaps * caps)
   if (!gst_video_info_from_caps (&info, caps))
     goto invalid_caps;
 
-  overlay->info = info;
-  overlay->format = GST_VIDEO_INFO_FORMAT (&info);
-  overlay->width = GST_VIDEO_INFO_WIDTH (&info);
-  overlay->height = GST_VIDEO_INFO_HEIGHT (&info);
+  render->info = info;
+  render->format = GST_VIDEO_INFO_FORMAT (&info);
+  render->width = GST_VIDEO_INFO_WIDTH (&info);
+  render->height = GST_VIDEO_INFO_HEIGHT (&info);
 
-  ret = gst_ttml_render_negotiate (overlay, caps);
+  ret = gst_ttml_render_negotiate (render, caps);
 
-  GST_TTML_RENDER_LOCK (overlay);
-  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-  if (!overlay->attach_compo_to_buffer &&
+  GST_TTML_RENDER_LOCK (render);
+  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+  if (!render->attach_compo_to_buffer &&
       !gst_ttml_render_can_handle_caps (caps)) {
-    GST_DEBUG_OBJECT (overlay, "unsupported caps %" GST_PTR_FORMAT, caps);
+    GST_DEBUG_OBJECT (render, "unsupported caps %" GST_PTR_FORMAT, caps);
     ret = FALSE;
   }
 
-  gst_ttml_render_update_wrap_mode (overlay);
-  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-  GST_TTML_RENDER_UNLOCK (overlay);
+  gst_ttml_render_update_wrap_mode (render);
+  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+  GST_TTML_RENDER_UNLOCK (render);
 
   return ret;
 
   /* ERRORS */
 invalid_caps:
   {
-    GST_DEBUG_OBJECT (overlay, "could not parse caps");
+    GST_DEBUG_OBJECT (render, "could not parse caps");
     return FALSE;
   }
 }
@@ -920,47 +913,47 @@ static void
 gst_ttml_render_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTtmlRender *overlay = GST_TTML_RENDER (object);
+  GstTtmlRender *render = GST_TTML_RENDER (object);
 
-  GST_TTML_RENDER_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (render);
   switch (prop_id) {
     case PROP_TEXT:
-      g_free (overlay->default_text);
-      overlay->default_text = g_value_dup_string (value);
-      overlay->need_render = TRUE;
+      g_free (render->default_text);
+      render->default_text = g_value_dup_string (value);
+      render->need_render = TRUE;
       break;
     case PROP_SHADING:
-      overlay->want_shading = g_value_get_boolean (value);
+      render->want_shading = g_value_get_boolean (value);
       break;
     case PROP_XPAD:
-      overlay->xpad = g_value_get_int (value);
+      render->xpad = g_value_get_int (value);
       break;
     case PROP_YPAD:
-      overlay->ypad = g_value_get_int (value);
+      render->ypad = g_value_get_int (value);
       break;
     case PROP_DELTAX:
-      overlay->deltax = g_value_get_int (value);
+      render->deltax = g_value_get_int (value);
       break;
     case PROP_DELTAY:
-      overlay->deltay = g_value_get_int (value);
+      render->deltay = g_value_get_int (value);
       break;
     case PROP_XPOS:
-      overlay->xpos = g_value_get_double (value);
+      render->xpos = g_value_get_double (value);
       break;
     case PROP_YPOS:
-      overlay->ypos = g_value_get_double (value);
+      render->ypos = g_value_get_double (value);
       break;
     case PROP_VALIGNMENT:
-      overlay->valign = g_value_get_enum (value);
+      render->valign = g_value_get_enum (value);
       break;
     case PROP_HALIGNMENT:
-      overlay->halign = g_value_get_enum (value);
+      render->halign = g_value_get_enum (value);
       break;
     case PROP_WRAP_MODE:
-      overlay->wrap_mode = g_value_get_enum (value);
-      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-      gst_ttml_render_update_wrap_mode (overlay);
-      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+      render->wrap_mode = g_value_get_enum (value);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+      gst_ttml_render_update_wrap_mode (render);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
       break;
     case PROP_FONT_DESC:
     {
@@ -968,52 +961,52 @@ gst_ttml_render_set_property (GObject * object, guint prop_id,
       const gchar *fontdesc_str;
 
       fontdesc_str = g_value_get_string (value);
-      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
       desc = pango_font_description_from_string (fontdesc_str);
       if (desc) {
-        GST_LOG_OBJECT (overlay, "font description set: %s", fontdesc_str);
-        pango_layout_set_font_description (overlay->layout, desc);
-        gst_ttml_render_adjust_values_with_fontdesc (overlay, desc);
+        GST_LOG_OBJECT (render, "font description set: %s", fontdesc_str);
+        pango_layout_set_font_description (render->layout, desc);
+        gst_ttml_render_adjust_values_with_fontdesc (render, desc);
         pango_font_description_free (desc);
       } else {
-        GST_WARNING_OBJECT (overlay, "font description parse failed: %s",
+        GST_WARNING_OBJECT (render, "font description parse failed: %s",
             fontdesc_str);
       }
-      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
       break;
     }
     case PROP_COLOR:
-      overlay->color = g_value_get_uint (value);
+      render->color = g_value_get_uint (value);
       break;
     case PROP_OUTLINE_COLOR:
-      overlay->outline_color = g_value_get_uint (value);
+      render->outline_color = g_value_get_uint (value);
       break;
     case PROP_SILENT:
-      overlay->silent = g_value_get_boolean (value);
+      render->silent = g_value_get_boolean (value);
       break;
     case PROP_LINE_ALIGNMENT:
-      overlay->line_align = g_value_get_enum (value);
-      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-      pango_layout_set_alignment (overlay->layout,
-          (PangoAlignment) overlay->line_align);
-      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+      render->line_align = g_value_get_enum (value);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+      pango_layout_set_alignment (render->layout,
+          (PangoAlignment) render->line_align);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
       break;
     case PROP_WAIT_TEXT:
-      overlay->wait_text = g_value_get_boolean (value);
+      render->wait_text = g_value_get_boolean (value);
       break;
     case PROP_AUTO_ADJUST_SIZE:
-      overlay->auto_adjust_size = g_value_get_boolean (value);
-      overlay->need_render = TRUE;
+      render->auto_adjust_size = g_value_get_boolean (value);
+      render->need_render = TRUE;
       break;
     case PROP_VERTICAL_RENDER:
-      overlay->use_vertical_render = g_value_get_boolean (value);
-      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-      gst_ttml_render_update_render_mode (overlay);
-      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-      overlay->need_render = TRUE;
+      render->use_vertical_render = g_value_get_boolean (value);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+      gst_ttml_render_update_render_mode (render);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+      render->need_render = TRUE;
       break;
     case PROP_SHADING_VALUE:
-      overlay->shading_value = g_value_get_uint (value);
+      render->shading_value = g_value_get_uint (value);
       break;
 
     default:
@@ -1021,87 +1014,87 @@ gst_ttml_render_set_property (GObject * object, guint prop_id,
       break;
   }
 
-  overlay->need_render = TRUE;
-  GST_TTML_RENDER_UNLOCK (overlay);
+  render->need_render = TRUE;
+  GST_TTML_RENDER_UNLOCK (render);
 }
 
 static void
 gst_ttml_render_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTtmlRender *overlay = GST_TTML_RENDER (object);
+  GstTtmlRender *render = GST_TTML_RENDER (object);
 
-  GST_TTML_RENDER_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (render);
   switch (prop_id) {
     case PROP_TEXT:
-      g_value_set_string (value, overlay->default_text);
+      g_value_set_string (value, render->default_text);
       break;
     case PROP_SHADING:
-      g_value_set_boolean (value, overlay->want_shading);
+      g_value_set_boolean (value, render->want_shading);
       break;
     case PROP_XPAD:
-      g_value_set_int (value, overlay->xpad);
+      g_value_set_int (value, render->xpad);
       break;
     case PROP_YPAD:
-      g_value_set_int (value, overlay->ypad);
+      g_value_set_int (value, render->ypad);
       break;
     case PROP_DELTAX:
-      g_value_set_int (value, overlay->deltax);
+      g_value_set_int (value, render->deltax);
       break;
     case PROP_DELTAY:
-      g_value_set_int (value, overlay->deltay);
+      g_value_set_int (value, render->deltay);
       break;
     case PROP_XPOS:
-      g_value_set_double (value, overlay->xpos);
+      g_value_set_double (value, render->xpos);
       break;
     case PROP_YPOS:
-      g_value_set_double (value, overlay->ypos);
+      g_value_set_double (value, render->ypos);
       break;
     case PROP_VALIGNMENT:
-      g_value_set_enum (value, overlay->valign);
+      g_value_set_enum (value, render->valign);
       break;
     case PROP_HALIGNMENT:
-      g_value_set_enum (value, overlay->halign);
+      g_value_set_enum (value, render->halign);
       break;
     case PROP_WRAP_MODE:
-      g_value_set_enum (value, overlay->wrap_mode);
+      g_value_set_enum (value, render->wrap_mode);
       break;
     case PROP_SILENT:
-      g_value_set_boolean (value, overlay->silent);
+      g_value_set_boolean (value, render->silent);
       break;
     case PROP_LINE_ALIGNMENT:
-      g_value_set_enum (value, overlay->line_align);
+      g_value_set_enum (value, render->line_align);
       break;
     case PROP_WAIT_TEXT:
-      g_value_set_boolean (value, overlay->wait_text);
+      g_value_set_boolean (value, render->wait_text);
       break;
     case PROP_AUTO_ADJUST_SIZE:
-      g_value_set_boolean (value, overlay->auto_adjust_size);
+      g_value_set_boolean (value, render->auto_adjust_size);
       break;
     case PROP_VERTICAL_RENDER:
-      g_value_set_boolean (value, overlay->use_vertical_render);
+      g_value_set_boolean (value, render->use_vertical_render);
       break;
     case PROP_COLOR:
-      g_value_set_uint (value, overlay->color);
+      g_value_set_uint (value, render->color);
       break;
     case PROP_OUTLINE_COLOR:
-      g_value_set_uint (value, overlay->outline_color);
+      g_value_set_uint (value, render->outline_color);
       break;
     case PROP_SHADING_VALUE:
-      g_value_set_uint (value, overlay->shading_value);
+      g_value_set_uint (value, render->shading_value);
       break;
     case PROP_FONT_DESC:
     {
       const PangoFontDescription *desc;
 
-      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
-      desc = pango_layout_get_font_description (overlay->layout);
+      g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
+      desc = pango_layout_get_font_description (render->layout);
       if (!desc)
         g_value_set_string (value, "");
       else {
         g_value_take_string (value, pango_font_description_to_string (desc));
       }
-      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+      g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
       break;
     }
     default:
@@ -1109,8 +1102,8 @@ gst_ttml_render_get_property (GObject * object, guint prop_id,
       break;
   }
 
-  overlay->need_render = TRUE;
-  GST_TTML_RENDER_UNLOCK (overlay);
+  render->need_render = TRUE;
+  GST_TTML_RENDER_UNLOCK (render);
 }
 
 static gboolean
@@ -1118,9 +1111,9 @@ gst_ttml_render_src_query (GstPad * pad, GstObject * parent,
     GstQuery * query)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *overlay;
+  GstTtmlRender *render;
 
-  overlay = GST_TTML_RENDER (parent);
+  render = GST_TTML_RENDER (parent);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -1128,7 +1121,7 @@ gst_ttml_render_src_query (GstPad * pad, GstObject * parent,
       GstCaps *filter, *caps;
 
       gst_query_parse_caps (query, &filter);
-      caps = gst_ttml_render_get_src_caps (pad, overlay, filter);
+      caps = gst_ttml_render_get_src_caps (pad, render, filter);
       gst_query_set_caps_result (query, caps);
       gst_caps_unref (caps);
       ret = TRUE;
@@ -1146,17 +1139,17 @@ static gboolean
 gst_ttml_render_src_event (GstPad * pad, GstObject * parent,
     GstEvent * event)
 {
-  GstTtmlRender *overlay;
+  GstTtmlRender *render;
   gboolean ret;
 
-  overlay = GST_TTML_RENDER (parent);
+  render = GST_TTML_RENDER (parent);
 
-  if (overlay->text_linked) {
+  if (render->text_linked) {
     gst_event_ref (event);
-    ret = gst_pad_push_event (overlay->video_sinkpad, event);
-    gst_pad_push_event (overlay->text_sinkpad, event);
+    ret = gst_pad_push_event (render->video_sinkpad, event);
+    gst_pad_push_event (render->text_sinkpad, event);
   } else {
-    ret = gst_pad_push_event (overlay->video_sinkpad, event);
+    ret = gst_pad_push_event (render->video_sinkpad, event);
   }
 
   return ret;
@@ -1245,12 +1238,12 @@ gst_ttml_render_intersect_by_feature (GstCaps * caps,
 
 static GstCaps *
 gst_ttml_render_get_videosink_caps (GstPad * pad,
-    GstTtmlRender * overlay, GstCaps * filter)
+    GstTtmlRender * render, GstCaps * filter)
 {
-  GstPad *srcpad = overlay->srcpad;
+  GstPad *srcpad = render->srcpad;
   GstCaps *peer_caps = NULL, *caps = NULL, *overlay_filter = NULL;
 
-  if (G_UNLIKELY (!overlay))
+  if (G_UNLIKELY (!render))
     return gst_pad_get_pad_template_caps (pad);
 
   if (filter) {
@@ -1261,7 +1254,7 @@ gst_ttml_render_get_videosink_caps (GstPad * pad,
         GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
     gst_caps_unref (sw_caps);
 
-    GST_DEBUG_OBJECT (overlay, "overlay filter %" GST_PTR_FORMAT,
+    GST_DEBUG_OBJECT (render, "render filter %" GST_PTR_FORMAT,
         overlay_filter);
   }
 
@@ -1301,19 +1294,19 @@ gst_ttml_render_get_videosink_caps (GstPad * pad,
     caps = intersection;
   }
 
-  GST_DEBUG_OBJECT (overlay, "returning  %" GST_PTR_FORMAT, caps);
+  GST_DEBUG_OBJECT (render, "returning  %" GST_PTR_FORMAT, caps);
 
   return caps;
 }
 
 static GstCaps *
-gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * overlay,
+gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
     GstCaps * filter)
 {
-  GstPad *sinkpad = overlay->video_sinkpad;
+  GstPad *sinkpad = render->video_sinkpad;
   GstCaps *peer_caps = NULL, *caps = NULL, *overlay_filter = NULL;
 
-  if (G_UNLIKELY (!overlay))
+  if (G_UNLIKELY (!render))
     return gst_pad_get_pad_template_caps (pad);
 
   if (filter) {
@@ -1366,112 +1359,112 @@ gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * overlay,
     gst_caps_unref (caps);
     caps = intersection;
   }
-  GST_DEBUG_OBJECT (overlay, "returning  %" GST_PTR_FORMAT, caps);
+  GST_DEBUG_OBJECT (render, "returning  %" GST_PTR_FORMAT, caps);
 
   return caps;
 }
 
 static void
-gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * overlay,
+gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * render,
     PangoFontDescription * desc)
 {
   gint font_size = pango_font_description_get_size (desc) / PANGO_SCALE;
-  overlay->shadow_offset = (double) (font_size) / 13.0;
-  overlay->outline_offset = (double) (font_size) / 15.0;
-  if (overlay->outline_offset < MINIMUM_OUTLINE_OFFSET)
-    overlay->outline_offset = MINIMUM_OUTLINE_OFFSET;
+  render->shadow_offset = (double) (font_size) / 13.0;
+  render->outline_offset = (double) (font_size) / 15.0;
+  if (render->outline_offset < MINIMUM_OUTLINE_OFFSET)
+    render->outline_offset = MINIMUM_OUTLINE_OFFSET;
 }
 
 static void
-gst_ttml_render_get_pos (GstTtmlRender * overlay,
+gst_ttml_render_get_pos (GstTtmlRender * render,
     gint * xpos, gint * ypos)
 {
   gint width, height;
   GstTtmlRenderVAlign valign;
   GstTtmlRenderHAlign halign;
 
-  width = overlay->image_width;
-  height = overlay->image_height;
+  width = render->image_width;
+  height = render->image_height;
 
-  if (overlay->use_vertical_render)
+  if (render->use_vertical_render)
     halign = GST_TTML_RENDER_HALIGN_RIGHT;
   else
-    halign = overlay->halign;
+    halign = render->halign;
 
   switch (halign) {
     case GST_TTML_RENDER_HALIGN_LEFT:
-      *xpos = overlay->xpad;
+      *xpos = render->xpad;
       break;
     case GST_TTML_RENDER_HALIGN_CENTER:
-      *xpos = (overlay->width - width) / 2;
+      *xpos = (render->width - width) / 2;
       break;
     case GST_TTML_RENDER_HALIGN_RIGHT:
-      *xpos = overlay->width - width - overlay->xpad;
+      *xpos = render->width - width - render->xpad;
       break;
     case GST_TTML_RENDER_HALIGN_POS:
-      *xpos = (gint) (overlay->width * overlay->xpos) - width / 2;
-      *xpos = CLAMP (*xpos, 0, overlay->width - width);
+      *xpos = (gint) (render->width * render->xpos) - width / 2;
+      *xpos = CLAMP (*xpos, 0, render->width - width);
       if (*xpos < 0)
         *xpos = 0;
       break;
     default:
       *xpos = 0;
   }
-  *xpos += overlay->deltax;
+  *xpos += render->deltax;
 
-  if (overlay->use_vertical_render)
+  if (render->use_vertical_render)
     valign = GST_TTML_RENDER_VALIGN_TOP;
   else
-    valign = overlay->valign;
+    valign = render->valign;
 
   switch (valign) {
     case GST_TTML_RENDER_VALIGN_BOTTOM:
-      *ypos = overlay->height - height - overlay->ypad;
+      *ypos = render->height - height - render->ypad;
       break;
     case GST_TTML_RENDER_VALIGN_BASELINE:
-      *ypos = overlay->height - (height + overlay->ypad);
+      *ypos = render->height - (height + render->ypad);
       break;
     case GST_TTML_RENDER_VALIGN_TOP:
-      *ypos = overlay->ypad;
+      *ypos = render->ypad;
       break;
     case GST_TTML_RENDER_VALIGN_POS:
-      *ypos = (gint) (overlay->height * overlay->ypos) - height / 2;
-      *ypos = CLAMP (*ypos, 0, overlay->height - height);
+      *ypos = (gint) (render->height * render->ypos) - height / 2;
+      *ypos = CLAMP (*ypos, 0, render->height - height);
       break;
     case GST_TTML_RENDER_VALIGN_CENTER:
-      *ypos = (overlay->height - height) / 2;
+      *ypos = (render->height - height) / 2;
       break;
     default:
-      *ypos = overlay->ypad;
+      *ypos = render->ypad;
       break;
   }
-  *ypos += overlay->deltay;
+  *ypos += render->deltay;
 }
 
 static inline void
-gst_ttml_render_set_composition (GstTtmlRender * overlay)
+gst_ttml_render_set_composition (GstTtmlRender * render)
 {
   gint xpos, ypos;
   GstVideoOverlayRectangle *rectangle;
 
-  gst_ttml_render_get_pos (overlay, &xpos, &ypos);
+  gst_ttml_render_get_pos (render, &xpos, &ypos);
 
-  if (overlay->text_image) {
-    g_assert (gst_buffer_is_writable (overlay->text_image));
-    gst_buffer_add_video_meta (overlay->text_image, GST_VIDEO_FRAME_FLAG_NONE,
+  if (render->text_image) {
+    g_assert (gst_buffer_is_writable (render->text_image));
+    gst_buffer_add_video_meta (render->text_image, GST_VIDEO_FRAME_FLAG_NONE,
         GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB,
-        overlay->image_width, overlay->image_height);
-    rectangle = gst_video_overlay_rectangle_new_raw (overlay->text_image,
-        xpos, ypos, overlay->image_width, overlay->image_height,
+        render->image_width, render->image_height);
+    rectangle = gst_video_overlay_rectangle_new_raw (render->text_image,
+        xpos, ypos, render->image_width, render->image_height,
         GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
 
-    if (overlay->composition)
-      gst_video_overlay_composition_unref (overlay->composition);
+    if (render->composition)
+      gst_video_overlay_composition_unref (render->composition);
 
-    overlay->composition = gst_video_overlay_composition_new (rectangle);
-  } else if (overlay->composition) {
-    gst_video_overlay_composition_unref (overlay->composition);
-    overlay->composition = NULL;
+    render->composition = gst_video_overlay_composition_new (rectangle);
+  } else if (render->composition) {
+    gst_video_overlay_composition_unref (render->composition);
+    render->composition = NULL;
   }
 }
 
@@ -1513,7 +1506,7 @@ gst_text_overlay_filter_foreground_attr (PangoAttribute * attr, gpointer data)
 }
 
 static void
-gst_ttml_render_render_pangocairo (GstTtmlRender * overlay,
+gst_ttml_render_render_pangocairo (GstTtmlRender * render,
     const gchar * string, gint textlen)
 {
   cairo_t *cr;
@@ -1527,79 +1520,43 @@ gst_ttml_render_render_pangocairo (GstTtmlRender * overlay,
   GstMapInfo map;
 
   GST_CAT_DEBUG (ttmlrender, "Input string: %s", string);
-  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
 
-  if (overlay->auto_adjust_size) {
-    /* 640 pixel is default
-     * P Taylour: updated to
-     */
-    scalef = (double) (overlay->width) / DEFAULT_SCALE_BASIS;
+  if (render->auto_adjust_size) {
+    /* 640 pixel is default */
+    scalef = (double) (render->width) / DEFAULT_SCALE_BASIS;
   }
-  pango_layout_set_width (overlay->layout, -1);
+  pango_layout_set_width (render->layout, -1);
   /* set text on pango layout */
-  pango_layout_set_markup (overlay->layout, string, textlen);
+  pango_layout_set_markup (render->layout, string, textlen);
 
   /* get subtitle image size */
-  pango_layout_get_pixel_extents (overlay->layout, &ink_rect, &logical_rect);
-  GST_CAT_DEBUG (ttmlrender, "Pixel extents - w: %d  h: %d  x: %d  y: %d", logical_rect.width, logical_rect.height, logical_rect.x, logical_rect.y);
+  pango_layout_get_pixel_extents (render->layout, &ink_rect, &logical_rect);
+  width = (logical_rect.width + render->shadow_offset) * scalef;
 
-  /* apply scale to get the correct font_size */
-  /* This bit added by PT. */
-#if 0
-  if (overlay->text_height_px) {
-    double text_scalef;         /* fraction of required to actual text height */
-    PangoLayoutLine *first_line;
-    PangoRectangle ink_rect_line, logical_rect_line;
-
-    first_line = pango_layout_get_line (overlay->layout, 0);
-
-    pango_layout_line_get_pixel_extents (first_line,
-        &ink_rect_line, &logical_rect_line);
-    height = (ink_rect_line.height + overlay->shadow_offset) * scalef;  /* use glyph height here */
-
-    /* we want to match the height of a line to text_height_px */
-    text_scalef = overlay->text_height_px / ((double) height);
-
-    /* transform by this scale factor to match height with text_height_px */
-    scalef = scalef * text_scalef;      /* apply this scale to the other scale factor */
-  }
-#endif
-
-  /* CB: Why is the width being scaled? Is it to fit some predeclared overlay size? */
-  GST_CAT_DEBUG (ttmlrender, "shadow_offset: %f  scalef: %f", overlay->shadow_offset, scalef);
-  width = (logical_rect.width + overlay->shadow_offset) * scalef;
-  GST_CAT_DEBUG (ttmlrender, "width 1: %d", width);
-
-  if (width + overlay->deltax >
-      (overlay->use_vertical_render ? overlay->height : overlay->width)) {
+  if (width + render->deltax >
+      (render->use_vertical_render ? render->height : render->width)) {
     /*
-     * subtitle image width is larger then overlay width
-     * so rearrange overlay wrap mode.
+     * subtitle image width is larger then render width
+     * so rearrange render wrap mode.
      */
-    gst_ttml_render_update_wrap_mode (overlay);
-    pango_layout_get_pixel_extents (overlay->layout, &ink_rect, &logical_rect);
-    width = overlay->width;
+    gst_ttml_render_update_wrap_mode (render);
+    pango_layout_get_pixel_extents (render->layout, &ink_rect, &logical_rect);
+    width = render->width;
   }
-  GST_CAT_DEBUG (ttmlrender, "width 2: %d", width);
 
   height =
-      (logical_rect.height + logical_rect.y + overlay->shadow_offset) * scalef;
-  if (height > overlay->height) {
-    height = overlay->height;
+      (logical_rect.height + logical_rect.y + render->shadow_offset) * scalef;
+  if (height > render->height) {
+    height = render->height;
   }
-
-  width = logical_rect.width;
-  height = logical_rect.height;
-
-
-
-  if (overlay->use_vertical_render) {
+  if (render->use_vertical_render) {
     PangoRectangle rect;
     PangoContext *context;
     PangoMatrix matrix = PANGO_MATRIX_INIT;
     int tmp;
 
-    context = pango_layout_get_context (overlay->layout);
+    context = pango_layout_get_context (render->layout);
 
     pango_matrix_rotate (&matrix, -90);
 
@@ -1627,12 +1584,9 @@ gst_ttml_render_render_pangocairo (GstTtmlRender * overlay,
     cairo_matrix_init_scale (&cairo_matrix, scalef, scalef);
   }
 
-  GST_CAT_DEBUG (ttmlrender, "Creating text image buffer with width %d and height %d",
-      width, height);
-
-  /* reallocate overlay buffer */
+  /* reallocate render buffer */
   buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
-  gst_buffer_replace (&overlay->text_image, buffer);
+  gst_buffer_replace (&render->text_image, buffer);
   gst_buffer_unref (buffer);
 
   gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
@@ -1661,44 +1615,44 @@ gst_ttml_render_render_pangocairo (GstTtmlRender * overlay,
    * render_glyph function.
    */
 
-  a = (overlay->outline_color >> 24) & 0xff;
-  r = (overlay->outline_color >> 16) & 0xff;
-  g = (overlay->outline_color >> 8) & 0xff;
-  b = (overlay->outline_color >> 0) & 0xff;
+  a = (render->outline_color >> 24) & 0xff;
+  r = (render->outline_color >> 16) & 0xff;
+  g = (render->outline_color >> 8) & 0xff;
+  b = (render->outline_color >> 0) & 0xff;
 
   /* draw outline text */
   cairo_save (cr);
   cairo_set_source_rgba (cr, r / 255.0, g / 255.0, b / 255.0, a / 255.0);
-  cairo_set_line_width (cr, overlay->outline_offset);
-  pango_cairo_layout_path (cr, overlay->layout);
+  cairo_set_line_width (cr, render->outline_offset);
+  pango_cairo_layout_path (cr, render->layout);
   cairo_stroke (cr);
   cairo_restore (cr);
 
-  a = (overlay->color >> 24) & 0xff;
-  r = (overlay->color >> 16) & 0xff;
-  g = (overlay->color >> 8) & 0xff;
-  b = (overlay->color >> 0) & 0xff;
+  a = (render->color >> 24) & 0xff;
+  r = (render->color >> 16) & 0xff;
+  g = (render->color >> 8) & 0xff;
+  b = (render->color >> 0) & 0xff;
 
   /* draw text */
   cairo_save (cr);
   cairo_set_source_rgba (cr, r / 255.0, g / 255.0, b / 255.0, a / 255.0);
-  pango_cairo_show_layout (cr, overlay->layout);
+  pango_cairo_show_layout (cr, render->layout);
   cairo_restore (cr);
 
   cairo_destroy (cr);
   cairo_surface_destroy (surface);
   gst_buffer_unmap (buffer, &map);
-  overlay->image_width = width;
-  overlay->image_height = height;
-  overlay->baseline_y = ink_rect.y;
-  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (overlay)->pango_lock);
+  render->image_width = width;
+  render->image_height = height;
+  render->baseline_y = ink_rect.y;
+  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
 
-  gst_ttml_render_set_composition (overlay);
+  gst_ttml_render_set_composition (render);
 }
 
 
 static inline void
-gst_ttml_render_shade_planar_Y (GstTtmlRender * overlay,
+gst_ttml_render_shade_planar_Y (GstTtmlRender * render,
     GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
 {
   gint i, j, dest_stride;
@@ -1709,7 +1663,7 @@ gst_ttml_render_shade_planar_Y (GstTtmlRender * overlay,
 
   for (i = y0; i < y1; ++i) {
     for (j = x0; j < x1; ++j) {
-      gint y = dest_ptr[(i * dest_stride) + j] - overlay->shading_value;
+      gint y = dest_ptr[(i * dest_stride) + j] - render->shading_value;
 
       dest_ptr[(i * dest_stride) + j] = CLAMP (y, 0, 255);
     }
@@ -1717,7 +1671,7 @@ gst_ttml_render_shade_planar_Y (GstTtmlRender * overlay,
 }
 
 static inline void
-gst_ttml_render_shade_packed_Y (GstTtmlRender * overlay,
+gst_ttml_render_shade_packed_Y (GstTtmlRender * render,
     GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
 {
   gint i, j;
@@ -1744,7 +1698,7 @@ gst_ttml_render_shade_packed_Y (GstTtmlRender * overlay,
       gint y_pos;
 
       y_pos = (i * dest_stride) + j * pixel_stride;
-      y = dest_ptr[y_pos] - overlay->shading_value;
+      y = dest_ptr[y_pos] - render->shading_value;
 
       dest_ptr[y_pos] = CLAMP (y, 0, 255);
     }
@@ -1755,7 +1709,7 @@ gst_ttml_render_shade_packed_Y (GstTtmlRender * overlay,
 #define gst_ttml_render_shade_RGBx gst_ttml_render_shade_xRGB
 #define gst_ttml_render_shade_xBGR gst_ttml_render_shade_xRGB
 static inline void
-gst_ttml_render_shade_xRGB (GstTtmlRender * overlay,
+gst_ttml_render_shade_xRGB (GstTtmlRender * render,
     GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
 {
   gint i, j;
@@ -1767,32 +1721,25 @@ gst_ttml_render_shade_xRGB (GstTtmlRender * overlay,
     for (j = x0; j < x1; j++) {
       gint y, y_pos, k;
 
-      y_pos = (i * 4 * overlay->width) + j * 4;
+      y_pos = (i * 4 * render->width) + j * 4;
       for (k = 0; k < 4; k++) {
-        y = dest_ptr[y_pos + k] - overlay->shading_value;
+        y = dest_ptr[y_pos + k] - render->shading_value;
         dest_ptr[y_pos + k] = CLAMP (y, 0, 255);
       }
-
-/*      dest_ptr[y_pos + 0] += overlay->shading_value;
-      dest_ptr[y_pos + 2] = 0;
-      dest_ptr[y_pos + 1] = 0;
-      dest_ptr[y_pos + 3] = 255;*/
-
-
     }
   }
 }
 
 /* FIXME: orcify */
 static void
-gst_ttml_render_shade_rgb24 (GstTtmlRender * overlay,
+gst_ttml_render_shade_rgb24 (GstTtmlRender * render,
     GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
 {
   const int pstride = 3;
   gint y, x, stride, shading_val, tmp;
   guint8 *p;
 
-  shading_val = -overlay->shading_value;
+  shading_val = -render->shading_value;
   stride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 0);
 
   for (y = y0; y < y1; ++y) {
@@ -1810,13 +1757,13 @@ gst_ttml_render_shade_rgb24 (GstTtmlRender * overlay,
 }
 
 static void
-gst_ttml_render_shade_IYU1 (GstTtmlRender * overlay,
+gst_ttml_render_shade_IYU1 (GstTtmlRender * render,
     GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
 {
   gint y, x, stride, shading_val, tmp;
   guint8 *p;
 
-  shading_val = -overlay->shading_value;
+  shading_val = -render->shading_value;
   stride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 0);
 
   /* IYU1: packed 4:1:1 YUV (Cb-Y0-Y1-Cr-Y2-Y3 ...) */
@@ -1839,7 +1786,7 @@ gst_ttml_render_shade_IYU1 (GstTtmlRender * overlay,
 
 #define ARGB_SHADE_FUNCTION(name, OFFSET)	\
 static inline void \
-gst_ttml_render_shade_##name (GstTtmlRender * overlay, GstVideoFrame * dest, \
+gst_ttml_render_shade_##name (GstTtmlRender * render, GstVideoFrame * dest, \
 gint x0, gint x1, gint y0, gint y1) \
 { \
   gint i, j;\
@@ -1850,9 +1797,9 @@ gint x0, gint x1, gint y0, gint y1) \
   for (i = y0; i < y1; i++) {\
     for (j = x0; j < x1; j++) {\
       gint y, y_pos, k;\
-      y_pos = (i * 4 * overlay->width) + j * 4;\
+      y_pos = (i * 4 * render->width) + j * 4;\
       for (k = OFFSET; k < 3+OFFSET; k++) {\
-        y = dest_ptr[y_pos + k] - overlay->shading_value;\
+        y = dest_ptr[y_pos + k] - render->shading_value;\
         dest_ptr[y_pos + k] = CLAMP (y, 0, 255);\
       }\
     }\
@@ -1864,12 +1811,12 @@ ARGB_SHADE_FUNCTION (RGBA, 0);
 ARGB_SHADE_FUNCTION (BGRA, 0);
 
 static void
-gst_ttml_render_render_text (GstTtmlRender * overlay,
+gst_ttml_render_render_text (GstTtmlRender * render,
     const gchar * text, gint textlen)
 {
   gchar *string;
 
-  if (!overlay->need_render) {
+  if (!render->need_render) {
     GST_DEBUG ("Using previously rendered text.");
     return;
   }
@@ -1890,11 +1837,11 @@ gst_ttml_render_render_text (GstTtmlRender * overlay,
   /* FIXME: should we check for UTF-8 here? */
 
   GST_DEBUG ("Rendering '%s'", string);
-  gst_ttml_render_render_pangocairo (overlay, string, textlen);
+  gst_ttml_render_render_pangocairo (render, string, textlen);
 
   g_free (string);
 
-  overlay->need_render = FALSE;
+  render->need_render = FALSE;
 }
 
 
@@ -1903,16 +1850,16 @@ gst_ttml_render_render_text (GstTtmlRender * overlay,
 #define BOX_YPAD  6
 
 static void
-gst_ttml_render_shade_background (GstTtmlRender * overlay,
+gst_ttml_render_shade_background (GstTtmlRender * render,
     GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
 {
-  x0 = CLAMP (x0 - BOX_XPAD, 0, overlay->width);
-  x1 = CLAMP (x1 + BOX_XPAD, 0, overlay->width);
+  x0 = CLAMP (x0 - BOX_XPAD, 0, render->width);
+  x1 = CLAMP (x1 + BOX_XPAD, 0, render->width);
 
-  y0 = CLAMP (y0 - BOX_YPAD, 0, overlay->height);
-  y1 = CLAMP (y1 + BOX_YPAD, 0, overlay->height);
+  y0 = CLAMP (y0 - BOX_YPAD, 0, render->height);
+  y1 = CLAMP (y1 + BOX_YPAD, 0, render->height);
 
-  switch (overlay->format) {
+  switch (render->format) {
     case GST_VIDEO_FORMAT_I420:
     case GST_VIDEO_FORMAT_YV12:
     case GST_VIDEO_FORMAT_NV12:
@@ -1924,78 +1871,78 @@ gst_ttml_render_shade_background (GstTtmlRender * overlay,
     case GST_VIDEO_FORMAT_YVU9:
     case GST_VIDEO_FORMAT_GRAY8:
     case GST_VIDEO_FORMAT_A420:
-      gst_ttml_render_shade_planar_Y (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_planar_Y (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_AYUV:
     case GST_VIDEO_FORMAT_UYVY:
     case GST_VIDEO_FORMAT_YUY2:
     case GST_VIDEO_FORMAT_v308:
-      gst_ttml_render_shade_packed_Y (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_packed_Y (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_xRGB:
-      gst_ttml_render_shade_xRGB (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_xRGB (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_xBGR:
-      gst_ttml_render_shade_xBGR (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_xBGR (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_BGRx:
-      gst_ttml_render_shade_BGRx (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_BGRx (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_RGBx:
-      gst_ttml_render_shade_RGBx (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_RGBx (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_ARGB:
-      gst_ttml_render_shade_ARGB (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_ARGB (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_ABGR:
-      gst_ttml_render_shade_ABGR (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_ABGR (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_RGBA:
-      gst_ttml_render_shade_RGBA (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_RGBA (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_BGRA:
-      gst_ttml_render_shade_BGRA (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_BGRA (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_BGR:
     case GST_VIDEO_FORMAT_RGB:
-      gst_ttml_render_shade_rgb24 (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_rgb24 (render, frame, x0, x1, y0, y1);
       break;
     case GST_VIDEO_FORMAT_IYU1:
-      gst_ttml_render_shade_IYU1 (overlay, frame, x0, x1, y0, y1);
+      gst_ttml_render_shade_IYU1 (render, frame, x0, x1, y0, y1);
       break;
     default:
-      GST_FIXME_OBJECT (overlay, "implement background shading for format %s",
+      GST_FIXME_OBJECT (render, "implement background shading for format %s",
           gst_video_format_to_string (GST_VIDEO_FRAME_FORMAT (frame)));
       break;
   }
 }
 
 static GstFlowReturn
-gst_ttml_render_push_frame (GstTtmlRender * overlay,
+gst_ttml_render_push_frame (GstTtmlRender * render,
     GstBuffer * video_frame)
 {
   GstVideoFrame frame;
-  GList *compositions = overlay->compositions;
+  GList *compositions = render->compositions;
 
   if (compositions == NULL) {
     GST_CAT_DEBUG (ttmlrender, "No compositions.");
     goto done;
   }
 
-  if (gst_pad_check_reconfigure (overlay->srcpad))
-    gst_ttml_render_negotiate (overlay, NULL);
+  if (gst_pad_check_reconfigure (render->srcpad))
+    gst_ttml_render_negotiate (render, NULL);
 
   video_frame = gst_buffer_make_writable (video_frame);
 
-  if (overlay->attach_compo_to_buffer) {
-    GST_DEBUG_OBJECT (overlay, "Attaching text overlay images to video buffer");
+  if (render->attach_compo_to_buffer) {
+    GST_DEBUG_OBJECT (render, "Attaching text render images to video buffer");
     gst_buffer_add_video_overlay_composition_meta (video_frame,
-        overlay->composition);
+        render->composition);
     /* FIXME: emulate shaded background box if want_shading=true */
     goto done;
   }
 
-  if (!gst_video_frame_map (&frame, &overlay->info, video_frame,
+  if (!gst_video_frame_map (&frame, &render->info, video_frame,
           GST_MAP_READWRITE))
     goto invalid_frame;
 
@@ -2010,13 +1957,13 @@ gst_ttml_render_push_frame (GstTtmlRender * overlay,
 
 done:
 
-  return gst_pad_push (overlay->srcpad, video_frame);
+  return gst_pad_push (render->srcpad, video_frame);
 
   /* ERRORS */
 invalid_frame:
   {
     gst_buffer_unref (video_frame);
-    GST_DEBUG_OBJECT (overlay, "received invalid buffer");
+    GST_DEBUG_OBJECT (render, "received invalid buffer");
     return GST_FLOW_OK;
   }
 }
@@ -2025,15 +1972,15 @@ static GstPadLinkReturn
 gst_ttml_render_text_pad_link (GstPad * pad, GstObject * parent,
     GstPad * peer)
 {
-  GstTtmlRender *overlay;
+  GstTtmlRender *render;
 
-  overlay = GST_TTML_RENDER (parent);
-  if (G_UNLIKELY (!overlay))
+  render = GST_TTML_RENDER (parent);
+  if (G_UNLIKELY (!render))
     return GST_PAD_LINK_REFUSED;
 
-  GST_DEBUG_OBJECT (overlay, "Text pad linked");
+  GST_DEBUG_OBJECT (render, "Text pad linked");
 
-  overlay->text_linked = TRUE;
+  render->text_linked = TRUE;
 
   return GST_PAD_LINK_OK;
 }
@@ -2041,16 +1988,16 @@ gst_ttml_render_text_pad_link (GstPad * pad, GstObject * parent,
 static void
 gst_ttml_render_text_pad_unlink (GstPad * pad, GstObject * parent)
 {
-  GstTtmlRender *overlay;
+  GstTtmlRender *render;
 
   /* don't use gst_pad_get_parent() here, will deadlock */
-  overlay = GST_TTML_RENDER (parent);
+  render = GST_TTML_RENDER (parent);
 
-  GST_DEBUG_OBJECT (overlay, "Text pad unlinked");
+  GST_DEBUG_OBJECT (render, "Text pad unlinked");
 
-  overlay->text_linked = FALSE;
+  render->text_linked = FALSE;
 
-  gst_segment_init (&overlay->text_segment, GST_FORMAT_UNDEFINED);
+  gst_segment_init (&render->text_segment, GST_FORMAT_UNDEFINED);
 }
 
 static gboolean
@@ -2058,9 +2005,9 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
     GstEvent * event)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *overlay = NULL;
+  GstTtmlRender *render = NULL;
 
-  overlay = GST_TTML_RENDER (parent);
+  render = GST_TTML_RENDER (parent);
 
   GST_LOG_OBJECT (pad, "received event %s", GST_EVENT_TYPE_NAME (event));
 
@@ -2070,7 +2017,7 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
       GstCaps *caps;
 
       gst_event_parse_caps (event, &caps);
-      ret = gst_ttml_render_setcaps_txt (overlay, caps);
+      ret = gst_ttml_render_setcaps_txt (render, caps);
       gst_event_unref (event);
       break;
     }
@@ -2078,18 +2025,18 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
     {
       const GstSegment *segment;
 
-      overlay->text_eos = FALSE;
+      render->text_eos = FALSE;
 
       gst_event_parse_segment (event, &segment);
 
       if (segment->format == GST_FORMAT_TIME) {
-        GST_TTML_RENDER_LOCK (overlay);
-        gst_segment_copy_into (segment, &overlay->text_segment);
-        GST_DEBUG_OBJECT (overlay, "TEXT SEGMENT now: %" GST_SEGMENT_FORMAT,
-            &overlay->text_segment);
-        GST_TTML_RENDER_UNLOCK (overlay);
+        GST_TTML_RENDER_LOCK (render);
+        gst_segment_copy_into (segment, &render->text_segment);
+        GST_DEBUG_OBJECT (render, "TEXT SEGMENT now: %" GST_SEGMENT_FORMAT,
+            &render->text_segment);
+        GST_TTML_RENDER_UNLOCK (render);
       } else {
-        GST_ELEMENT_WARNING (overlay, STREAM, MUX, (NULL),
+        GST_ELEMENT_WARNING (render, STREAM, MUX, (NULL),
             ("received non-TIME newsegment event on text input"));
       }
 
@@ -2098,9 +2045,9 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
 
       /* wake up the video chain, it might be waiting for a text buffer or
        * a text segment update */
-      GST_TTML_RENDER_LOCK (overlay);
-      GST_TTML_RENDER_BROADCAST (overlay);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      GST_TTML_RENDER_BROADCAST (render);
+      GST_TTML_RENDER_UNLOCK (render);
       break;
     }
     case GST_EVENT_GAP:
@@ -2112,46 +2059,46 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
         start += duration;
       /* we do not expect another buffer until after gap,
        * so that is our position now */
-      overlay->text_segment.position = start;
+      render->text_segment.position = start;
 
       /* wake up the video chain, it might be waiting for a text buffer or
        * a text segment update */
-      GST_TTML_RENDER_LOCK (overlay);
-      GST_TTML_RENDER_BROADCAST (overlay);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      GST_TTML_RENDER_BROADCAST (render);
+      GST_TTML_RENDER_UNLOCK (render);
 
       gst_event_unref (event);
       ret = TRUE;
       break;
     }
     case GST_EVENT_FLUSH_STOP:
-      GST_TTML_RENDER_LOCK (overlay);
-      GST_INFO_OBJECT (overlay, "text flush stop");
-      overlay->text_flushing = FALSE;
-      overlay->text_eos = FALSE;
-      gst_ttml_render_pop_text (overlay);
-      gst_segment_init (&overlay->text_segment, GST_FORMAT_TIME);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      GST_INFO_OBJECT (render, "text flush stop");
+      render->text_flushing = FALSE;
+      render->text_eos = FALSE;
+      gst_ttml_render_pop_text (render);
+      gst_segment_init (&render->text_segment, GST_FORMAT_TIME);
+      GST_TTML_RENDER_UNLOCK (render);
       gst_event_unref (event);
       ret = TRUE;
       break;
     case GST_EVENT_FLUSH_START:
-      GST_TTML_RENDER_LOCK (overlay);
-      GST_INFO_OBJECT (overlay, "text flush start");
-      overlay->text_flushing = TRUE;
-      GST_TTML_RENDER_BROADCAST (overlay);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      GST_INFO_OBJECT (render, "text flush start");
+      render->text_flushing = TRUE;
+      GST_TTML_RENDER_BROADCAST (render);
+      GST_TTML_RENDER_UNLOCK (render);
       gst_event_unref (event);
       ret = TRUE;
       break;
     case GST_EVENT_EOS:
-      GST_TTML_RENDER_LOCK (overlay);
-      overlay->text_eos = TRUE;
-      GST_INFO_OBJECT (overlay, "text EOS");
+      GST_TTML_RENDER_LOCK (render);
+      render->text_eos = TRUE;
+      GST_INFO_OBJECT (render, "text EOS");
       /* wake up the video chain, it might be waiting for a text buffer or
        * a text segment update */
-      GST_TTML_RENDER_BROADCAST (overlay);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_BROADCAST (render);
+      GST_TTML_RENDER_UNLOCK (render);
       gst_event_unref (event);
       ret = TRUE;
       break;
@@ -2168,9 +2115,9 @@ gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
     GstEvent * event)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *overlay = NULL;
+  GstTtmlRender *render = NULL;
 
-  overlay = GST_TTML_RENDER (parent);
+  render = GST_TTML_RENDER (parent);
 
   GST_DEBUG_OBJECT (pad, "received event %s", GST_EVENT_TYPE_NAME (event));
 
@@ -2180,7 +2127,7 @@ gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
       GstCaps *caps;
 
       gst_event_parse_caps (event, &caps);
-      ret = gst_ttml_render_setcaps (overlay, caps);
+      ret = gst_ttml_render_setcaps (render, caps);
       gst_event_unref (event);
       break;
     }
@@ -2188,17 +2135,17 @@ gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
     {
       const GstSegment *segment;
 
-      GST_DEBUG_OBJECT (overlay, "received new segment");
+      GST_DEBUG_OBJECT (render, "received new segment");
 
       gst_event_parse_segment (event, &segment);
 
       if (segment->format == GST_FORMAT_TIME) {
-        GST_DEBUG_OBJECT (overlay, "VIDEO SEGMENT now: %" GST_SEGMENT_FORMAT,
-            &overlay->segment);
+        GST_DEBUG_OBJECT (render, "VIDEO SEGMENT now: %" GST_SEGMENT_FORMAT,
+            &render->segment);
 
-        gst_segment_copy_into (segment, &overlay->segment);
+        gst_segment_copy_into (segment, &render->segment);
       } else {
-        GST_ELEMENT_WARNING (overlay, STREAM, MUX, (NULL),
+        GST_ELEMENT_WARNING (render, STREAM, MUX, (NULL),
             ("received non-TIME newsegment event on video input"));
       }
 
@@ -2206,27 +2153,27 @@ gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
       break;
     }
     case GST_EVENT_EOS:
-      GST_TTML_RENDER_LOCK (overlay);
-      GST_INFO_OBJECT (overlay, "video EOS");
-      overlay->video_eos = TRUE;
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      GST_INFO_OBJECT (render, "video EOS");
+      render->video_eos = TRUE;
+      GST_TTML_RENDER_UNLOCK (render);
       ret = gst_pad_event_default (pad, parent, event);
       break;
     case GST_EVENT_FLUSH_START:
-      GST_TTML_RENDER_LOCK (overlay);
-      GST_INFO_OBJECT (overlay, "video flush start");
-      overlay->video_flushing = TRUE;
-      GST_TTML_RENDER_BROADCAST (overlay);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      GST_INFO_OBJECT (render, "video flush start");
+      render->video_flushing = TRUE;
+      GST_TTML_RENDER_BROADCAST (render);
+      GST_TTML_RENDER_UNLOCK (render);
       ret = gst_pad_event_default (pad, parent, event);
       break;
     case GST_EVENT_FLUSH_STOP:
-      GST_TTML_RENDER_LOCK (overlay);
-      GST_INFO_OBJECT (overlay, "video flush stop");
-      overlay->video_flushing = FALSE;
-      overlay->video_eos = FALSE;
-      gst_segment_init (&overlay->segment, GST_FORMAT_TIME);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      GST_INFO_OBJECT (render, "video flush stop");
+      render->video_flushing = FALSE;
+      render->video_eos = FALSE;
+      gst_segment_init (&render->segment, GST_FORMAT_TIME);
+      GST_TTML_RENDER_UNLOCK (render);
       ret = gst_pad_event_default (pad, parent, event);
       break;
     default:
@@ -2242,9 +2189,9 @@ gst_ttml_render_video_query (GstPad * pad, GstObject * parent,
     GstQuery * query)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *overlay;
+  GstTtmlRender *render;
 
-  overlay = GST_TTML_RENDER (parent);
+  render = GST_TTML_RENDER (parent);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -2252,7 +2199,7 @@ gst_ttml_render_video_query (GstPad * pad, GstObject * parent,
       GstCaps *filter, *caps;
 
       gst_query_parse_caps (query, &filter);
-      caps = gst_ttml_render_get_videosink_caps (pad, overlay, filter);
+      caps = gst_ttml_render_get_videosink_caps (pad, render, filter);
       gst_query_set_caps_result (query, caps);
       gst_caps_unref (caps);
       ret = TRUE;
@@ -2268,19 +2215,19 @@ gst_ttml_render_video_query (GstPad * pad, GstObject * parent,
 
 /* Called with lock held */
 static void
-gst_ttml_render_pop_text (GstTtmlRender * overlay)
+gst_ttml_render_pop_text (GstTtmlRender * render)
 {
-  g_return_if_fail (GST_IS_TTML_RENDER (overlay));
+  g_return_if_fail (GST_IS_TTML_RENDER (render));
 
-  if (overlay->text_buffer) {
-    GST_DEBUG_OBJECT (overlay, "releasing text buffer %p",
-        overlay->text_buffer);
-    gst_buffer_unref (overlay->text_buffer);
-    overlay->text_buffer = NULL;
+  if (render->text_buffer) {
+    GST_DEBUG_OBJECT (render, "releasing text buffer %p",
+        render->text_buffer);
+    gst_buffer_unref (render->text_buffer);
+    render->text_buffer = NULL;
   }
 
   /* Let the text task know we used that buffer */
-  GST_TTML_RENDER_BROADCAST (overlay);
+  GST_TTML_RENDER_BROADCAST (render);
 }
 
 /* We receive text buffers here. If they are out of segment we just ignore them.
@@ -2291,30 +2238,30 @@ gst_ttml_render_text_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer)
 {
   GstFlowReturn ret = GST_FLOW_OK;
-  GstTtmlRender *overlay = NULL;
+  GstTtmlRender *render = NULL;
   gboolean in_seg = FALSE;
   guint64 clip_start = 0, clip_stop = 0;
 
-  overlay = GST_TTML_RENDER (parent);
+  render = GST_TTML_RENDER (parent);
 
-  GST_TTML_RENDER_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (render);
 
-  if (overlay->text_flushing) {
-    GST_TTML_RENDER_UNLOCK (overlay);
+  if (render->text_flushing) {
+    GST_TTML_RENDER_UNLOCK (render);
     ret = GST_FLOW_FLUSHING;
-    GST_LOG_OBJECT (overlay, "text flushing");
+    GST_LOG_OBJECT (render, "text flushing");
     goto beach;
   }
 
-  if (overlay->text_eos) {
-    GST_TTML_RENDER_UNLOCK (overlay);
+  if (render->text_eos) {
+    GST_TTML_RENDER_UNLOCK (render);
     ret = GST_FLOW_EOS;
-    GST_LOG_OBJECT (overlay, "text EOS");
+    GST_LOG_OBJECT (render, "text EOS");
     goto beach;
   }
 
-  GST_LOG_OBJECT (overlay, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%"
-      GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &overlay->segment,
+  GST_LOG_OBJECT (render, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%"
+      GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &render->segment,
       GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer)),
       GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer) +
           GST_BUFFER_DURATION (buffer)));
@@ -2327,7 +2274,7 @@ gst_ttml_render_text_chain (GstPad * pad, GstObject * parent,
     else
       stop = GST_CLOCK_TIME_NONE;
 
-    in_seg = gst_segment_clip (&overlay->text_segment, GST_FORMAT_TIME,
+    in_seg = gst_segment_clip (&render->text_segment, GST_FORMAT_TIME,
         GST_BUFFER_TIMESTAMP (buffer), stop, &clip_start, &clip_stop);
   } else {
     in_seg = TRUE;
@@ -2340,30 +2287,30 @@ gst_ttml_render_text_chain (GstPad * pad, GstObject * parent,
       GST_BUFFER_DURATION (buffer) = clip_stop - clip_start;
 
     /* Wait for the previous buffer to go away */
-    while (overlay->text_buffer != NULL) {
+    while (render->text_buffer != NULL) {
       GST_DEBUG ("Pad %s:%s has a buffer queued, waiting",
           GST_DEBUG_PAD_NAME (pad));
-      GST_TTML_RENDER_WAIT (overlay);
+      GST_TTML_RENDER_WAIT (render);
       GST_DEBUG ("Pad %s:%s resuming", GST_DEBUG_PAD_NAME (pad));
-      if (overlay->text_flushing) {
-        GST_TTML_RENDER_UNLOCK (overlay);
+      if (render->text_flushing) {
+        GST_TTML_RENDER_UNLOCK (render);
         ret = GST_FLOW_FLUSHING;
         goto beach;
       }
     }
 
     if (GST_BUFFER_TIMESTAMP_IS_VALID (buffer))
-      overlay->text_segment.position = clip_start;
+      render->text_segment.position = clip_start;
 
-    overlay->text_buffer = buffer;
+    render->text_buffer = buffer;
     /* That's a new text buffer we need to render */
-    overlay->need_render = TRUE;
+    render->need_render = TRUE;
 
     /* in case the video chain is waiting for a text buffer, wake it up */
-    GST_TTML_RENDER_BROADCAST (overlay);
+    GST_TTML_RENDER_BROADCAST (render);
   }
 
-  GST_TTML_RENDER_UNLOCK (overlay);
+  GST_TTML_RENDER_UNLOCK (render);
 
 beach:
 
@@ -2455,7 +2402,7 @@ text_range_free (TextRange * range)
 }
 
 static gchar *
-generate_marked_up_string (GstTtmlRender * overlay,
+generate_marked_up_string (GstTtmlRender * render,
     GPtrArray * elements, GstBuffer * text_buf, GPtrArray ** text_ranges)
 {
   GstSubtitleElement *element;
@@ -2494,7 +2441,7 @@ generate_marked_up_string (GstTtmlRender * overlay,
     fgcolor = color_to_rgb_string (element->style.color);
     /* XXX: Should we round the pixel font size? */
     font_size = g_strdup_printf ("%u",
-        (guint) (element->style.font_size * overlay->height));
+        (guint) (element->style.font_size * render->height));
     font_family = (g_strcmp0 (element->style.font_family, "default") == 0) ?
       "Monospace" : element->style.font_family;
     font_style = (element->style.font_style == GST_SUBTITLE_FONT_STYLE_NORMAL) ?
@@ -2536,7 +2483,7 @@ generate_marked_up_string (GstTtmlRender * overlay,
 
 
 static GstTtmlRenderRenderedText *
-draw_text (GstTtmlRender * overlay, const gchar * text, guint max_width,
+draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
     PangoAlignment alignment, guint line_height, guint max_font_size,
     gboolean wrap)
 {
@@ -2557,7 +2504,7 @@ draw_text (GstTtmlRender * overlay, const gchar * text, guint max_width,
   ret = g_slice_new0 (GstTtmlRenderRenderedText);
   ret->text_image = rendered_image_new_empty ();
 
-  class = GST_TTML_RENDER_GET_CLASS (overlay);
+  class = GST_TTML_RENDER_GET_CLASS (render);
   ret->layout = pango_layout_new (class->pango_context);
 
   pango_layout_set_markup (ret->layout, text, strlen (text));
@@ -3108,7 +3055,7 @@ rendered_text_free (GstTtmlRenderRenderedText * text)
 
 
 static GstTtmlRenderRenderedImage *
-render_text_block (GstTtmlRender * overlay, GstSubtitleBlock * block,
+render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
     GstBuffer * text_buf, guint width, gboolean overflow)
 {
   GPtrArray *char_ranges = NULL;
@@ -3122,18 +3069,18 @@ render_text_block (GstTtmlRender * overlay, GstSubtitleBlock * block,
   GstTtmlRenderRenderedImage *ret;
 
   /* Join text from elements to form a single marked-up string. */
-  marked_up_string = generate_marked_up_string (overlay, block->elements,
+  marked_up_string = generate_marked_up_string (render, block->elements,
       text_buf, &char_ranges);
 
   max_font_size = (guint) (get_max_font_size (block->elements)
-      * overlay->height);
+      * render->height);
   GST_CAT_DEBUG (ttmlrender, "Max font size: %u", max_font_size);
 
-  line_padding = (guint) (block->style.line_padding * overlay->width);
+  line_padding = (guint) (block->style.line_padding * render->width);
   alignment = get_alignment (&block->style);
 
   /* Render text to buffer. */
-  rendered_text = draw_text (overlay, marked_up_string,
+  rendered_text = draw_text (render, marked_up_string,
       (width - (2 * line_padding)), alignment,
       (guint) (block->style.line_height * max_font_size), max_font_size,
       is_wrapped (block->elements));
@@ -3201,7 +3148,7 @@ free_layer (GstTtmlRenderLayer * layer)
 
 
 static GstVideoOverlayComposition *
-render_text_area (GstTtmlRender * overlay, GstSubtitleArea * area,
+render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
   GstBuffer * text_buf)
 {
   GList *blocks = NULL;
@@ -3213,16 +3160,16 @@ render_text_area (GstTtmlRender * overlay, GstSubtitleArea * area,
   GstTtmlRenderLayer *area_layer;
   GstVideoOverlayComposition *ret = NULL;
 
-  area_width = (guint) (round (area->style.extent_w * overlay->width));
-  area_height = (guint) (round (area->style.extent_h * overlay->height));
-  area_x = (guint) (round (area->style.origin_x * overlay->width));
-  area_y = (guint) (round (area->style.origin_y * overlay->height));
+  area_width = (guint) (round (area->style.extent_w * render->width));
+  area_height = (guint) (round (area->style.extent_h * render->height));
+  area_x = (guint) (round (area->style.origin_x * render->width));
+  area_y = (guint) (round (area->style.origin_y * render->height));
 
-  padding_start = (guint) (round (area->style.padding_start * overlay->width));
-  padding_end = (guint) (round (area->style.padding_end * overlay->width));
+  padding_start = (guint) (round (area->style.padding_start * render->width));
+  padding_end = (guint) (round (area->style.padding_end * render->width));
   padding_before =
-    (guint) (round (area->style.padding_before * overlay->height));
-  padding_after = (guint) (round (area->style.padding_after * overlay->height));
+    (guint) (round (area->style.padding_before * render->height));
+  padding_after = (guint) (round (area->style.padding_after * render->height));
 
   /* "window" here refers to the section of the area that we're allowed to
    * render into. i.e., the area minus padding. */
@@ -3254,7 +3201,7 @@ render_text_area (GstTtmlRender * overlay, GstSubtitleArea * area,
       GstTtmlRenderRenderedImage *rendered_block;
 
       block = g_ptr_array_index (area->blocks, i);
-      rendered_block = render_text_block (overlay, block, text_buf,
+      rendered_block = render_text_block (render, block, text_buf,
           window_width, TRUE);
       GST_CAT_DEBUG (ttmlrender, "Height of rendered block is %u",
           rendered_block->height);
@@ -3312,14 +3259,14 @@ gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer)
 {
   GstTtmlRenderClass *klass;
-  GstTtmlRender *overlay;
+  GstTtmlRender *render;
   GstFlowReturn ret = GST_FLOW_OK;
   gboolean in_seg = FALSE;
   guint64 start, stop, clip_start = 0, clip_stop = 0;
   gchar *text = NULL;
 
-  overlay = GST_TTML_RENDER (parent);
-  klass = GST_TTML_RENDER_GET_CLASS (overlay);
+  render = GST_TTML_RENDER (parent);
+  klass = GST_TTML_RENDER_GET_CLASS (render);
 
   if (!GST_BUFFER_TIMESTAMP_IS_VALID (buffer))
     goto missing_timestamp;
@@ -3333,16 +3280,16 @@ gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
     stop = start + GST_BUFFER_DURATION (buffer);
   }
 
-  GST_LOG_OBJECT (overlay, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%"
-      GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &overlay->segment,
+  GST_LOG_OBJECT (render, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%"
+      GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &render->segment,
       GST_TIME_ARGS (start), GST_TIME_ARGS (stop));
 
   /* segment_clip() will adjust start unconditionally to segment_start if
    * no stop time is provided, so handle this ourselves */
-  if (stop == GST_CLOCK_TIME_NONE && start < overlay->segment.start)
+  if (stop == GST_CLOCK_TIME_NONE && start < render->segment.start)
     goto out_of_segment;
 
-  in_seg = gst_segment_clip (&overlay->segment, GST_FORMAT_TIME, start, stop,
+  in_seg = gst_segment_clip (&render->segment, GST_FORMAT_TIME, start, stop,
       &clip_start, &clip_stop);
 
   if (!in_seg)
@@ -3350,7 +3297,7 @@ gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
 
   /* if the buffer is only partially in the segment, fix up stamps */
   if (clip_start != start || (stop != -1 && clip_stop != stop)) {
-    GST_DEBUG_OBJECT (overlay, "clipping buffer timestamp/duration to segment");
+    GST_DEBUG_OBJECT (render, "clipping buffer timestamp/duration to segment");
     buffer = gst_buffer_make_writable (buffer);
     GST_BUFFER_TIMESTAMP (buffer) = clip_start;
     if (stop != -1)
@@ -3361,62 +3308,62 @@ gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
    * duration (we only use those estimated values internally though, we
    * don't want to set bogus values on the buffer itself) */
   if (stop == -1) {
-    if (overlay->info.fps_n && overlay->info.fps_d) {
-      GST_DEBUG_OBJECT (overlay, "estimating duration based on framerate");
+    if (render->info.fps_n && render->info.fps_d) {
+      GST_DEBUG_OBJECT (render, "estimating duration based on framerate");
       stop = start + gst_util_uint64_scale_int (GST_SECOND,
-          overlay->info.fps_d, overlay->info.fps_n);
+          render->info.fps_d, render->info.fps_n);
     } else {
-      GST_LOG_OBJECT (overlay, "no duration, assuming minimal duration");
+      GST_LOG_OBJECT (render, "no duration, assuming minimal duration");
       stop = start + 1;         /* we need to assume some interval */
     }
   }
 
-  gst_object_sync_values (GST_OBJECT (overlay), GST_BUFFER_TIMESTAMP (buffer));
+  gst_object_sync_values (GST_OBJECT (render), GST_BUFFER_TIMESTAMP (buffer));
 
 wait_for_text_buf:
 
-  GST_TTML_RENDER_LOCK (overlay);
+  GST_TTML_RENDER_LOCK (render);
 
-  if (overlay->video_flushing)
+  if (render->video_flushing)
     goto flushing;
 
-  if (overlay->video_eos)
+  if (render->video_eos)
     goto have_eos;
 
-  if (overlay->silent) {
-    GST_TTML_RENDER_UNLOCK (overlay);
-    ret = gst_pad_push (overlay->srcpad, buffer);
+  if (render->silent) {
+    GST_TTML_RENDER_UNLOCK (render);
+    ret = gst_pad_push (render->srcpad, buffer);
 
     /* Update position */
-    overlay->segment.position = clip_start;
+    render->segment.position = clip_start;
 
     return ret;
   }
 
   /* Text pad not linked, rendering internal text */
-  if (!overlay->text_linked) {
+  if (!render->text_linked) {
     if (klass->get_text) {
-      text = klass->get_text (overlay, buffer);
+      text = klass->get_text (render, buffer);
     } else {
-      text = g_strdup (overlay->default_text);
+      text = g_strdup (render->default_text);
     }
 
-    GST_LOG_OBJECT (overlay, "Text pad not linked, rendering default "
+    GST_LOG_OBJECT (render, "Text pad not linked, rendering default "
         "text: '%s'", GST_STR_NULL (text));
 
-    GST_TTML_RENDER_UNLOCK (overlay);
+    GST_TTML_RENDER_UNLOCK (render);
 
     if (text != NULL && *text != '\0') {
       /* Render and push */
-      gst_ttml_render_render_text (overlay, text, -1);
-      ret = gst_ttml_render_push_frame (overlay, buffer);
+      gst_ttml_render_render_text (render, text, -1);
+      ret = gst_ttml_render_push_frame (render, buffer);
     } else {
       /* Invalid or empty string */
-      ret = gst_pad_push (overlay->srcpad, buffer);
+      ret = gst_pad_push (render->srcpad, buffer);
     }
   } else {
     /* Text pad linked, check if we have a text buffer queued */
-    if (overlay->text_buffer) {
+    if (render->text_buffer) {
       gboolean pop_text = FALSE, valid_text_time = TRUE;
       GstClockTime text_start = GST_CLOCK_TIME_NONE;
       GstClockTime text_end = GST_CLOCK_TIME_NONE;
@@ -3426,117 +3373,117 @@ wait_for_text_buf:
 
       /* if the text buffer isn't stamped right, pop it off the
        * queue and display it for the current video frame only */
-      if (!GST_BUFFER_TIMESTAMP_IS_VALID (overlay->text_buffer) ||
-          !GST_BUFFER_DURATION_IS_VALID (overlay->text_buffer)) {
-        GST_WARNING_OBJECT (overlay,
+      if (!GST_BUFFER_TIMESTAMP_IS_VALID (render->text_buffer) ||
+          !GST_BUFFER_DURATION_IS_VALID (render->text_buffer)) {
+        GST_WARNING_OBJECT (render,
             "Got text buffer with invalid timestamp or duration");
         pop_text = TRUE;
         valid_text_time = FALSE;
       } else {
-        text_start = GST_BUFFER_TIMESTAMP (overlay->text_buffer);
-        text_end = text_start + GST_BUFFER_DURATION (overlay->text_buffer);
+        text_start = GST_BUFFER_TIMESTAMP (render->text_buffer);
+        text_end = text_start + GST_BUFFER_DURATION (render->text_buffer);
       }
 
       vid_running_time =
-          gst_segment_to_running_time (&overlay->segment, GST_FORMAT_TIME,
+          gst_segment_to_running_time (&render->segment, GST_FORMAT_TIME,
           start);
       vid_running_time_end =
-          gst_segment_to_running_time (&overlay->segment, GST_FORMAT_TIME,
+          gst_segment_to_running_time (&render->segment, GST_FORMAT_TIME,
           stop);
 
       /* If timestamp and duration are valid */
       if (valid_text_time) {
         text_running_time =
-            gst_segment_to_running_time (&overlay->text_segment,
+            gst_segment_to_running_time (&render->text_segment,
             GST_FORMAT_TIME, text_start);
         text_running_time_end =
-            gst_segment_to_running_time (&overlay->text_segment,
+            gst_segment_to_running_time (&render->text_segment,
             GST_FORMAT_TIME, text_end);
       }
 
-      GST_LOG_OBJECT (overlay, "T: %" GST_TIME_FORMAT " - %" GST_TIME_FORMAT,
+      GST_LOG_OBJECT (render, "T: %" GST_TIME_FORMAT " - %" GST_TIME_FORMAT,
           GST_TIME_ARGS (text_running_time),
           GST_TIME_ARGS (text_running_time_end));
-      GST_LOG_OBJECT (overlay, "V: %" GST_TIME_FORMAT " - %" GST_TIME_FORMAT,
+      GST_LOG_OBJECT (render, "V: %" GST_TIME_FORMAT " - %" GST_TIME_FORMAT,
           GST_TIME_ARGS (vid_running_time),
           GST_TIME_ARGS (vid_running_time_end));
 
       /* Text too old or in the future */
       if (valid_text_time && text_running_time_end <= vid_running_time) {
         /* text buffer too old, get rid of it and do nothing  */
-        GST_LOG_OBJECT (overlay, "text buffer too old, popping");
+        GST_LOG_OBJECT (render, "text buffer too old, popping");
         pop_text = FALSE;
-        gst_ttml_render_pop_text (overlay);
-        GST_TTML_RENDER_UNLOCK (overlay);
+        gst_ttml_render_pop_text (render);
+        GST_TTML_RENDER_UNLOCK (render);
         goto wait_for_text_buf;
       } else if (valid_text_time && vid_running_time_end <= text_running_time) {
-        GST_LOG_OBJECT (overlay, "text in future, pushing video buf");
-        GST_TTML_RENDER_UNLOCK (overlay);
+        GST_LOG_OBJECT (render, "text in future, pushing video buf");
+        GST_TTML_RENDER_UNLOCK (render);
         /* Push the video frame */
-        ret = gst_pad_push (overlay->srcpad, buffer);
+        ret = gst_pad_push (render->srcpad, buffer);
       } else {
-        if (overlay->need_render) {
+        if (render->need_render) {
           GstSubtitleArea *area = NULL;
           GstSubtitleMeta *subtitle_meta = NULL;
           guint i;
 
-          if (overlay->compositions) {
-            g_list_free_full (overlay->compositions,
+          if (render->compositions) {
+            g_list_free_full (render->compositions,
                 (GDestroyNotify) gst_video_overlay_composition_unref);
-            overlay->compositions = NULL;
+            render->compositions = NULL;
           }
 
-          subtitle_meta = gst_buffer_get_subtitle_meta (overlay->text_buffer);
+          subtitle_meta = gst_buffer_get_subtitle_meta (render->text_buffer);
           g_assert (subtitle_meta != NULL);
 
           for (i = 0; i < subtitle_meta->areas->len; ++i) {
             GstVideoOverlayComposition *composition;
             area = g_ptr_array_index (subtitle_meta->areas, i);
             g_assert (area != NULL);
-            composition = render_text_area (overlay, area,
-                overlay->text_buffer);
-            overlay->compositions = g_list_append (overlay->compositions,
+            composition = render_text_area (render, area,
+                render->text_buffer);
+            render->compositions = g_list_append (render->compositions,
                 composition);
           }
-          overlay->need_render = FALSE;
+          render->need_render = FALSE;
         }
 
-        GST_TTML_RENDER_UNLOCK (overlay);
-        ret = gst_ttml_render_push_frame (overlay, buffer);
+        GST_TTML_RENDER_UNLOCK (render);
+        ret = gst_ttml_render_push_frame (render, buffer);
 
         if (valid_text_time && text_running_time_end <= vid_running_time_end) {
-          GST_LOG_OBJECT (overlay, "text buffer not needed any longer");
+          GST_LOG_OBJECT (render, "text buffer not needed any longer");
           pop_text = TRUE;
         }
       }
       if (pop_text) {
-        GST_TTML_RENDER_LOCK (overlay);
-        gst_ttml_render_pop_text (overlay);
-        GST_TTML_RENDER_UNLOCK (overlay);
+        GST_TTML_RENDER_LOCK (render);
+        gst_ttml_render_pop_text (render);
+        GST_TTML_RENDER_UNLOCK (render);
       }
     } else {
       gboolean wait_for_text_buf = TRUE;
 
-      if (overlay->text_eos)
+      if (render->text_eos)
         wait_for_text_buf = FALSE;
 
-      if (!overlay->wait_text)
+      if (!render->wait_text)
         wait_for_text_buf = FALSE;
 
       /* Text pad linked, but no text buffer available - what now? */
-      if (overlay->text_segment.format == GST_FORMAT_TIME) {
+      if (render->text_segment.format == GST_FORMAT_TIME) {
         GstClockTime text_start_running_time, text_position_running_time;
         GstClockTime vid_running_time;
 
         vid_running_time =
-            gst_segment_to_running_time (&overlay->segment, GST_FORMAT_TIME,
+            gst_segment_to_running_time (&render->segment, GST_FORMAT_TIME,
             GST_BUFFER_TIMESTAMP (buffer));
         text_start_running_time =
-            gst_segment_to_running_time (&overlay->text_segment,
-            GST_FORMAT_TIME, overlay->text_segment.start);
+            gst_segment_to_running_time (&render->text_segment,
+            GST_FORMAT_TIME, render->text_segment.start);
         text_position_running_time =
-            gst_segment_to_running_time (&overlay->text_segment,
-            GST_FORMAT_TIME, overlay->text_segment.position);
+            gst_segment_to_running_time (&render->text_segment,
+            GST_FORMAT_TIME, render->text_segment.position);
 
         if ((GST_CLOCK_TIME_IS_VALID (text_start_running_time) &&
                 vid_running_time < text_start_running_time) ||
@@ -3547,15 +3494,15 @@ wait_for_text_buf:
       }
 
       if (wait_for_text_buf) {
-        GST_DEBUG_OBJECT (overlay, "no text buffer, need to wait for one");
-        GST_TTML_RENDER_WAIT (overlay);
-        GST_DEBUG_OBJECT (overlay, "resuming");
-        GST_TTML_RENDER_UNLOCK (overlay);
+        GST_DEBUG_OBJECT (render, "no text buffer, need to wait for one");
+        GST_TTML_RENDER_WAIT (render);
+        GST_DEBUG_OBJECT (render, "resuming");
+        GST_TTML_RENDER_UNLOCK (render);
         goto wait_for_text_buf;
       } else {
-        GST_TTML_RENDER_UNLOCK (overlay);
-        GST_LOG_OBJECT (overlay, "no need to wait for a text buffer");
-        ret = gst_pad_push (overlay->srcpad, buffer);
+        GST_TTML_RENDER_UNLOCK (render);
+        GST_LOG_OBJECT (render, "no need to wait for a text buffer");
+        ret = gst_pad_push (render->srcpad, buffer);
       }
     }
   }
@@ -3563,34 +3510,34 @@ wait_for_text_buf:
   g_free (text);
 
   /* Update position */
-  overlay->segment.position = clip_start;
+  render->segment.position = clip_start;
 
   return ret;
 
 missing_timestamp:
   {
-    GST_WARNING_OBJECT (overlay, "buffer without timestamp, discarding");
+    GST_WARNING_OBJECT (render, "buffer without timestamp, discarding");
     gst_buffer_unref (buffer);
     return GST_FLOW_OK;
   }
 
 flushing:
   {
-    GST_TTML_RENDER_UNLOCK (overlay);
-    GST_DEBUG_OBJECT (overlay, "flushing, discarding buffer");
+    GST_TTML_RENDER_UNLOCK (render);
+    GST_DEBUG_OBJECT (render, "flushing, discarding buffer");
     gst_buffer_unref (buffer);
     return GST_FLOW_FLUSHING;
   }
 have_eos:
   {
-    GST_TTML_RENDER_UNLOCK (overlay);
-    GST_DEBUG_OBJECT (overlay, "eos, discarding buffer");
+    GST_TTML_RENDER_UNLOCK (render);
+    GST_DEBUG_OBJECT (render, "eos, discarding buffer");
     gst_buffer_unref (buffer);
     return GST_FLOW_EOS;
   }
 out_of_segment:
   {
-    GST_DEBUG_OBJECT (overlay, "buffer out of segment, discarding");
+    GST_DEBUG_OBJECT (render, "buffer out of segment, discarding");
     gst_buffer_unref (buffer);
     return GST_FLOW_OK;
   }
@@ -3601,17 +3548,17 @@ gst_ttml_render_change_state (GstElement * element,
     GstStateChange transition)
 {
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-  GstTtmlRender *overlay = GST_TTML_RENDER (element);
+  GstTtmlRender *render = GST_TTML_RENDER (element);
 
   switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
-      GST_TTML_RENDER_LOCK (overlay);
-      overlay->text_flushing = TRUE;
-      overlay->video_flushing = TRUE;
+      GST_TTML_RENDER_LOCK (render);
+      render->text_flushing = TRUE;
+      render->video_flushing = TRUE;
       /* pop_text will broadcast on the GCond and thus also make the video
        * chain exit if it's waiting for a text buffer */
-      gst_ttml_render_pop_text (overlay);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      gst_ttml_render_pop_text (render);
+      GST_TTML_RENDER_UNLOCK (render);
       break;
     default:
       break;
@@ -3623,14 +3570,14 @@ gst_ttml_render_change_state (GstElement * element,
 
   switch (transition) {
     case GST_STATE_CHANGE_READY_TO_PAUSED:
-      GST_TTML_RENDER_LOCK (overlay);
-      overlay->text_flushing = FALSE;
-      overlay->video_flushing = FALSE;
-      overlay->video_eos = FALSE;
-      overlay->text_eos = FALSE;
-      gst_segment_init (&overlay->segment, GST_FORMAT_TIME);
-      gst_segment_init (&overlay->text_segment, GST_FORMAT_TIME);
-      GST_TTML_RENDER_UNLOCK (overlay);
+      GST_TTML_RENDER_LOCK (render);
+      render->text_flushing = FALSE;
+      render->video_flushing = FALSE;
+      render->video_eos = FALSE;
+      render->text_eos = FALSE;
+      gst_segment_init (&render->segment, GST_FORMAT_TIME);
+      gst_segment_init (&render->text_segment, GST_FORMAT_TIME);
+      GST_TTML_RENDER_UNLOCK (render);
       break;
     default:
       break;
@@ -3642,6 +3589,8 @@ gst_ttml_render_change_state (GstElement * element,
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
+  GST_DEBUG_CATEGORY_INIT (ttmlrender, "ttmlrender", 0, "TTML renderer");
+
   if (!gst_element_register (plugin, "ttmlrender", GST_RANK_PRIMARY,
           GST_TYPE_TEXT_OVERLAY)) {
     return FALSE;
@@ -3651,6 +3600,6 @@ plugin_init (GstPlugin * plugin)
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    ttmlrender, "Pango-based text rendering and overlay, supporting the "
+    ttmlrender, "Pango-based text rendering and render, supporting the "
     "EBU-TT-D profile of TTML.", plugin_init,
     VERSION, "LGPL", "gst-ttml-render", "http://www.bbc.co.uk/rd")

@@ -1362,10 +1362,7 @@ gst_ttml_parse_data_format_autodetect (gchar * match_str)
       return GST_TTML_PARSE_FORMAT_LRC;
   }
 
-  if (match_str) {
-    /** P Taylour
-     * Adding detection for EBUTT */
-    GST_LOG ("EBUTT detected");
+  if (match_str) { /* XXX: This looks like a hack; need to add better detection. */
     return GST_TTML_PARSE_FORMAT_TTML;
   }
 
@@ -1436,17 +1433,13 @@ gst_ttml_parse_format_autodetect (GstTtmlParse * self)
       self->parse_line = parse_lrc;
       return gst_caps_new_simple ("text/x-raw",
           "format", G_TYPE_STRING, "utf8", NULL);
-    /**
-     * Adding  case for ebu-tt
-     * No autodetect so "application/x-subtitle-ebutt" must be provided.
-     */
     case GST_TTML_PARSE_FORMAT_TTML:
     {
       GstCaps *caps;
       GstCapsFeatures *features = gst_caps_features_new ("meta:GstSubtitleMeta",
           NULL);
 
-      self->parse_line = NULL;  /* parse_ebutt; ebutt_xml_parse;  */
+      self->parse_line = NULL; /* XXX: What is the significance of this? */
 
       caps = gst_caps_new_empty_simple ("text/x-raw");
       gst_caps_set_features (caps, 0, features);
@@ -1578,9 +1571,6 @@ handle_buffer (GstTtmlParse * self, GstBuffer * buf)
     GList *subtitle;
     GTimer *timer = g_timer_new ();
 
-    /* use libxml2 instead of line by line parsing
-     * TODO: remove duplicate code.
-     */
     GList *subtitle_list = ttml_parse (self->textbuf->str,
         GST_BUFFER_PTS (buf), GST_BUFFER_DURATION (buf));
 
@@ -1612,7 +1602,7 @@ handle_buffer (GstTtmlParse * self, GstBuffer * buf)
       self->state.segment = &self->segment;
       /* Now parse the line, out of segment lines will just return NULL */
       GST_LOG_OBJECT (self, "Parsing line '%s'", line + offset);
-      subtitle = self->parse_line (&self->state, line + offset); /** THIS IS WHERE TO PARSES THE LINE **/
+      subtitle = self->parse_line (&self->state, line + offset);
       g_free (line);
 
       if (subtitle) {
@@ -1817,14 +1807,8 @@ GST_STATIC_CAPS ("application/x-subtitle-qttext");
 static GstStaticCaps lrc_caps = GST_STATIC_CAPS ("application/x-subtitle-lrc");
 #define LRC_CAPS (gst_static_caps_get (&lrc_caps))
 
-/**
- * P. Taylour:
- * adding in static cap reading for ebutt.
- * Does this then bypass some of the autodetection?
- */
-static GstStaticCaps ebutt_caps =
-GST_STATIC_CAPS ("application/x-subtitle-ebutt");
-#define EBUTT_CAPS (gst_static_caps_get (&ebutt_caps))
+static GstStaticCaps ttml_caps = GST_STATIC_CAPS ("application/ttml+xml");
+#define TTML_CAPS (gst_static_caps_get (&ttml_caps))
 
 
 static void
@@ -1931,13 +1915,9 @@ gst_ttmlparse_type_find (GstTypeFind * tf, gpointer private)
       GST_DEBUG ("LRC format detected");
       caps = LRC_CAPS;
       break;
-    /**
-     * P. Taylour
-     * Adding in case for ebu-tt
-     */
     case GST_TTML_PARSE_FORMAT_TTML:
       GST_DEBUG ("TTML format detected");
-      caps = EBUTT_CAPS;
+      caps = TTML_CAPS;
       break;
 
     default:
@@ -1953,14 +1933,10 @@ gst_ttmlparse_type_find (GstTypeFind * tf, gpointer private)
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
-  GST_DEBUG_CATEGORY_INIT (ttml_parse_debug, "ttmlparse", 0, "TTML sub parser");
+  GST_DEBUG_CATEGORY_INIT (ttml_parse_debug, "ttmlparse", 0, "TTML parser");
 
-  /**
-   * P. TAYLOUR
-   * Have added xml to type find list
-   */
   if (!gst_type_find_register (plugin, "ttmlparse_typefind", GST_RANK_MARGINAL,
-          gst_ttmlparse_type_find, "srt,sub,mpsub,mdvd,smi,txt,dks,xml",
+          gst_ttmlparse_type_find, "srt,sub,mpsub,mdvd,smi,txt,dks,ttml",
           SUB_CAPS, NULL, NULL))
     return FALSE;
 
