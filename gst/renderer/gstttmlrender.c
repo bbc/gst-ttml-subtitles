@@ -2365,9 +2365,8 @@ generate_marked_up_string (GstTtmlRender * render,
     range->first_char = total_text_length;
 
     fgcolor = color_to_rgb_string (element->style.color);
-    /* XXX: Should we round the pixel font size? */
     font_size = g_strdup_printf ("%u",
-        (guint) (element->style.font_size * render->height));
+        (guint) (round (element->style.font_size * render->height)));
     font_family = (g_strcmp0 (element->style.font_family, "default") == 0) ?
       "Monospace" : element->style.font_family;
     font_style = (element->style.font_style == GST_SUBTITLE_FONT_STYLE_NORMAL) ?
