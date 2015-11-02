@@ -2355,9 +2355,12 @@ generate_marked_up_string (GstTtmlRender * render,
     }
 
     buf_text = g_strndup ((const gchar *)map.data, map.size);
+    if (!g_utf8_validate (buf_text, -1, NULL)) {
+      GST_CAT_ERROR (ttmlrender, "Text in buffer us not valid UTF-8");
+      gst_memory_unmap (mem, &map);
+      gst_memory_unref (mem);
+    }
     GST_CAT_DEBUG (ttmlrender, "Text from buffer is: %s", buf_text);
-    g_assert (buf_text != NULL);
-    /* XXX: check that text is valid UTF-8? */
 
     range->first_char = total_text_length;
 
