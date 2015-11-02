@@ -1906,7 +1906,6 @@ gst_ttml_render_push_frame (GstTtmlRender * render,
 
   while (compositions) {
     GstVideoOverlayComposition *composition = compositions->data;
-    GST_CAT_DEBUG (ttmlrender, "Blending composition...");
     gst_video_overlay_composition_blend (composition, &frame);
     compositions = compositions->next;
   }
@@ -2468,18 +2467,16 @@ draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
    * this downward shift, the text looks too high. */
   vertical_offset =
     (guint) round ((padding - cur_spacing) + (0.1 * max_font_size));
-  GST_CAT_DEBUG (ttmlrender, "offset: %g   spacing: %d", cur_spacing,
+  GST_CAT_LOG (ttmlrender, "offset: %g   spacing: %d", cur_spacing,
       spacing);
-  GST_CAT_DEBUG (ttmlrender, "line_height: %u", line_height);
-  GST_CAT_DEBUG (ttmlrender, "Current line height is %g; changing to %g",
-      cur_height, cur_height + spacing);
+  GST_CAT_LOG (ttmlrender, "Requested line_height: %u", line_height);
   pango_layout_set_spacing (ret->layout, PANGO_SCALE * spacing);
-  GST_CAT_DEBUG (ttmlrender, "Current spacing is now %d",
+  GST_CAT_LOG (ttmlrender, "Line spacing set to %d",
       pango_layout_get_spacing (ret->layout) / PANGO_SCALE);
 
   pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
-  GST_CAT_DEBUG (ttmlrender, "logical_rect.x: %d   logical_rect.y: %d "
-      "logical_rect.width: %d  logical_rect.height: %d", logical_rect.x,
+  GST_CAT_DEBUG (ttmlrender, "logical_rect.x: %d   logical_rect.y: %d   "
+      "logical_rect.width: %d   logical_rect.height: %d", logical_rect.x,
       logical_rect.y, logical_rect.width, logical_rect.height);
 
   /* Create surface for pango layout to render into. */
@@ -2493,14 +2490,12 @@ draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
 
   /* Render layout. */
   cairo_save (cairo_state);
-  GST_CAT_DEBUG (ttmlrender, "Layout text is: %s",
-      pango_layout_get_text (ret->layout));
   pango_cairo_show_layout (cairo_state, ret->layout);
   cairo_restore (cairo_state);
 
   buf_width = logical_rect.width;
   buf_height = logical_rect.height + vertical_offset;
-  GST_CAT_DEBUG (ttmlrender, "buf_width: %u  buf_height: %u",
+  GST_CAT_DEBUG (ttmlrender, "Output buffer width: %u  height: %u",
       buf_width, buf_height);
 
   /* Depending on whether the text is wrapped and its alignment, the image
@@ -2515,7 +2510,6 @@ draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
   gst_buffer_map (ret->text_image->image, &map, GST_MAP_READWRITE);
 
   stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
-  GST_CAT_DEBUG (ttmlrender, "stride:%d", stride);
   cropped_surface =
     cairo_image_surface_create_for_data (
         map.data + (vertical_offset * stride), CAIRO_FORMAT_ARGB32, buf_width,
@@ -2677,7 +2671,7 @@ rendered_image_combine (GstTtmlRenderRenderedImage * image1,
   ret->height = MAX (image1->y + image1->height, image2->y + image2->height)
     - ret->y;
 
-  GST_CAT_DEBUG (ttmlrender, "Dimensions of combined image:  x:%u  y:%u  "
+  GST_CAT_LOG (ttmlrender, "Dimensions of combined image:  x:%u  y:%u  "
       "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
 
   /* Create cairo_surface from src images. */
@@ -2751,7 +2745,7 @@ rendered_image_crop (GstTtmlRenderRenderedImage * image, gint x, gint y,
   ret->height = MIN ((image->y + image->height) - ret->y,
       (y + height) - ret->y);
 
-  GST_CAT_DEBUG (ttmlrender, "Dimensions of cropped image:  x:%u  y:%u  "
+  GST_CAT_LOG (ttmlrender, "Dimensions of cropped image:  x:%u  y:%u  "
       "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
 
   /* Create cairo_surface from src image. */
@@ -2815,7 +2809,7 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
     range = g_ptr_array_index (char_ranges, i);
     element = g_ptr_array_index (elements, i);
 
-    GST_CAT_DEBUG (ttmlrender, "First char index: %u   Last char index: %u",
+    GST_CAT_LOG (ttmlrender, "First char index: %u   Last char index: %u",
         range->first_char, range->last_char);
     pango_layout_index_to_pos (layout, range->first_char, &first_char_pos);
     pango_layout_index_to_pos (layout, range->last_char, &last_char_pos);
@@ -2829,9 +2823,9 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
     last_char_end = PANGO_PIXELS (last_char_pos.x + last_char_pos.width)
       - horiz_offset;
 
-    GST_CAT_DEBUG (ttmlrender, "First char start: %u  Last char end: %u",
+    GST_CAT_LOG (ttmlrender, "First char start: %u  Last char end: %u",
         first_char_start, last_char_end);
-    GST_CAT_DEBUG (ttmlrender, "First line: %u  Last line: %u", first_line,
+    GST_CAT_LOG (ttmlrender, "First line: %u  Last line: %u", first_line,
         last_line);
 
     for (cur_line = first_line; cur_line <= last_line; ++cur_line) {
@@ -2846,7 +2840,7 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
 
       pango_layout_line_x_to_index (line, 0, &first_char_index, NULL);
       pango_layout_index_to_pos (layout, first_char_index, &line_pos);
-      GST_CAT_DEBUG (ttmlrender, "First char index:%d  position_X:%d  "
+      GST_CAT_LOG (ttmlrender, "First char index:%d  position_X:%d  "
           "position_Y:%d", first_char_index, PANGO_PIXELS (line_pos.x),
           PANGO_PIXELS (line_pos.y));
 
@@ -2854,30 +2848,30 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
       line_end = (PANGO_PIXELS (line_pos.x) + line_extents.width)
         - horiz_offset;
 
-      GST_CAT_DEBUG (ttmlrender, "line_extents.x:%d  line_extents.y:%d  "
+      GST_CAT_LOG (ttmlrender, "line_extents.x:%d  line_extents.y:%d  "
           "line_extents.width:%d  line_extents.height:%d", line_extents.x,
           line_extents.y, line_extents.width, line_extents.height);
-      GST_CAT_DEBUG (ttmlrender, "cur_line:%u  line start:%u  line end:%u "
+      GST_CAT_LOG (ttmlrender, "cur_line:%u  line start:%u  line end:%u "
           "first_char_start: %u  last_char_end: %u", cur_line, line_start,
           line_end, first_char_start, last_char_end);
 
       if ((cur_line == first_line) && (first_char_start != line_start)) {
         area_start = first_char_start + line_padding;
-        GST_CAT_DEBUG (ttmlrender,
+        GST_CAT_LOG (ttmlrender,
             "First line, but there is preceding text in line.");
       } else {
-        GST_CAT_DEBUG (ttmlrender,
+        GST_CAT_LOG (ttmlrender,
             "Area contains first text on the line; adding padding...");
         ++padding;
         area_start = line_start;
       }
 
       if ((cur_line == last_line) && (last_char_end != line_end)) {
-        GST_CAT_DEBUG (ttmlrender,
+        GST_CAT_LOG (ttmlrender,
             "Last line, but there is following text in line.");
         area_end = last_char_end + line_padding;
       } else {
-        GST_CAT_DEBUG (ttmlrender,
+        GST_CAT_LOG (ttmlrender,
             "Area contains last text on the line; adding padding...");
         ++padding;
         area_end = line_end + (2 * line_padding);
@@ -2933,13 +2927,13 @@ get_alignment (GstSubtitleStyleSet * style)
           align = PANGO_ALIGN_RIGHT;
           break;
         default:
-          GST_CAT_ERROR (ttmlrender, "Illegal text_align value (%d)",
+          GST_CAT_ERROR (ttmlrender, "Illegal TextAlign value (%d)",
               style->text_align);
           break;
       }
       break;
     default:
-      GST_CAT_ERROR (ttmlrender, "Illegal multi_row_align value (%d)",
+      GST_CAT_ERROR (ttmlrender, "Illegal MultiRowAlign value (%d)",
           style->multi_row_align);
       break;
   }
@@ -2961,14 +2955,14 @@ stitch_blocks (GList * blocks)
     tmp = ret;
 
     block->y += vert_offset;
-    GST_CAT_DEBUG (ttmlrender, "Rendering block at vertical offset %u",
+    GST_CAT_LOG (ttmlrender, "Rendering block at vertical offset %u",
         vert_offset);
     vert_offset = block->y + block->height;
     ret = rendered_image_combine (ret, block);
     if (tmp) rendered_image_free (tmp);
   }
 
-  GST_CAT_DEBUG (ttmlrender, "Height of stitched image: %u", ret->height);
+  GST_CAT_LOG (ttmlrender, "Height of stitched image: %u", ret->height);
   ret->image = gst_buffer_make_writable (ret->image);
   return ret;
 }
@@ -3140,8 +3134,6 @@ render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
       block = g_ptr_array_index (area->blocks, i);
       rendered_block = render_text_block (render, block, text_buf,
           window_width, TRUE);
-      GST_CAT_DEBUG (ttmlrender, "Height of rendered block is %u",
-          rendered_block->height);
 
       blocks = g_list_append (blocks, rendered_block);
     }
@@ -3177,6 +3169,9 @@ render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
     if (tmp) rendered_image_free (tmp);
     rendered_image_free (blocks_image);
   }
+
+  GST_CAT_DEBUG (ttmlrender, "Height of rendered area: %u",
+      area_image->height);
 
   ret = gst_ttml_render_compose_overlay (area_image);
   rendered_image_free (area_image);
