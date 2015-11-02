@@ -671,22 +671,6 @@ gst_ttml_render_init (GstTtmlRender * render,
 
 
 static void
-gst_ttml_render_layer_free (GstTtmlRenderLayer * layer)
-{
-  g_return_if_fail (layer != NULL);
-
-  GST_CAT_DEBUG (ttmlrender, "Freeing layer %p...", layer);
-  if (layer->image) {
-    gst_buffer_unref (layer->image);
-  }
-  if (layer->rectangle) {
-    gst_video_overlay_rectangle_unref (layer->rectangle);
-  }
-  g_free (layer);
-}
-
-
-static void
 gst_ttml_render_update_wrap_mode (GstTtmlRender * render)
 {
   if (render->wrap_mode == GST_TTML_RENDER_WRAP_MODE_NONE) {
@@ -1466,32 +1450,6 @@ gst_ttml_render_set_composition (GstTtmlRender * render)
     gst_video_overlay_composition_unref (render->composition);
     render->composition = NULL;
   }
-}
-
-
-static GstVideoOverlayComposition *
-gst_ttml_render_compose_layers (GSList * layers)
-{
-  GstTtmlRenderLayer *layer = NULL;
-  GstVideoOverlayComposition *ret = NULL;
-
-  GST_CAT_DEBUG (ttmlrender, "Composing layers...");
-
-  g_return_if_fail (layers != NULL);
-
-  layer = (GstTtmlRenderLayer *)layers->data;
-  g_assert (layer != NULL);
-
-  ret = gst_video_overlay_composition_new (layer->rectangle);
-
-  while ((layers = g_slist_next (layers))) {
-    layer = (GstTtmlRenderLayer *)layers->data;
-    g_assert (layer != NULL);
-    GST_CAT_DEBUG (ttmlrender, "Adding layer to composition...");
-    gst_video_overlay_composition_add_rectangle (ret, layer->rectangle);
-  }
-
-  return ret;
 }
 
 
@@ -2363,33 +2321,6 @@ draw_rectangle (guint width, guint height, GstSubtitleColor color)
 }
 
 
-static GstTtmlRenderLayer *
-create_new_layer (GstBuffer * image, gint xpos, gint ypos, guint width,
-    guint height)
-{
-  GstTtmlRenderLayer *layer;
-
-  layer = g_slice_new0 (GstTtmlRenderLayer);
-  layer->image = image;
-  layer->xpos = xpos;
-  layer->ypos = ypos;
-  layer->width = width;
-  layer->height = height;
-
-  GST_CAT_DEBUG (ttmlrender, "Creating layer - x: %d  y: %d  w: %u  h: %u, "
-      "buffer-size: %u", xpos, ypos, width, height,
-      gst_buffer_get_size (image));
-
-  gst_buffer_add_video_meta (image, GST_VIDEO_FRAME_FLAG_NONE,
-      GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB, width, height);
-
-  layer->rectangle = gst_video_overlay_rectangle_new_raw (image, xpos, ypos,
-      width, height, GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
-
-  return layer;
-}
-
-
 typedef struct {
   guint first_char;
   guint last_char;
@@ -3136,14 +3067,22 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
 }
 
 
-static void
-free_layer (GstTtmlRenderLayer * layer)
+static GstVideoOverlayComposition *
+gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage * image)
 {
-  if (layer->image)
-    gst_buffer_unref (layer->image);
-  if (layer->rectangle)
-    gst_video_overlay_rectangle_unref (layer->rectangle);
-  g_slice_free (GstTtmlRenderLayer, layer);
+  GstVideoOverlayRectangle *rectangle;
+  GstBuffer *buf = gst_buffer_copy (image->image);
+  GstVideoOverlayComposition *ret = NULL;
+
+  gst_buffer_add_video_meta (buf, GST_VIDEO_FRAME_FLAG_NONE,
+      GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB, image->width, image->height);
+
+  rectangle = gst_video_overlay_rectangle_new_raw (buf, image->x, image->y,
+      image->width, image->height,
+      GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
+
+  ret = gst_video_overlay_composition_new (rectangle);
+  return ret;
 }
 
 
@@ -3155,9 +3094,7 @@ render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
   guint area_x, area_y, area_width, area_height;
   guint window_x, window_y, window_width, window_height;
   guint padding_start, padding_end, padding_before, padding_after;
-  GSList *layers = NULL;
   GstTtmlRenderRenderedImage *area_image = NULL;
-  GstTtmlRenderLayer *area_layer;
   GstVideoOverlayComposition *ret = NULL;
 
   area_width = (guint) (round (area->style.extent_w * render->width));
@@ -3241,14 +3178,7 @@ render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
     rendered_image_free (blocks_image);
   }
 
-  /* XXX: Now we are combining ourselves, we don't need to handle a list of
-   * layers. */
-  area_layer = create_new_layer (gst_buffer_copy (area_image->image),
-      area_image->x, area_image->y, area_image->width, area_image->height);
-  layers = g_slist_append (layers, area_layer);
-
-  ret = gst_ttml_render_compose_layers (layers);
-  g_slist_free_full (layers, (GDestroyNotify) free_layer);
+  ret = gst_ttml_render_compose_overlay (area_image);
   rendered_image_free (area_image);
   return ret;
 }

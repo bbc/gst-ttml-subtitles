@@ -135,16 +135,6 @@ typedef enum {
 } GstTtmlRenderLineAlign;
 
 
-
-struct _GstTtmlRenderLayer {
-  GstBuffer *image;
-  gint xpos;
-  gint ypos;
-  guint width;
-  guint height;
-  GstVideoOverlayRectangle *rectangle;
-};
-
 /**
  * GstTtmlRender:
  *
