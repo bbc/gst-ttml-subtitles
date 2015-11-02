@@ -2281,13 +2281,6 @@ color_to_rgb_string (GstSubtitleColor color)
   return g_strdup_printf ("#%02x%02x%02x", color.r, color.g, color.b);
 }
 
-static gchar *
-color_to_rgba_string (GstSubtitleColor color)
-{
-  return g_strdup_printf ("#%02x%02x%02x%02x",
-      color.r, color.g, color.b, color.a);
-}
-
 
 static GstBuffer *
 draw_rectangle (guint width, guint height, GstSubtitleColor color)
