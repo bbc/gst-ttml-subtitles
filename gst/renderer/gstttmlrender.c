@@ -2730,7 +2730,13 @@ rendered_image_crop (GstTtmlRenderRenderedImage * image, gint x, gint y,
       && (height >= image->height))
     return rendered_image_copy (image);
 
-  /* TODO: Handle case where crop rectangle doesn't intersect image. */
+  if (image->x >= (x + (gint)width)
+      || (image->x + (gint)image->width) <= x
+      || image->y >= (y + (gint)height)
+      || (image->y + (gint)image->height) <= y) {
+    GST_CAT_WARNING (ttmlrender, "Crop rectangle doesn't intersect image.");
+    return NULL;
+  }
 
   ret = g_slice_new0 (GstTtmlRenderRenderedImage);
 
