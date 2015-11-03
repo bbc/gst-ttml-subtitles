@@ -2532,7 +2532,7 @@ draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
 
 /* If any of an array of elements has line wrapping enabled, return TRUE. */
 static gboolean
-is_wrapped (GPtrArray * elements)
+elements_are_wrapped (GPtrArray * elements)
 {
   GstSubtitleElement *element;
   guint i;
@@ -3003,7 +3003,7 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
   rendered_text = draw_text (render, marked_up_string,
       (width - (2 * line_padding)), alignment,
       (guint) (block->style.line_height * max_font_size), max_font_size,
-      is_wrapped (block->elements));
+      elements_are_wrapped (block->elements));
 
   switch (block->style.text_align) {
     case GST_SUBTITLE_TEXT_ALIGN_START:
