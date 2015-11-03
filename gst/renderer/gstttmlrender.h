@@ -48,24 +48,25 @@ G_BEGIN_DECLS
 
 typedef struct _GstTtmlRender      GstTtmlRender;
 typedef struct _GstTtmlRenderClass GstTtmlRenderClass;
-typedef struct _GstTtmlRenderLayer GstTtmlRenderLayer;
+typedef struct _GstTtmlRenderRenderedImage GstTtmlRenderRenderedImage;
+typedef struct _GstTtmlRenderRenderedText GstTtmlRenderRenderedText;
 
-typedef struct {
+struct _GstTtmlRenderRenderedImage {
   GstBuffer *image;
   gint x;
   gint y;
   guint width;
   guint height;
-} GstTtmlRenderRenderedImage;
+};
 
-typedef struct {
+struct _GstTtmlRenderRenderedText {
   GstTtmlRenderRenderedImage *text_image;
   PangoLayout *layout; /* TODO: Add some documentation re. why this is needed. */
 
   /* To cope with the fact that pango positions text at a different horizontal
    * location depending on whether wrapping is enabled or not. */
   guint horiz_offset;
-} GstTtmlRenderRenderedText;
+};
 
 
 /**
