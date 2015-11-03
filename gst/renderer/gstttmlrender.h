@@ -61,8 +61,13 @@ struct _GstTtmlRenderRenderedImage {
 
 struct _GstTtmlRenderRenderedText {
   GstTtmlRenderRenderedImage *text_image;
-  PangoLayout *layout; /* TODO: Add some documentation re. why this is needed. */
 
+  /* In order to get the positions of characters within a paragraph rendered by
+   * pango we need to retain a reference to the PangoLayout object that was
+   * used to render that paragraph. */
+  PangoLayout *layout;
+
+  /* XXX: This isn't very helpful; either change the comment, or change the code so we don't need to pass this information. */
   /* To cope with the fact that pango positions text at a different horizontal
    * location depending on whether wrapping is enabled or not. */
   guint horiz_offset;
