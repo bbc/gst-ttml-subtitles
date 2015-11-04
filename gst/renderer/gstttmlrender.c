@@ -3105,7 +3105,7 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
     (guint) (round (region->style.padding_after * render->height));
 
   /* "window" here refers to the section of the region that we're allowed to
-   * render into. i.e., the region minus padding. */
+   * render into, i.e., the region minus padding. */
   window_x = region_x + padding_start;
   window_y = region_y + padding_before;
   window_width = region_width - (padding_start + padding_end);
