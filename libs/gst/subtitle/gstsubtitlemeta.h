@@ -31,13 +31,13 @@ typedef struct _GstSubtitleMeta GstSubtitleMeta;
 /**
  * GstSubtitleMeta:
  * @meta: the parent #GstMeta.
- * @areas:
+ * @regions:
  *
  */
 struct _GstSubtitleMeta {
   GstMeta meta;
 
-  GPtrArray *areas;
+  GPtrArray *regions;
 };
 
 GType gst_subtitle_meta_api_get_type (void);
@@ -56,7 +56,7 @@ void gst_subtitle_meta_free (GstMeta * meta, GstBuffer * buffer);
 const GstMetaInfo * gst_subtitle_meta_get_info (void);
 
 GstSubtitleMeta * gst_buffer_add_subtitle_meta (GstBuffer * buffer,
-    GPtrArray * areas);
+    GPtrArray * regions);
 
 G_END_DECLS
 

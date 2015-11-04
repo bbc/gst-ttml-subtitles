@@ -1254,7 +1254,7 @@ ttml_create_scenes (GList * region_trees)
     }
 
     active_elements = ttml_get_active_elements (region_trees, timestamp);
-    GST_CAT_LOG (ttmlparse, "There will be %u active areas after "
+    GST_CAT_LOG (ttmlparse, "There will be %u active regions after "
         "transition", g_list_length (active_elements));
 
     if (active_elements) {
@@ -1508,13 +1508,13 @@ ttml_blend_colors (GstSubtitleColor color1, GstSubtitleColor color2)
 }
 
 
-/* Create the subtitle area and its child blocks and elements for @tree,
+/* Create the subtitle region and its child blocks and elements for @tree,
  * inserting element text in @buf. */
-static GstSubtitleArea *
-ttml_create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
+static GstSubtitleRegion *
+ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
     guint cellres_y)
 {
-  GstSubtitleArea *area;
+  GstSubtitleRegion *region;
   GstSubtitleStyleSet *region_style;
   GstSubtitleColor block_color;
   TtmlElement *element;
@@ -1526,12 +1526,12 @@ ttml_create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
   region_style = gst_subtitle_style_set_new ();
   ttml_update_style_set (region_style, element->style_set, cellres_x,
       cellres_y);
-  area = gst_subtitle_area_new (region_style);
+  region = gst_subtitle_region_new (region_style);
   gst_subtitle_style_set_free (region_style);
 
   node = tree->children;
   if (!node)
-    return area;
+    return region;
 
   g_assert (node->next == NULL);
   element = node->data;
@@ -1594,13 +1594,13 @@ ttml_create_subtitle_area (GNode * tree, GstBuffer * buf, guint cellres_x,
         }
       }
 
-      gst_subtitle_area_add_block (area, block);
-      GST_CAT_DEBUG (ttmlparse, "Added block to area; there are now %u blocks"
-          " in the area.", gst_subtitle_area_get_block_count (area));
+      gst_subtitle_region_add_block (region, block);
+      GST_CAT_DEBUG (ttmlparse, "Added block to region; there are now %u blocks"
+          " in the region.", gst_subtitle_region_get_block_count (region));
     }
   }
 
-  return area;
+  return region;
 }
 
 
@@ -1612,7 +1612,7 @@ ttml_create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_
   for (scene_entry = g_list_first (scenes); scene_entry;
       scene_entry = scene_entry->next) {
     TtmlScene * scene = scene_entry->data;
-    GPtrArray *areas = g_ptr_array_new ();
+    GPtrArray *regions = g_ptr_array_new ();
     GList *region_tree;
 
     scene->buf = gst_buffer_new ();
@@ -1622,14 +1622,15 @@ ttml_create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_
     for (region_tree = g_list_first (scene->elements); region_tree;
         region_tree = region_tree->next) {
       GNode *tree = (GNode *)region_tree->data;
-      GstSubtitleArea *area;
+      GstSubtitleRegion *region;
 
-      area = ttml_create_subtitle_area (tree, scene->buf, cellres_x, cellres_y);
-      g_ptr_array_add (areas, area);
+      region = ttml_create_subtitle_region (tree, scene->buf, cellres_x,
+          cellres_y);
+      g_ptr_array_add (regions, region);
     }
 
-    gst_buffer_add_subtitle_meta (scene->buf, areas);
-    g_ptr_array_unref (areas);
+    gst_buffer_add_subtitle_meta (scene->buf, regions);
+    g_ptr_array_unref (regions);
   }
 
   return NULL;

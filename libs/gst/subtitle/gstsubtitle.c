@@ -235,101 +235,101 @@ gst_subtitle_block_get_element (const GstSubtitleBlock * block, guint index)
 }
 
 static void
-_gst_subtitle_area_free (GstSubtitleArea * area)
+_gst_subtitle_region_free (GstSubtitleRegion * region)
 {
-  g_return_if_fail (area != NULL);
-  g_slice_free (GstSubtitleArea, area);
+  g_return_if_fail (region != NULL);
+  g_slice_free (GstSubtitleRegion, region);
 }
 
-GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleArea, gst_subtitle_area);
+GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleRegion, gst_subtitle_region);
 
 
 /**
- * gst_subtitle_area_new:
+ * gst_subtitle_region_new:
  * @style:
  *
- * Allocates a new #GstSubtitleArea.
+ * Allocates a new #GstSubtitleRegion.
  *
- * Returns: (transfer full): a newly-allocated #GstSubtitleArea. Unref
- * with gst_subtitle_area_unref() when no longer needed.
+ * Returns: (transfer full): a newly-allocated #GstSubtitleRegion. Unref
+ * with gst_subtitle_region_unref() when no longer needed.
  */
-GstSubtitleArea *
-gst_subtitle_area_new (const GstSubtitleStyleSet * style)
+GstSubtitleRegion *
+gst_subtitle_region_new (const GstSubtitleStyleSet * style)
 {
-  GstSubtitleArea *area;
+  GstSubtitleRegion *region;
 
   g_return_val_if_fail (style != NULL, NULL);
 
-  area = g_slice_new0 (GstSubtitleArea);
-  gst_mini_object_init (GST_MINI_OBJECT_CAST (area), 0,
-      gst_subtitle_area_get_type (), NULL, NULL,
-      (GstMiniObjectFreeFunction) _gst_subtitle_area_free);
+  region = g_slice_new0 (GstSubtitleRegion);
+  gst_mini_object_init (GST_MINI_OBJECT_CAST (region), 0,
+      gst_subtitle_region_get_type (), NULL, NULL,
+      (GstMiniObjectFreeFunction) _gst_subtitle_region_free);
 
-  gst_subtitle_style_set_copy (style, &(area->style));
+  gst_subtitle_style_set_copy (style, &(region->style));
 
-  return area;
+  return region;
 }
 
 /**
- * gst_subtitle_area_add_block:
- * @area: a #GstSubtitleArea.
+ * gst_subtitle_region_add_block:
+ * @region: a #GstSubtitleRegion.
  * @block: (transfer full): a #GstSubtitleBlock which should be added
- * to @area's array of blocks.
+ * to @region's array of blocks.
  *
  * Adds a #GstSubtitleBlock to the end of the array of blocks held by
- * @area. @area will take ownership of @block, and will unref it when @area
+ * @region. @region will take ownership of @block, and will unref it when @region
  * is freed.
  */
 void
-gst_subtitle_area_add_block (GstSubtitleArea * area, GstSubtitleBlock * block)
+gst_subtitle_region_add_block (GstSubtitleRegion * region, GstSubtitleBlock * block)
 {
-  g_return_if_fail (area != NULL);
+  g_return_if_fail (region != NULL);
   g_return_if_fail (block != NULL);
 
-  if (!area->blocks)
-    area->blocks = g_ptr_array_new_with_free_func (
+  if (!region->blocks)
+    region->blocks = g_ptr_array_new_with_free_func (
         (GDestroyNotify) gst_subtitle_block_unref);
 
-  g_ptr_array_add (area->blocks, block);
+  g_ptr_array_add (region->blocks, block);
 }
 
 /**
- * gst_subtitle_area_get_block_count:
- * @area: a #GstSubtitleArea.
+ * gst_subtitle_region_get_block_count:
+ * @region: a #GstSubtitleRegion.
  *
- * Returns: the number of blocks in @area.
+ * Returns: the number of blocks in @region.
  */
 guint
-gst_subtitle_area_get_block_count (const GstSubtitleArea * area)
+gst_subtitle_region_get_block_count (const GstSubtitleRegion * region)
 {
-  g_return_val_if_fail (area != NULL, 0);
+  g_return_val_if_fail (region != NULL, 0);
 
-  if (!area->blocks)
+  if (!region->blocks)
     return 0;
   else
-    return area->blocks->len;
+    return region->blocks->len;
 }
 
 /**
- * gst_subtitle_area_get_block:
- * @area: a #GstSubtitleArea.
+ * gst_subtitle_region_get_block:
+ * @region: a #GstSubtitleRegion.
  * @index: index of the block to get.
  *
- * Gets the block at @index in the array of blocks held by @area.
+ * Gets the block at @index in the array of blocks held by @region.
  *
  * Returns: (transfer none): the #GstSubtitleBlock at @index in the array of
- * blocks held by @area, or %NULL if @index is out-of-bounds. The
+ * blocks held by @region, or %NULL if @index is out-of-bounds. The
  * function does not return a reference; the caller should obtain a reference
- * using gst_subtitle_area_ref(), if needed.
+ * using gst_subtitle_region_ref(), if needed.
  */
 GstSubtitleBlock *
-gst_subtitle_area_get_block (const GstSubtitleArea * area, guint index)
+gst_subtitle_region_get_block (const GstSubtitleRegion * region, guint index)
 {
-  g_return_val_if_fail (area != NULL, NULL);
+  g_return_val_if_fail (region != NULL, NULL);
 
-  if (!area->blocks || index >= area->blocks->len)
+  if (!region->blocks || index >= region->blocks->len)
     return NULL;
   else
-    return g_ptr_array_index (area->blocks, index);
+    return g_ptr_array_index (region->blocks, index);
 }
 

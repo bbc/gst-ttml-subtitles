@@ -33,7 +33,7 @@ typedef struct _GstSubtitleColor GstSubtitleColor;
 typedef struct _GstSubtitleStyleSet GstSubtitleStyleSet;
 typedef struct _GstSubtitleElement GstSubtitleElement;
 typedef struct _GstSubtitleBlock GstSubtitleBlock;
-typedef struct _GstSubtitleArea GstSubtitleArea;
+typedef struct _GstSubtitleRegion GstSubtitleRegion;
 
 /**
  * GstSubtitleWritingMode:
@@ -272,12 +272,12 @@ gst_subtitle_block_unref (GstSubtitleBlock * block)
 
 
 /**
- * GstSubtitleArea:
+ * GstSubtitleRegion:
  * @mini_object: the parent #GstMiniObject.
  * @style:
  *
  */
-struct _GstSubtitleArea
+struct _GstSubtitleRegion
 {
   GstMiniObject mini_object;
 
@@ -289,45 +289,45 @@ struct _GstSubtitleArea
   gpointer _gst_reserved[GST_PADDING];
 };
 
-GType gst_subtitle_area_get_type (void);
+GType gst_subtitle_region_get_type (void);
 
-GstSubtitleArea * gst_subtitle_area_new (const GstSubtitleStyleSet * style);
+GstSubtitleRegion * gst_subtitle_region_new (const GstSubtitleStyleSet * style);
 
-void gst_subtitle_area_add_block (
-    GstSubtitleArea * area,
+void gst_subtitle_region_add_block (
+    GstSubtitleRegion * region,
     GstSubtitleBlock * block);
 
-guint gst_subtitle_area_get_block_count (const GstSubtitleArea * area);
+guint gst_subtitle_region_get_block_count (const GstSubtitleRegion * region);
 
-GstSubtitleBlock * gst_subtitle_area_get_block (
-    const GstSubtitleArea * area, guint index);
+GstSubtitleBlock * gst_subtitle_region_get_block (
+    const GstSubtitleRegion * region, guint index);
 
 /**
- * gst_subtitle_area_ref:
- * @area: a #GstSubtitleArea.
+ * gst_subtitle_region_ref:
+ * @region: a #GstSubtitleRegion.
  *
- * Increments the refcount of @area.
+ * Increments the refcount of @region.
  *
- * Returns: (transfer full): @area.
+ * Returns: (transfer full): @region.
  */
-static inline GstSubtitleArea *
-gst_subtitle_area_ref (GstSubtitleArea * area)
+static inline GstSubtitleRegion *
+gst_subtitle_region_ref (GstSubtitleRegion * region)
 {
-  return (GstSubtitleArea *)
-    gst_mini_object_ref (GST_MINI_OBJECT_CAST (area));
+  return (GstSubtitleRegion *)
+    gst_mini_object_ref (GST_MINI_OBJECT_CAST (region));
 }
 
 /**
- * gst_subtitle_area_unref:
- * @area: (transfer full): a #GstSubtitleArea.
+ * gst_subtitle_region_unref:
+ * @region: (transfer full): a #GstSubtitleRegion.
  *
- * Decrements the refcount of @area. If the refcount reaches 0, @area will be
+ * Decrements the refcount of @region. If the refcount reaches 0, @region will be
  * freed.
  */
 static inline void
-gst_subtitle_area_unref (GstSubtitleArea * area)
+gst_subtitle_region_unref (GstSubtitleRegion * region)
 {
-  gst_mini_object_unref (GST_MINI_OBJECT_CAST (area));
+  gst_mini_object_unref (GST_MINI_OBJECT_CAST (region));
 }
 
 G_END_DECLS

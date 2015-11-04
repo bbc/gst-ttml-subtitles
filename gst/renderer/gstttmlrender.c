@@ -3082,57 +3082,59 @@ gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage * image)
 
 
 static GstVideoOverlayComposition *
-render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
+render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
   GstBuffer * text_buf)
 {
   GList *blocks = NULL;
-  guint area_x, area_y, area_width, area_height;
+  guint region_x, region_y, region_width, region_height;
   guint window_x, window_y, window_width, window_height;
   guint padding_start, padding_end, padding_before, padding_after;
-  GstTtmlRenderRenderedImage *area_image = NULL;
+  GstTtmlRenderRenderedImage *region_image = NULL;
   GstVideoOverlayComposition *ret = NULL;
 
-  area_width = (guint) (round (area->style.extent_w * render->width));
-  area_height = (guint) (round (area->style.extent_h * render->height));
-  area_x = (guint) (round (area->style.origin_x * render->width));
-  area_y = (guint) (round (area->style.origin_y * render->height));
+  region_width = (guint) (round (region->style.extent_w * render->width));
+  region_height = (guint) (round (region->style.extent_h * render->height));
+  region_x = (guint) (round (region->style.origin_x * render->width));
+  region_y = (guint) (round (region->style.origin_y * render->height));
 
-  padding_start = (guint) (round (area->style.padding_start * render->width));
-  padding_end = (guint) (round (area->style.padding_end * render->width));
+  padding_start = (guint) (round (region->style.padding_start * render->width));
+  padding_end = (guint) (round (region->style.padding_end * render->width));
   padding_before =
-    (guint) (round (area->style.padding_before * render->height));
-  padding_after = (guint) (round (area->style.padding_after * render->height));
+    (guint) (round (region->style.padding_before * render->height));
+  padding_after =
+    (guint) (round (region->style.padding_after * render->height));
 
-  /* "window" here refers to the section of the area that we're allowed to
-   * render into. i.e., the area minus padding. */
-  window_x = area_x + padding_start;
-  window_y = area_y + padding_before;
-  window_width = area_width - (padding_start + padding_end);
-  window_height = area_height - (padding_before + padding_after);
+  /* "window" here refers to the section of the region that we're allowed to
+   * render into. i.e., the region minus padding. */
+  window_x = region_x + padding_start;
+  window_y = region_y + padding_before;
+  window_width = region_width - (padding_start + padding_end);
+  window_height = region_height - (padding_before + padding_after);
 
   GST_CAT_DEBUG (ttmlrender,
       "Padding: start: %u  end: %u  before: %u  after: %u",
       padding_start, padding_end, padding_before, padding_after);
 
   /* Render region background, if non-transparent. */
-  if (!color_is_transparent (&area->style.bg_color)) {
+  if (!color_is_transparent (&region->style.bg_color)) {
     GstBuffer *bg_rect;
 
-    bg_rect = draw_rectangle (area_width, area_height, area->style.bg_color);
-    area_image = rendered_image_new (bg_rect, area_x, area_y, area_width,
-        area_height);
+    bg_rect = draw_rectangle (region_width, region_height,
+        region->style.bg_color);
+    region_image = rendered_image_new (bg_rect, region_x, region_y,
+        region_width, region_height);
   }
 
-  if (area->blocks) {
+  if (region->blocks) {
     GstTtmlRenderRenderedImage *blocks_image, *tmp;
     guint i;
 
     /* Render each block and append to list. */
-    for (i = 0; i < area->blocks->len; ++i) {
+    for (i = 0; i < region->blocks->len; ++i) {
       GstSubtitleBlock *block;
       GstTtmlRenderRenderedImage *rendered_block;
 
-      block = g_ptr_array_index (area->blocks, i);
+      block = g_ptr_array_index (region->blocks, i);
       rendered_block = render_text_block (render, block, text_buf,
           window_width, TRUE);
 
@@ -3142,21 +3144,21 @@ render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
     g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
     blocks_image->x += window_x;
 
-    switch (area->style.display_align) {
+    switch (region->style.display_align) {
       case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
         blocks_image->y = window_y;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_CENTER:
-        blocks_image->y = area_y + ((gint)((area_height + padding_before)
+        blocks_image->y = region_y + ((gint)((region_height + padding_before)
               - (padding_after + blocks_image->height)))/2;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_AFTER:
-        blocks_image->y = (area_y + area_height)
+        blocks_image->y = (region_y + region_height)
           - (padding_after + blocks_image->height);
         break;
     }
 
-    if ((area->style.overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
+    if ((region->style.overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
         && ((blocks_image->height > window_height)
           || (blocks_image->width > window_width))) {
       GstTtmlRenderRenderedImage *tmp = blocks_image;
@@ -3165,17 +3167,17 @@ render_text_area (GstTtmlRender * render, GstSubtitleArea * area,
       rendered_image_free (tmp);
     }
 
-    tmp = area_image;
-    area_image = rendered_image_combine (area_image, blocks_image);
+    tmp = region_image;
+    region_image = rendered_image_combine (region_image, blocks_image);
     if (tmp) rendered_image_free (tmp);
     rendered_image_free (blocks_image);
   }
 
-  GST_CAT_DEBUG (ttmlrender, "Height of rendered area: %u",
-      area_image->height);
+  GST_CAT_DEBUG (ttmlrender, "Height of rendered region: %u",
+      region_image->height);
 
-  ret = gst_ttml_render_compose_overlay (area_image);
-  rendered_image_free (area_image);
+  ret = gst_ttml_render_compose_overlay (region_image);
+  rendered_image_free (region_image);
   return ret;
 }
 
@@ -3349,7 +3351,7 @@ wait_for_text_buf:
         ret = gst_pad_push (render->srcpad, buffer);
       } else {
         if (render->need_render) {
-          GstSubtitleArea *area = NULL;
+          GstSubtitleRegion *region = NULL;
           GstSubtitleMeta *subtitle_meta = NULL;
           guint i;
 
@@ -3362,11 +3364,11 @@ wait_for_text_buf:
           subtitle_meta = gst_buffer_get_subtitle_meta (render->text_buffer);
           g_assert (subtitle_meta != NULL);
 
-          for (i = 0; i < subtitle_meta->areas->len; ++i) {
+          for (i = 0; i < subtitle_meta->regions->len; ++i) {
             GstVideoOverlayComposition *composition;
-            area = g_ptr_array_index (subtitle_meta->areas, i);
-            g_assert (area != NULL);
-            composition = render_text_area (render, area,
+            region = g_ptr_array_index (subtitle_meta->regions, i);
+            g_assert (region != NULL);
+            composition = render_text_region (render, region,
                 render->text_buffer);
             render->compositions = g_list_append (render->compositions,
                 composition);

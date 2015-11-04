@@ -45,7 +45,7 @@ gst_subtitle_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
   /* XXX: Do we need checks that parameters are non-NULL? */
   GstSubtitleMeta *subtitle_meta = (GstSubtitleMeta *) meta;
 
-  subtitle_meta->areas = NULL;
+  subtitle_meta->regions = NULL;
   return TRUE;
 }
 
@@ -55,8 +55,8 @@ gst_subtitle_meta_free (GstMeta * meta, GstBuffer * buffer)
   /* XXX: Do we need checks that parameters are non-NULL? */
   GstSubtitleMeta *subtitle_meta = (GstSubtitleMeta *) meta;
 
-  if (subtitle_meta->areas)
-    g_ptr_array_unref (subtitle_meta->areas);
+  if (subtitle_meta->regions)
+    g_ptr_array_unref (subtitle_meta->regions);
 }
 
 const GstMetaInfo *
@@ -78,7 +78,7 @@ gst_subtitle_meta_get_info (void)
  * gst_buffer_add_subtitle_meta:
  * @buffer: #GstBuffer holding subtitle text, to which subtitle metadata
  * should be added.
- * @areas: a #GPtrArray of #GstSubtitleAreas.
+ * @regions: a #GPtrArray of #GstSubtitleRegions.
  *
  * Attaches subtitle metadata to a #GstBuffer.
  *
@@ -86,16 +86,16 @@ gst_subtitle_meta_get_info (void)
  * unsuccessful.
  */
 GstSubtitleMeta *
-gst_buffer_add_subtitle_meta (GstBuffer * buffer, GPtrArray * areas)
+gst_buffer_add_subtitle_meta (GstBuffer * buffer, GPtrArray * regions)
 {
   GstSubtitleMeta *meta;
 
   g_return_val_if_fail (GST_IS_BUFFER (buffer), NULL);
-  g_return_val_if_fail (areas != NULL, NULL);
+  g_return_val_if_fail (regions != NULL, NULL);
 
   meta = (GstSubtitleMeta *) gst_buffer_add_meta (buffer,
       GST_SUBTITLE_META_INFO, NULL);
 
-  meta->areas = g_ptr_array_ref (areas);
+  meta->regions = g_ptr_array_ref (regions);
   return meta;
 }
