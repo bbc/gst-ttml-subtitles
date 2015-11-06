@@ -2082,9 +2082,13 @@ gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
     case GST_EVENT_CAPS:
     {
       GstCaps *caps;
+      gint prev_width = render->width;
+      gint prev_height = render->height;
 
       gst_event_parse_caps (event, &caps);
       ret = gst_ttml_render_setcaps (render, caps);
+      if (render->width != prev_width || render->height != prev_height)
+        render->need_render = TRUE;
       gst_event_unref (event);
       break;
     }
