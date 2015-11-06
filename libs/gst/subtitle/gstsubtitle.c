@@ -34,28 +34,16 @@ gst_subtitle_style_set_new ()
   GstSubtitleColor white = { 255, 255, 255, 255 };
   GstSubtitleColor transparent = { 0, 0, 0, 0 };
 
-  ret->text_direction = GST_SUBTITLE_TEXT_DIRECTION_LTR;
   ret->font_family = g_strdup ("default");
   ret->font_size = 1.0;
   ret->line_height = 1.25;
-  ret->text_align = GST_SUBTITLE_TEXT_ALIGN_START;
   ret->color = white;
   ret->bg_color = transparent;
-  ret->font_style = GST_SUBTITLE_FONT_STYLE_NORMAL;
-  ret->font_weight = GST_SUBTITLE_FONT_WEIGHT_NORMAL;
-  ret->text_decoration = GST_SUBTITLE_TEXT_DECORATION_NONE;
-  ret->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;
-  ret->wrap_option = GST_SUBTITLE_WRAPPING_ON;
-  ret->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_AUTO;
   ret->line_padding = 0.0;
   ret->origin_x = ret->origin_y = 0.0;
   ret->extent_w = ret->extent_h = 0.0;
-  ret->display_align = GST_SUBTITLE_DISPLAY_ALIGN_BEFORE;
   ret->padding_start = ret->padding_end
     = ret->padding_before = ret->padding_after = 0.0;
-  ret->writing_mode = GST_SUBTITLE_WRITING_MODE_LRTB;
-  ret->show_background = GST_SUBTITLE_BACKGROUND_MODE_ALWAYS;
-  ret->overflow = GST_SUBTITLE_OVERFLOW_MODE_HIDDEN;
 
   return ret;
 }
