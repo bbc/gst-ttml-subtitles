@@ -292,27 +292,27 @@ ttml_parse_style_set (const xmlNode * node)
 static void
 ttml_delete_style_set (TtmlStyleSet * style_set)
 {
-  if (style_set->text_direction) g_free ((gpointer) style_set->text_direction);
-  if (style_set->font_family) g_free ((gpointer) style_set->font_family);
-  if (style_set->font_size) g_free ((gpointer) style_set->font_size);
-  if (style_set->line_height) g_free ((gpointer) style_set->line_height);
-  if (style_set->text_align) g_free ((gpointer) style_set->text_align);
-  if (style_set->color) g_free ((gpointer) style_set->color);
-  if (style_set->bg_color) g_free ((gpointer) style_set->bg_color);
-  if (style_set->font_style) g_free ((gpointer) style_set->font_style);
-  if (style_set->font_weight) g_free ((gpointer) style_set->font_weight);
-  if (style_set->text_decoration) g_free ((gpointer) style_set->text_decoration);
-  if (style_set->unicode_bidi) g_free ((gpointer) style_set->unicode_bidi);
-  if (style_set->wrap_option) g_free ((gpointer) style_set->wrap_option);
-  if (style_set->multi_row_align) g_free ((gpointer) style_set->multi_row_align);
-  if (style_set->line_padding) g_free ((gpointer) style_set->line_padding);
-  if (style_set->origin) g_free ((gpointer) style_set->origin);
-  if (style_set->extent) g_free ((gpointer) style_set->extent);
-  if (style_set->display_align) g_free ((gpointer) style_set->display_align);
-  if (style_set->overflow) g_free ((gpointer) style_set->overflow);
-  if (style_set->padding) g_free ((gpointer) style_set->padding);
-  if (style_set->writing_mode) g_free ((gpointer) style_set->writing_mode);
-  if (style_set->show_background) g_free ((gpointer) style_set->show_background);
+  g_free ((gpointer) style_set->text_direction);
+  g_free ((gpointer) style_set->font_family);
+  g_free ((gpointer) style_set->font_size);
+  g_free ((gpointer) style_set->line_height);
+  g_free ((gpointer) style_set->text_align);
+  g_free ((gpointer) style_set->color);
+  g_free ((gpointer) style_set->bg_color);
+  g_free ((gpointer) style_set->font_style);
+  g_free ((gpointer) style_set->font_weight);
+  g_free ((gpointer) style_set->text_decoration);
+  g_free ((gpointer) style_set->unicode_bidi);
+  g_free ((gpointer) style_set->wrap_option);
+  g_free ((gpointer) style_set->multi_row_align);
+  g_free ((gpointer) style_set->line_padding);
+  g_free ((gpointer) style_set->origin);
+  g_free ((gpointer) style_set->extent);
+  g_free ((gpointer) style_set->display_align);
+  g_free ((gpointer) style_set->overflow);
+  g_free ((gpointer) style_set->padding);
+  g_free ((gpointer) style_set->writing_mode);
+  g_free ((gpointer) style_set->show_background);
   g_slice_free (TtmlStyleSet, style_set);
 }
 
@@ -320,11 +320,11 @@ ttml_delete_style_set (TtmlStyleSet * style_set)
 static void
 ttml_delete_element (TtmlElement * element)
 {
-  if (element->id) g_free ((gpointer) element->id);
+  g_free ((gpointer) element->id);
   if (element->styles) g_strfreev (element->styles);
-  if (element->region) g_free ((gpointer) element->region);
+  g_free ((gpointer) element->region);
   if (element->style_set) ttml_delete_style_set (element->style_set);
-  if (element->text) g_free ((gpointer) element->text);
+  g_free ((gpointer) element->text);
   g_slice_free (TtmlElement, element);
 }
 

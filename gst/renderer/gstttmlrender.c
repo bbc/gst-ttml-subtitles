@@ -2397,7 +2397,7 @@ generate_marked_up_string (GstTtmlRender * render,
         "index: %u", range->first_char, range->last_char);
     g_ptr_array_insert (*text_ranges, i, range);
 
-    if (old_text) g_free (old_text);
+    g_free (old_text);
     g_free (buf_text);
     g_free (fgcolor);
     g_free (font_size);
