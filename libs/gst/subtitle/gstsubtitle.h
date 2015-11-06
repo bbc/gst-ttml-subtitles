@@ -166,8 +166,7 @@ struct _GstSubtitleElement
 {
   GstMiniObject mini_object;
 
-  /* XXX: Should style_set be a pointer to GstSubtitleStyleSet instead? */
-  GstSubtitleStyleSet style_set;
+  GstSubtitleStyleSet *style_set;
   guint text_index;
 
   /*< private >*/
@@ -176,8 +175,7 @@ struct _GstSubtitleElement
 
 GType gst_subtitle_element_get_type (void);
 
-GstSubtitleElement * gst_subtitle_element_new (
-    const GstSubtitleStyleSet * style_set,
+GstSubtitleElement * gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
     guint text_index);
 
 /**
@@ -219,8 +217,7 @@ struct _GstSubtitleBlock
 {
   GstMiniObject mini_object;
 
-  /* XXX: Should style_set be a pointer to GstSubtitleStyleSet instead? */
-  GstSubtitleStyleSet style_set;
+  GstSubtitleStyleSet *style_set;
 
   /*< private >*/
   GPtrArray *elements;
@@ -229,7 +226,7 @@ struct _GstSubtitleBlock
 
 GType gst_subtitle_block_get_type (void);
 
-GstSubtitleBlock * gst_subtitle_block_new (const GstSubtitleStyleSet * style_set);
+GstSubtitleBlock * gst_subtitle_block_new (GstSubtitleStyleSet * style_set);
 
 void gst_subtitle_block_add_element (
     GstSubtitleBlock * block,
@@ -279,8 +276,7 @@ struct _GstSubtitleRegion
 {
   GstMiniObject mini_object;
 
-  /* XXX: Should style_set be a pointer to GstSubtitleStyleSet instead? */
-  GstSubtitleStyleSet style_set;
+  GstSubtitleStyleSet *style_set;
 
   /*< private >*/
   GPtrArray *blocks;
@@ -289,7 +285,7 @@ struct _GstSubtitleRegion
 
 GType gst_subtitle_region_get_type (void);
 
-GstSubtitleRegion * gst_subtitle_region_new (const GstSubtitleStyleSet * style_set);
+GstSubtitleRegion * gst_subtitle_region_new (GstSubtitleStyleSet * style_set);
 
 void gst_subtitle_region_add_block (
     GstSubtitleRegion * region,

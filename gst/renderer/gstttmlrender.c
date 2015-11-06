@@ -2364,18 +2364,19 @@ generate_marked_up_string (GstTtmlRender * render,
 
     range->first_char = total_text_length;
 
-    fgcolor = color_to_rgb_string (element->style_set.color);
+    fgcolor = color_to_rgb_string (element->style_set->color);
     font_size = g_strdup_printf ("%u",
-        (guint) (round (element->style_set.font_size * render->height)));
-    font_family = (g_strcmp0 (element->style_set.font_family, "default") == 0) ?
-      "Monospace" : element->style_set.font_family;
+        (guint) (round (element->style_set->font_size * render->height)));
+    font_family =
+      (g_strcmp0 (element->style_set->font_family, "default") == 0) ?
+      "Monospace" : element->style_set->font_family;
     font_style =
-      (element->style_set.font_style == GST_SUBTITLE_FONT_STYLE_NORMAL) ?
+      (element->style_set->font_style == GST_SUBTITLE_FONT_STYLE_NORMAL) ?
       "normal" : "italic";
     font_weight =
-      (element->style_set.font_weight == GST_SUBTITLE_FONT_WEIGHT_NORMAL) ?
+      (element->style_set->font_weight == GST_SUBTITLE_FONT_WEIGHT_NORMAL) ?
       "normal" : "bold";
-    underline = (element->style_set.text_decoration
+    underline = (element->style_set->text_decoration
         == GST_SUBTITLE_TEXT_DECORATION_UNDERLINE) ? "single" : "none";
 
     old_text = joined_text;
@@ -2540,7 +2541,7 @@ elements_are_wrapped (GPtrArray * elements)
 
   for (i = 0; i < elements->len; ++i) {
     element = g_ptr_array_index (elements, i);
-    if (element->style_set.wrap_option == GST_SUBTITLE_WRAPPING_ON)
+    if (element->style_set->wrap_option == GST_SUBTITLE_WRAPPING_ON)
       return TRUE;
   }
 
@@ -2558,8 +2559,8 @@ get_max_font_size (GPtrArray * elements)
 
   for (i = 0; i < elements->len; ++i) {
     element = g_ptr_array_index (elements, i);
-    if (element->style_set.font_size > max_size)
-      max_size = element->style_set.font_size;
+    if (element->style_set->font_size > max_size)
+      max_size = element->style_set->font_size;
   }
 
   return max_size;
@@ -2882,10 +2883,10 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
       rect_width = (area_end - area_start);
 
       if (rect_width > 0    /* <br>s will result in zero-width rectangle */
-          && !color_is_transparent (&element->style_set.bg_color)) {
+          && !color_is_transparent (&element->style_set->bg_color)) {
         GstTtmlRenderRenderedImage *image, *tmp;
         rectangle = draw_rectangle (rect_width, line_height,
-            element->style_set.bg_color);
+            element->style_set->bg_color);
         image = rendered_image_new (rectangle, origin_x + area_start,
             origin_y + (cur_line * line_height), rect_width, line_height);
         tmp = ret;
@@ -3003,16 +3004,16 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
       * render->height);
   GST_CAT_DEBUG (ttmlrender, "Max font size: %u", max_font_size);
 
-  line_padding = (guint) (block->style_set.line_padding * render->width);
-  alignment = get_alignment (&block->style_set);
+  line_padding = (guint) (block->style_set->line_padding * render->width);
+  alignment = get_alignment (block->style_set);
 
   /* Render text to buffer. */
   rendered_text = draw_text (render, marked_up_string,
       (width - (2 * line_padding)), alignment,
-      (guint) (block->style_set.line_height * max_font_size), max_font_size,
+      (guint) (block->style_set->line_height * max_font_size), max_font_size,
       elements_are_wrapped (block->elements));
 
-  switch (block->style_set.text_align) {
+  switch (block->style_set->text_align) {
     case GST_SUBTITLE_TEXT_ALIGN_START:
     case GST_SUBTITLE_TEXT_ALIGN_LEFT:
       text_offset = line_padding;
@@ -3033,16 +3034,16 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
   /* Render background rectangles, if any. */
   backgrounds = render_element_backgrounds (block->elements, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
-      (guint) (block->style_set.line_height * max_font_size), line_padding,
+      (guint) (block->style_set->line_height * max_font_size), line_padding,
       rendered_text->horiz_offset);
 
   /* Render block background, if non-transparent. */
-  if (!color_is_transparent (&block->style_set.bg_color)) {
+  if (!color_is_transparent (&block->style_set->bg_color)) {
     GstTtmlRenderRenderedImage *block_background;
     GstTtmlRenderRenderedImage *tmp = backgrounds;
 
     GstBuffer *block_bg_image = draw_rectangle (width, backgrounds->height,
-        block->style_set.bg_color);
+        block->style_set->bg_color);
     block_background = rendered_image_new (block_bg_image, 0, 0, width,
         backgrounds->height);
     backgrounds = rendered_image_combine (block_background, backgrounds);
@@ -3093,19 +3094,20 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
   GstTtmlRenderRenderedImage *region_image = NULL;
   GstVideoOverlayComposition *ret = NULL;
 
-  region_width = (guint) (round (region->style_set.extent_w * render->width));
-  region_height = (guint) (round (region->style_set.extent_h * render->height));
-  region_x = (guint) (round (region->style_set.origin_x * render->width));
-  region_y = (guint) (round (region->style_set.origin_y * render->height));
+  region_width = (guint) (round (region->style_set->extent_w * render->width));
+  region_height =
+    (guint) (round (region->style_set->extent_h * render->height));
+  region_x = (guint) (round (region->style_set->origin_x * render->width));
+  region_y = (guint) (round (region->style_set->origin_y * render->height));
 
   padding_start =
-    (guint) (round (region->style_set.padding_start * render->width));
+    (guint) (round (region->style_set->padding_start * render->width));
   padding_end =
-    (guint) (round (region->style_set.padding_end * render->width));
+    (guint) (round (region->style_set->padding_end * render->width));
   padding_before =
-    (guint) (round (region->style_set.padding_before * render->height));
+    (guint) (round (region->style_set->padding_before * render->height));
   padding_after =
-    (guint) (round (region->style_set.padding_after * render->height));
+    (guint) (round (region->style_set->padding_after * render->height));
 
   /* "window" here refers to the section of the region that we're allowed to
    * render into, i.e., the region minus padding. */
@@ -3119,11 +3121,11 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
       padding_start, padding_end, padding_before, padding_after);
 
   /* Render region background, if non-transparent. */
-  if (!color_is_transparent (&region->style_set.bg_color)) {
+  if (!color_is_transparent (&region->style_set->bg_color)) {
     GstBuffer *bg_rect;
 
     bg_rect = draw_rectangle (region_width, region_height,
-        region->style_set.bg_color);
+        region->style_set->bg_color);
     region_image = rendered_image_new (bg_rect, region_x, region_y,
         region_width, region_height);
   }
@@ -3147,7 +3149,7 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
     g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
     blocks_image->x += window_x;
 
-    switch (region->style_set.display_align) {
+    switch (region->style_set->display_align) {
       case GST_SUBTITLE_DISPLAY_ALIGN_BEFORE:
         blocks_image->y = window_y;
         break;
@@ -3161,7 +3163,7 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
         break;
     }
 
-    if ((region->style_set.overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
+    if ((region->style_set->overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
         && ((blocks_image->height > window_height)
           || (blocks_image->width > window_width))) {
       GstTtmlRenderRenderedImage *tmp = blocks_image;

@@ -1482,7 +1482,6 @@ ttml_add_element (GstSubtitleBlock * block, TtmlElement * element,
   GST_CAT_DEBUG (ttmlparse, "Inserted text at index %u in GstBuffer.",
       buffer_index);
   sub_element = gst_subtitle_element_new (element_style, buffer_index);
-  gst_subtitle_style_set_free (element_style);
 
   gst_subtitle_block_add_element (block, sub_element);
   GST_CAT_DEBUG (ttmlparse, "Added element to block; there are now %u"
@@ -1531,7 +1530,6 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
   ttml_update_style_set (region_style, element->style_set, cellres_x,
       cellres_y);
   region = gst_subtitle_region_new (region_style);
-  gst_subtitle_style_set_free (region_style);
 
   node = tree->children;
   if (!node)
@@ -1568,7 +1566,6 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
       block_style->bg_color = block_color;
       block = gst_subtitle_block_new (block_style);
       g_assert (block != NULL);
-      gst_subtitle_style_set_free (block_style);
 
       for (content_node = p_node->children; content_node;
           content_node = content_node->next) {
