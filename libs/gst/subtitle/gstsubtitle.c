@@ -35,7 +35,7 @@ gst_subtitle_style_set_new ()
   GstSubtitleColor transparent = { 0, 0, 0, 0 };
 
   ret->text_direction = GST_SUBTITLE_TEXT_DIRECTION_LTR;
-  g_strlcpy (ret->font_family, "default", MAX_FONT_FAMILY_NAME_LENGTH);
+  ret->font_family = g_strdup ("default");
   ret->font_size = 1.0;
   ret->line_height = 1.25;
   ret->text_align = GST_SUBTITLE_TEXT_ALIGN_START;
@@ -63,6 +63,7 @@ gst_subtitle_style_set_new ()
 void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset)
 {
   g_return_if_fail (styleset != NULL);
+  g_free (styleset->font_family);
   g_slice_free (GstSubtitleStyleSet, styleset);
 }
 
@@ -71,7 +72,7 @@ gst_subtitle_style_set_copy (const GstSubtitleStyleSet * src,
     GstSubtitleStyleSet * dest)
 {
   dest->text_direction = src->text_direction;
-  g_strlcpy (dest->font_family, src->font_family, MAX_FONT_FAMILY_NAME_LENGTH);
+  dest->font_family = g_strdup (src->font_family);
   dest->font_size = src->font_size;
   dest->line_height = src->line_height;
   dest->text_align = src->text_align;

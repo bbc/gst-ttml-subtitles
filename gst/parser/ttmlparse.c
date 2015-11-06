@@ -34,6 +34,7 @@
 
 #define DEFAULT_CELLRES_X 32
 #define DEFAULT_CELLRES_Y 15
+#define MAX_FONT_FAMILY_NAME_LENGTH 128
 
 GST_DEBUG_CATEGORY_STATIC (ttmlparse);
 
@@ -517,10 +518,13 @@ ttml_update_style_set (GstSubtitleStyleSet * ss, TtmlStyleSet * ess,
   }
 
   if (ess->font_family) {
-    gsize length = g_strlcpy (ss->font_family, ess->font_family,
-        MAX_FONT_FAMILY_NAME_LENGTH);
-    if (length > MAX_FONT_FAMILY_NAME_LENGTH)
-      GST_CAT_ERROR (ttmlparse, "Font family name is too long.");
+    if (strlen (ess->font_family) <= MAX_FONT_FAMILY_NAME_LENGTH) {
+      g_free (ss->font_family);
+      ss->font_family = g_strdup (ess->font_family);
+    } else {
+      GST_CAT_WARNING (ttmlparse,
+          "Ignoring font family name as it's overly long.");
+    }
   }
 
   if (ess->font_size) {

@@ -25,8 +25,6 @@
 #include <gst/gst.h>
 #include <gst/gstminiobject.h>
 
-#define MAX_FONT_FAMILY_NAME_LENGTH 128
-
 G_BEGIN_DECLS
 
 typedef struct _GstSubtitleColor GstSubtitleColor;
@@ -126,7 +124,7 @@ typedef enum {
 
 struct _GstSubtitleStyleSet {
   GstSubtitleTextDirection text_direction;
-  gchar font_family[MAX_FONT_FAMILY_NAME_LENGTH];
+  gchar *font_family;
   gdouble font_size;
   gdouble line_height;
   GstSubtitleTextAlign text_align;
