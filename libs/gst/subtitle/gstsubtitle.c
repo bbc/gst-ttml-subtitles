@@ -111,7 +111,7 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
 
 /**
  * gst_subtitle_element_new:
- * @style:
+ * @style_set:
  * @text_index:
  *
  * Allocates a new #GstSubtitleElement.
@@ -120,18 +120,19 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
  * with gst_subtitle_element_unref() when no longer needed.
  */
 GstSubtitleElement *
-gst_subtitle_element_new (const GstSubtitleStyleSet * style, guint text_index)
+gst_subtitle_element_new (const GstSubtitleStyleSet * style_set,
+    guint text_index)
 {
   GstSubtitleElement *element;
 
-  g_return_val_if_fail (style != NULL, NULL);
+  g_return_val_if_fail (style_set != NULL, NULL);
 
   element = g_slice_new0 (GstSubtitleElement);
   gst_mini_object_init (GST_MINI_OBJECT_CAST (element), 0,
       gst_subtitle_element_get_type (), NULL, NULL,
       (GstMiniObjectFreeFunction) _gst_subtitle_element_free);
 
-  gst_subtitle_style_set_copy (style, &(element->style));
+  gst_subtitle_style_set_copy (style_set, &(element->style_set));
   element->text_index = text_index;
 
   return element;
@@ -149,7 +150,7 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleBlock, gst_subtitle_block);
 
 /**
  * gst_subtitle_block_new:
- * @style:
+ * @style_set:
  *
  * Allocates a new #GstSubtitleBlock.
  *
@@ -157,18 +158,18 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleBlock, gst_subtitle_block);
  * with gst_subtitle_block_unref() when no longer needed.
  */
 GstSubtitleBlock *
-gst_subtitle_block_new (const GstSubtitleStyleSet * style)
+gst_subtitle_block_new (const GstSubtitleStyleSet * style_set)
 {
   GstSubtitleBlock *block;
 
-  g_return_val_if_fail (style != NULL, NULL);
+  g_return_val_if_fail (style_set != NULL, NULL);
 
   block = g_slice_new0 (GstSubtitleBlock);
   gst_mini_object_init (GST_MINI_OBJECT_CAST (block), 0,
       gst_subtitle_block_get_type (), NULL, NULL,
       (GstMiniObjectFreeFunction) _gst_subtitle_block_free);
 
-  gst_subtitle_style_set_copy (style, &(block->style));
+  gst_subtitle_style_set_copy (style_set, &(block->style_set));
 
   return block;
 }
@@ -247,7 +248,7 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleRegion, gst_subtitle_region);
 
 /**
  * gst_subtitle_region_new:
- * @style:
+ * @style_set:
  *
  * Allocates a new #GstSubtitleRegion.
  *
@@ -255,18 +256,18 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleRegion, gst_subtitle_region);
  * with gst_subtitle_region_unref() when no longer needed.
  */
 GstSubtitleRegion *
-gst_subtitle_region_new (const GstSubtitleStyleSet * style)
+gst_subtitle_region_new (const GstSubtitleStyleSet * style_set)
 {
   GstSubtitleRegion *region;
 
-  g_return_val_if_fail (style != NULL, NULL);
+  g_return_val_if_fail (style_set != NULL, NULL);
 
   region = g_slice_new0 (GstSubtitleRegion);
   gst_mini_object_init (GST_MINI_OBJECT_CAST (region), 0,
       gst_subtitle_region_get_type (), NULL, NULL,
       (GstMiniObjectFreeFunction) _gst_subtitle_region_free);
 
-  gst_subtitle_style_set_copy (style, &(region->style));
+  gst_subtitle_style_set_copy (style_set, &(region->style_set));
 
   return region;
 }

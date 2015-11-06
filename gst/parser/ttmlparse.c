@@ -290,30 +290,30 @@ ttml_parse_style_set (const xmlNode * node)
 
 
 static void
-ttml_delete_style_set (TtmlStyleSet * style)
+ttml_delete_style_set (TtmlStyleSet * style_set)
 {
-  if (style->text_direction) g_free ((gpointer) style->text_direction);
-  if (style->font_family) g_free ((gpointer) style->font_family);
-  if (style->font_size) g_free ((gpointer) style->font_size);
-  if (style->line_height) g_free ((gpointer) style->line_height);
-  if (style->text_align) g_free ((gpointer) style->text_align);
-  if (style->color) g_free ((gpointer) style->color);
-  if (style->bg_color) g_free ((gpointer) style->bg_color);
-  if (style->font_style) g_free ((gpointer) style->font_style);
-  if (style->font_weight) g_free ((gpointer) style->font_weight);
-  if (style->text_decoration) g_free ((gpointer) style->text_decoration);
-  if (style->unicode_bidi) g_free ((gpointer) style->unicode_bidi);
-  if (style->wrap_option) g_free ((gpointer) style->wrap_option);
-  if (style->multi_row_align) g_free ((gpointer) style->multi_row_align);
-  if (style->line_padding) g_free ((gpointer) style->line_padding);
-  if (style->origin) g_free ((gpointer) style->origin);
-  if (style->extent) g_free ((gpointer) style->extent);
-  if (style->display_align) g_free ((gpointer) style->display_align);
-  if (style->overflow) g_free ((gpointer) style->overflow);
-  if (style->padding) g_free ((gpointer) style->padding);
-  if (style->writing_mode) g_free ((gpointer) style->writing_mode);
-  if (style->show_background) g_free ((gpointer) style->show_background);
-  g_slice_free (TtmlStyleSet, style);
+  if (style_set->text_direction) g_free ((gpointer) style_set->text_direction);
+  if (style_set->font_family) g_free ((gpointer) style_set->font_family);
+  if (style_set->font_size) g_free ((gpointer) style_set->font_size);
+  if (style_set->line_height) g_free ((gpointer) style_set->line_height);
+  if (style_set->text_align) g_free ((gpointer) style_set->text_align);
+  if (style_set->color) g_free ((gpointer) style_set->color);
+  if (style_set->bg_color) g_free ((gpointer) style_set->bg_color);
+  if (style_set->font_style) g_free ((gpointer) style_set->font_style);
+  if (style_set->font_weight) g_free ((gpointer) style_set->font_weight);
+  if (style_set->text_decoration) g_free ((gpointer) style_set->text_decoration);
+  if (style_set->unicode_bidi) g_free ((gpointer) style_set->unicode_bidi);
+  if (style_set->wrap_option) g_free ((gpointer) style_set->wrap_option);
+  if (style_set->multi_row_align) g_free ((gpointer) style_set->multi_row_align);
+  if (style_set->line_padding) g_free ((gpointer) style_set->line_padding);
+  if (style_set->origin) g_free ((gpointer) style_set->origin);
+  if (style_set->extent) g_free ((gpointer) style_set->extent);
+  if (style_set->display_align) g_free ((gpointer) style_set->display_align);
+  if (style_set->overflow) g_free ((gpointer) style_set->overflow);
+  if (style_set->padding) g_free ((gpointer) style_set->padding);
+  if (style_set->writing_mode) g_free ((gpointer) style_set->writing_mode);
+  if (style_set->show_background) g_free ((gpointer) style_set->show_background);
+  g_slice_free (TtmlStyleSet, style_set);
 }
 
 
@@ -719,54 +719,54 @@ ttml_update_style_set (GstSubtitleStyleSet * ss, TtmlStyleSet * ess,
 
 
 static TtmlStyleSet *
-ttml_copy_style_set (TtmlStyleSet * style)
+ttml_copy_style_set (TtmlStyleSet * style_set)
 {
   TtmlStyleSet *ret;
 
   ret = g_slice_new0 (TtmlStyleSet);
 
-  if (style->text_direction)
-    ret->text_direction = g_strdup (style->text_direction);
-  if (style->font_family)
-    ret->font_family = g_strdup (style->font_family);
-  if (style->font_size)
-    ret->font_size = g_strdup (style->font_size);
-  if (style->line_height)
-    ret->line_height = g_strdup (style->line_height);
-  if (style->text_align)
-    ret->text_align = g_strdup (style->text_align);
-  if (style->color)
-    ret->color = g_strdup (style->color);
-  if (style->bg_color)
-    ret->bg_color = g_strdup (style->bg_color);
-  if (style->font_style)
-    ret->font_style = g_strdup (style->font_style);
-  if (style->font_weight)
-    ret->font_weight = g_strdup (style->font_weight);
-  if (style->text_decoration)
-    ret->text_decoration = g_strdup (style->text_decoration);
-  if (style->unicode_bidi)
-    ret->unicode_bidi = g_strdup (style->unicode_bidi);
-  if (style->wrap_option)
-    ret->wrap_option = g_strdup (style->wrap_option);
-  if (style->multi_row_align)
-    ret->multi_row_align = g_strdup (style->multi_row_align);
-  if (style->line_padding)
-    ret->line_padding = g_strdup (style->line_padding);
-  if (style->origin)
-    ret->origin = g_strdup (style->origin);
-  if (style->extent)
-    ret->extent = g_strdup (style->extent);
-  if (style->display_align)
-    ret->display_align = g_strdup (style->display_align);
-  if (style->overflow)
-    ret->overflow = g_strdup (style->overflow);
-  if (style->padding)
-    ret->padding = g_strdup (style->padding);
-  if (style->writing_mode)
-    ret->writing_mode = g_strdup (style->writing_mode);
-  if (style->show_background)
-    ret->show_background = g_strdup (style->show_background);
+  if (style_set->text_direction)
+    ret->text_direction = g_strdup (style_set->text_direction);
+  if (style_set->font_family)
+    ret->font_family = g_strdup (style_set->font_family);
+  if (style_set->font_size)
+    ret->font_size = g_strdup (style_set->font_size);
+  if (style_set->line_height)
+    ret->line_height = g_strdup (style_set->line_height);
+  if (style_set->text_align)
+    ret->text_align = g_strdup (style_set->text_align);
+  if (style_set->color)
+    ret->color = g_strdup (style_set->color);
+  if (style_set->bg_color)
+    ret->bg_color = g_strdup (style_set->bg_color);
+  if (style_set->font_style)
+    ret->font_style = g_strdup (style_set->font_style);
+  if (style_set->font_weight)
+    ret->font_weight = g_strdup (style_set->font_weight);
+  if (style_set->text_decoration)
+    ret->text_decoration = g_strdup (style_set->text_decoration);
+  if (style_set->unicode_bidi)
+    ret->unicode_bidi = g_strdup (style_set->unicode_bidi);
+  if (style_set->wrap_option)
+    ret->wrap_option = g_strdup (style_set->wrap_option);
+  if (style_set->multi_row_align)
+    ret->multi_row_align = g_strdup (style_set->multi_row_align);
+  if (style_set->line_padding)
+    ret->line_padding = g_strdup (style_set->line_padding);
+  if (style_set->origin)
+    ret->origin = g_strdup (style_set->origin);
+  if (style_set->extent)
+    ret->extent = g_strdup (style_set->extent);
+  if (style_set->display_align)
+    ret->display_align = g_strdup (style_set->display_align);
+  if (style_set->overflow)
+    ret->overflow = g_strdup (style_set->overflow);
+  if (style_set->padding)
+    ret->padding = g_strdup (style_set->padding);
+  if (style_set->writing_mode)
+    ret->writing_mode = g_strdup (style_set->writing_mode);
+  if (style_set->show_background)
+    ret->show_background = g_strdup (style_set->show_background);
 
   return ret;
 }
