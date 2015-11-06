@@ -150,10 +150,6 @@ GstSubtitleStyleSet * gst_subtitle_style_set_new ();
 
 void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset);
 
-/* Copy styling attributes from one set to another. */
-void gst_subtitle_style_set_copy (const GstSubtitleStyleSet * src,
-    GstSubtitleStyleSet * dest);
-
 
 /**
  * GstSubtitleElement:
