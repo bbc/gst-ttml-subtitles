@@ -120,6 +120,7 @@ _gst_subtitle_block_free (GstSubtitleBlock * block)
 {
   g_return_if_fail (block != NULL);
   gst_subtitle_style_set_free (block->style_set);
+  g_ptr_array_unref (block->elements);
   g_slice_free (GstSubtitleBlock, block);
 }
 
@@ -220,6 +221,7 @@ _gst_subtitle_region_free (GstSubtitleRegion * region)
 {
   g_return_if_fail (region != NULL);
   gst_subtitle_style_set_free (region->style_set);
+  g_ptr_array_unref (region->blocks);
   g_slice_free (GstSubtitleRegion, region);
 }
 
