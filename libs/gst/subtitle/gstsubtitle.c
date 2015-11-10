@@ -20,8 +20,14 @@
 
 /**
  * SECTION:gstsubtitle
- * @short_description:
+ * @short_description: Library for describing sets of static subtitles.
  *
+ * This library enables the description of static text scenes made up of a
+ * number of regions, which may contain a number of block and inline text
+ * elements. It is derived from the concepts and features defined in the Timed
+ * Text Markup Language 1 (TTML1), Second Edition
+ * (http://www.w3.org/TR/ttaf1-dfxp), and the EBU-TT-D profile of TTML1
+ * (https://tech.ebu.ch/files/live/sites/tech/files/shared/tech/tech3380.pdf).
  */
 
 #include "gstsubtitle.h"
