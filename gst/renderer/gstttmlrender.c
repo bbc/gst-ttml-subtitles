@@ -2329,8 +2329,8 @@ text_range_free (TextRange * range)
 }
 
 static gchar *
-generate_marked_up_string (GstTtmlRender * render,
-    GPtrArray * elements, GstBuffer * text_buf, GPtrArray ** text_ranges)
+generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
+    GstBuffer * text_buf, GPtrArray ** text_ranges)
 {
   GstSubtitleElement *element;
   GstMemory *mem;
@@ -2345,12 +2345,13 @@ generate_marked_up_string (GstTtmlRender * render,
 
   if (*text_ranges != NULL)
     g_ptr_array_unref (*text_ranges);
-  *text_ranges = g_ptr_array_new_full (elements->len,
+  *text_ranges =
+    g_ptr_array_new_full (gst_subtitle_block_get_element_count (block),
       (GDestroyNotify) text_range_free);
 
-  for (i = 0; i < elements->len; ++i) {
+  for (i = 0; i < gst_subtitle_block_get_element_count (block); ++i) {
     TextRange *range = g_slice_new0 (TextRange);
-    element = g_ptr_array_index (elements, i);
+    element = gst_subtitle_block_get_element (block, i);
     mem = gst_buffer_get_memory (text_buf, element->text_index);
     if (!mem || !gst_memory_map (mem, &map, GST_MAP_READ)) {
       GST_CAT_ERROR (ttmlrender, "Failed to access element memory.");
@@ -2796,7 +2797,7 @@ color_is_transparent (GstSubtitleColor * color)
 
 /* Render the background rectangles to be placed behind each element. */
 static GstTtmlRenderRenderedImage *
-render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
+render_element_backgrounds (GstSubtitleBlock * block, GPtrArray * char_ranges,
     PangoLayout * layout, guint origin_x, guint origin_y, guint line_height,
     guint line_padding, guint horiz_offset)
 {
@@ -2814,7 +2815,7 @@ render_element_backgrounds (GPtrArray * elements, GPtrArray * char_ranges,
 
   for (i = 0; i < char_ranges->len; ++i) {
     range = g_ptr_array_index (char_ranges, i);
-    element = g_ptr_array_index (elements, i);
+    element = gst_subtitle_block_get_element (block, i);
 
     GST_CAT_LOG (ttmlrender, "First char index: %u   Last char index: %u",
         range->first_char, range->last_char);
@@ -3001,8 +3002,8 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
   GstTtmlRenderRenderedImage *ret;
 
   /* Join text from elements to form a single marked-up string. */
-  marked_up_string = generate_marked_up_string (render, block->elements,
-      text_buf, &char_ranges);
+  marked_up_string = generate_marked_up_string (render, block, text_buf,
+      &char_ranges);
 
   max_font_size = (guint) (get_max_font_size (block->elements)
       * render->height);
@@ -3036,7 +3037,7 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
   rendered_text->text_image->x = text_offset;
 
   /* Render background rectangles, if any. */
-  backgrounds = render_element_backgrounds (block->elements, char_ranges,
+  backgrounds = render_element_backgrounds (block, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
       (guint) (block->style_set->line_height * max_font_size), line_padding,
       rendered_text->horiz_offset);
