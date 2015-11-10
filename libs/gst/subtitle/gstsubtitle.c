@@ -150,6 +150,8 @@ gst_subtitle_block_new (GstSubtitleStyleSet * style_set)
       (GstMiniObjectFreeFunction) _gst_subtitle_block_free);
 
   block->style_set = style_set;
+  block->elements = g_ptr_array_new_with_free_func (
+      (GDestroyNotify) gst_subtitle_element_unref);
 
   return block;
 }
@@ -168,10 +170,6 @@ gst_subtitle_block_add_element (GstSubtitleBlock * block,
   g_return_if_fail (block != NULL);
   g_return_if_fail (element != NULL);
 
-  if (!block->elements)
-    block->elements = g_ptr_array_new_with_free_func (
-        (GDestroyNotify) gst_subtitle_element_unref);
-
   g_ptr_array_add (block->elements, element);
 }
 
@@ -186,10 +184,7 @@ gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
 {
   g_return_val_if_fail (block != NULL, 0);
 
-  if (!block->elements)
-    return 0;
-  else
-    return block->elements->len;
+  return block->elements->len;
 }
 
 /**
@@ -210,7 +205,7 @@ gst_subtitle_block_get_element (const GstSubtitleBlock * block, guint index)
 {
   g_return_val_if_fail (block != NULL, NULL);
 
-  if (!block->elements || index >= block->elements->len)
+  if (index >= block->elements->len)
     return NULL;
   else
     return g_ptr_array_index (block->elements, index);
@@ -251,6 +246,8 @@ gst_subtitle_region_new (GstSubtitleStyleSet * style_set)
       (GstMiniObjectFreeFunction) _gst_subtitle_region_free);
 
   region->style_set = style_set;
+  region->blocks = g_ptr_array_new_with_free_func (
+      (GDestroyNotify) gst_subtitle_block_unref);
 
   return region;
 }
@@ -271,10 +268,6 @@ gst_subtitle_region_add_block (GstSubtitleRegion * region, GstSubtitleBlock * bl
   g_return_if_fail (region != NULL);
   g_return_if_fail (block != NULL);
 
-  if (!region->blocks)
-    region->blocks = g_ptr_array_new_with_free_func (
-        (GDestroyNotify) gst_subtitle_block_unref);
-
   g_ptr_array_add (region->blocks, block);
 }
 
@@ -289,10 +282,7 @@ gst_subtitle_region_get_block_count (const GstSubtitleRegion * region)
 {
   g_return_val_if_fail (region != NULL, 0);
 
-  if (!region->blocks)
-    return 0;
-  else
-    return region->blocks->len;
+  return region->blocks->len;
 }
 
 /**
@@ -312,7 +302,7 @@ gst_subtitle_region_get_block (const GstSubtitleRegion * region, guint index)
 {
   g_return_val_if_fail (region != NULL, NULL);
 
-  if (!region->blocks || index >= region->blocks->len)
+  if (index >= region->blocks->len)
     return NULL;
   else
     return g_ptr_array_index (region->blocks, index);

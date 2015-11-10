@@ -3096,7 +3096,9 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
   guint window_x, window_y, window_width, window_height;
   guint padding_start, padding_end, padding_before, padding_after;
   GstTtmlRenderRenderedImage *region_image = NULL;
+  GstTtmlRenderRenderedImage *blocks_image;
   GstVideoOverlayComposition *ret = NULL;
+  guint i;
 
   region_width = (guint) (round (region->style_set->extent_w * render->width));
   region_height =
@@ -3134,21 +3136,21 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
         region_width, region_height);
   }
 
-  if (region->blocks) {
-    GstTtmlRenderRenderedImage *blocks_image, *tmp;
-    guint i;
+  /* Render each block and append to list. */
+  for (i = 0; i < gst_subtitle_region_get_block_count (region); ++i) {
+    GstSubtitleBlock *block;
+    GstTtmlRenderRenderedImage *rendered_block;
 
-    /* Render each block and append to list. */
-    for (i = 0; i < region->blocks->len; ++i) {
-      GstSubtitleBlock *block;
-      GstTtmlRenderRenderedImage *rendered_block;
+    block = gst_subtitle_region_get_block (region, i);
+    rendered_block = render_text_block (render, block, text_buf,
+        window_width, TRUE);
 
-      block = g_ptr_array_index (region->blocks, i);
-      rendered_block = render_text_block (render, block, text_buf,
-          window_width, TRUE);
+    blocks = g_list_append (blocks, rendered_block);
+  }
 
-      blocks = g_list_append (blocks, rendered_block);
-    }
+  if (blocks) {
+    GstTtmlRenderRenderedImage *tmp;
+
     blocks_image = stitch_blocks (blocks);
     g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
     blocks_image->x += window_x;
