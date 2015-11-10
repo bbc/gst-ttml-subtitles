@@ -32,7 +32,13 @@
 
 #include "gstsubtitle.h"
 
-/* Create a new GstSubtitleStyleSet with default values for all properties. */
+/**
+ * gst_subtitle_style_set_new:
+ *
+ * Create a new #GstSubtitleStyleSet with default values for all properties.
+ *
+ * Returns: (transfer full): A newly-allocated #GstSubtitleStyleSet.
+ * */
 GstSubtitleStyleSet *
 gst_subtitle_style_set_new ()
 {
@@ -54,6 +60,12 @@ gst_subtitle_style_set_new ()
   return ret;
 }
 
+/**
+ * gst_subtitle_style_set_free:
+ * @styleset: A #GstSubtitleStyleSet.
+ *
+ * Free @styleset and its associated memory.
+ */
 void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset)
 {
   g_return_if_fail (styleset != NULL);
@@ -74,8 +86,10 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
 
 /**
  * gst_subtitle_element_new:
- * @style_set:
- * @text_index:
+ * @style_set: (transfer full): a #GstSubtitleStyleSet that defines the styling
+ * and layout associated with this inline text element.
+ * @text_index: the index within a #GstBuffer of the #GstMemory that contains
+ * the text of this inline text element.
  *
  * Allocates a new #GstSubtitleElement.
  *
@@ -114,7 +128,8 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleBlock, gst_subtitle_block);
 
 /**
  * gst_subtitle_block_new:
- * @style_set:
+ * @style_set: (transfer full): a #GstSubtitleStyleSet that defines the styling
+ * and layout associated with this block of text elements.
  *
  * Allocates a new #GstSubtitleBlock.
  *
@@ -141,7 +156,7 @@ gst_subtitle_block_new (GstSubtitleStyleSet * style_set)
 /**
  * gst_subtitle_block_add_element:
  * @block: a #GstSubtitleBlock.
- * @element:
+ * @element: a #GstSubtitleElement to add.
  *
  * Adds a #GstSubtitleElement to @block.
  */
@@ -213,7 +228,8 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleRegion, gst_subtitle_region);
 
 /**
  * gst_subtitle_region_new:
- * @style_set:
+ * @style_set: (transfer full): a #GstSubtitleStyleSet that defines the styling
+ * and layout associated with this region.
  *
  * Allocates a new #GstSubtitleRegion.
  *
@@ -243,8 +259,8 @@ gst_subtitle_region_new (GstSubtitleStyleSet * style_set)
  * @block: (transfer full): a #GstSubtitleBlock which should be added
  * to @region's array of blocks.
  *
- * Adds a #GstSubtitleBlock to the end of the array of blocks held by
- * @region. @region will take ownership of @block, and will unref it when @region
+ * Adds a #GstSubtitleBlock to the end of the array of blocks held by @region.
+ * @region will take ownership of @block, and will unref it when @region
  * is freed.
  */
 void
