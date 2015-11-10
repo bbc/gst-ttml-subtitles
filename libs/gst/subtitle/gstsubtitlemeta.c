@@ -20,8 +20,10 @@
 
 /**
  * SECTION:gstsubtitlemeta
- * @short_description:
+ * @short_description: Metadata class for timed-text subtitles.
  *
+ * The GstSubtitleMeta class enables the layout and styling information needed
+ * to render subtitle text to be attached to a #GstBuffer containing that text.
  */
 
 #include "gstsubtitlemeta.h"

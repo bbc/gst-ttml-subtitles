@@ -31,8 +31,11 @@ typedef struct _GstSubtitleMeta GstSubtitleMeta;
 /**
  * GstSubtitleMeta:
  * @meta: the parent #GstMeta.
- * @regions:
+ * @regions: the #GstSubtitleRegions containing layout and styling information
+ * needed to render the subtitle text contained in the associated #GstBuffer.
  *
+ * Metadata type that describes the layout and styling of subtitle text
+ * contained in a #GstBuffer.
  */
 struct _GstSubtitleMeta {
   GstMeta meta;
