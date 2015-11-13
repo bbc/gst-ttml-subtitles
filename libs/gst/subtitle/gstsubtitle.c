@@ -86,14 +86,14 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
 
 /**
  * gst_subtitle_element_new:
- * @style_set: (transfer full): a #GstSubtitleStyleSet that defines the styling
+ * @style_set: (transfer full): A #GstSubtitleStyleSet that defines the styling
  * and layout associated with this inline text element.
- * @text_index: the index within a #GstBuffer of the #GstMemory that contains
+ * @text_index: The index within a #GstBuffer of the #GstMemory that contains
  * the text of this inline text element.
  *
  * Allocates a new #GstSubtitleElement.
  *
- * Returns: (transfer full): a newly-allocated #GstSubtitleElement. Unref
+ * Returns: (transfer full): A newly-allocated #GstSubtitleElement. Unref
  * with gst_subtitle_element_unref() when no longer needed.
  */
 GstSubtitleElement *
@@ -129,12 +129,12 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleBlock, gst_subtitle_block);
 
 /**
  * gst_subtitle_block_new:
- * @style_set: (transfer full): a #GstSubtitleStyleSet that defines the styling
+ * @style_set: (transfer full): A #GstSubtitleStyleSet that defines the styling
  * and layout associated with this block of text elements.
  *
  * Allocates a new #GstSubtitleBlock.
  *
- * Returns: (transfer full): a newly-allocated #GstSubtitleBlock. Unref
+ * Returns: (transfer full): A newly-allocated #GstSubtitleBlock. Unref
  * with gst_subtitle_block_unref() when no longer needed.
  */
 GstSubtitleBlock *
@@ -158,8 +158,8 @@ gst_subtitle_block_new (GstSubtitleStyleSet * style_set)
 
 /**
  * gst_subtitle_block_add_element:
- * @block: a #GstSubtitleBlock.
- * @element: a #GstSubtitleElement to add.
+ * @block: A #GstSubtitleBlock.
+ * @element: A #GstSubtitleElement to add.
  *
  * Adds a #GstSubtitleElement to @block.
  */
@@ -175,9 +175,9 @@ gst_subtitle_block_add_element (GstSubtitleBlock * block,
 
 /**
  * gst_subtitle_block_get_element_count:
- * @block: a #GstSubtitleBlock.
+ * @block: A #GstSubtitleBlock.
  *
- * Returns: the number of #GstSubtitleElements in @block.
+ * Returns: The number of #GstSubtitleElements in @block.
  */
 guint
 gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
@@ -189,13 +189,13 @@ gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
 
 /**
  * gst_subtitle_block_get_element:
- * @block: a #GstSubtitleBlock.
- * @index: index of the element to get.
+ * @block: A #GstSubtitleBlock.
+ * @index: Index of the element to get.
  *
  * Gets the #GstSubtitleElement at @index in the array of elements held by
  * @block.
  *
- * Returns: (transfer none): the #GstSubtitleElement at @index in the array of
+ * Returns: (transfer none): The #GstSubtitleElement at @index in the array of
  * elements held by @block, or %NULL if @index is out-of-bounds. The
  * function does not return a reference; the caller should obtain a reference
  * using gst_subtitle_block_ref(), if needed.
@@ -225,12 +225,12 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleRegion, gst_subtitle_region);
 
 /**
  * gst_subtitle_region_new:
- * @style_set: (transfer full): a #GstSubtitleStyleSet that defines the styling
+ * @style_set: (transfer full): A #GstSubtitleStyleSet that defines the styling
  * and layout associated with this region.
  *
  * Allocates a new #GstSubtitleRegion.
  *
- * Returns: (transfer full): a newly-allocated #GstSubtitleRegion. Unref
+ * Returns: (transfer full): A newly-allocated #GstSubtitleRegion. Unref
  * with gst_subtitle_region_unref() when no longer needed.
  */
 GstSubtitleRegion *
@@ -254,8 +254,8 @@ gst_subtitle_region_new (GstSubtitleStyleSet * style_set)
 
 /**
  * gst_subtitle_region_add_block:
- * @region: a #GstSubtitleRegion.
- * @block: (transfer full): a #GstSubtitleBlock which should be added
+ * @region: A #GstSubtitleRegion.
+ * @block: (transfer full): A #GstSubtitleBlock which should be added
  * to @region's array of blocks.
  *
  * Adds a #GstSubtitleBlock to the end of the array of blocks held by @region.
@@ -273,9 +273,9 @@ gst_subtitle_region_add_block (GstSubtitleRegion * region, GstSubtitleBlock * bl
 
 /**
  * gst_subtitle_region_get_block_count:
- * @region: a #GstSubtitleRegion.
+ * @region: A #GstSubtitleRegion.
  *
- * Returns: the number of blocks in @region.
+ * Returns: The number of blocks in @region.
  */
 guint
 gst_subtitle_region_get_block_count (const GstSubtitleRegion * region)
@@ -287,12 +287,12 @@ gst_subtitle_region_get_block_count (const GstSubtitleRegion * region)
 
 /**
  * gst_subtitle_region_get_block:
- * @region: a #GstSubtitleRegion.
- * @index: index of the block to get.
+ * @region: A #GstSubtitleRegion.
+ * @index: Index of the block to get.
  *
  * Gets the block at @index in the array of blocks held by @region.
  *
- * Returns: (transfer none): the #GstSubtitleBlock at @index in the array of
+ * Returns: (transfer none): The #GstSubtitleBlock at @index in the array of
  * blocks held by @region, or %NULL if @index is out-of-bounds. The
  * function does not return a reference; the caller should obtain a reference
  * using gst_subtitle_region_ref(), if needed.

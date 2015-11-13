@@ -80,11 +80,11 @@ gst_subtitle_meta_get_info (void)
  * gst_buffer_add_subtitle_meta:
  * @buffer: #GstBuffer holding subtitle text, to which subtitle metadata
  * should be added.
- * @regions: a #GPtrArray of #GstSubtitleRegions.
+ * @regions: A #GPtrArray of #GstSubtitleRegions.
  *
  * Attaches subtitle metadata to a #GstBuffer.
  *
- * Returns: a pointer to the added #GstSubtitleMeta if successful; %NULL if
+ * Returns: A pointer to the added #GstSubtitleMeta if successful; %NULL if
  * unsuccessful.
  */
 GstSubtitleMeta *

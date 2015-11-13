@@ -35,13 +35,13 @@ typedef struct _GstSubtitleRegion GstSubtitleRegion;
 
 /**
  * GstSubtitleWritingMode:
- * @GST_SUBTITLE_WRITING_MODE_LRTB: text progression is left-to-right,
+ * @GST_SUBTITLE_WRITING_MODE_LRTB: Text progression is left-to-right,
  * top-to-bottom.
- * @GST_SUBTITLE_WRITING_MODE_RLTB: text progression is right-to-left,
+ * @GST_SUBTITLE_WRITING_MODE_RLTB: Text progression is right-to-left,
  * top-to-bottom.
- * @GST_SUBTITLE_WRITING_MODE_TBRL: text progression is top-to-bottom,
+ * @GST_SUBTITLE_WRITING_MODE_TBRL: Text progression is top-to-bottom,
  * right-to-left.
- * @GST_SUBTITLE_WRITING_MODE_TBLR: text progression is top-to-bottom,
+ * @GST_SUBTITLE_WRITING_MODE_TBLR: Text progression is top-to-bottom,
  * left-to-right.
  *
  * Writing mode of text content. The values define the direction of progression
@@ -279,7 +279,7 @@ typedef enum {
  * #GstSubtitleBlocks.
  * @text_align: Controls the alignent of lines of text within a block area.
  * Note that this attribute does not control the alignment of lines with each
- * other within a block area: that is determined by @multi_row_align. Applies
+ * other within a block area: That is determined by @multi_row_align. Applies
  * only to #GstSubtitleBlocks.
  * @color: The color that should be used when rendering the text corresponding
  * to the associated element. Applies only to #GstSubtitleElements.
@@ -303,7 +303,7 @@ typedef enum {
  * @multi_row_align: Defines how 'rows' (i.e., lines) within a text block
  * should be aligned relative to each other. Note that this does attribute does
  * not determine how lines of text within a block are aligned within that block
- * area: that is determined by @text_align. Applies only to #GstSubtitleBlocks.
+ * area: That is determined by @text_align. Applies only to #GstSubtitleBlocks.
  * @line_padding: Defines how much horizontal padding should be added on the
  * start and end of each rendered line; this allows space between the start and
  * end of text lines and their background rectangles for better-looking
@@ -350,7 +350,7 @@ typedef enum {
  *
  * Note that, though each of the above object types have an associated
  * #GstSubtitleElement, not all attributes in the #GstSubtitleStyleSet type
- * apply to all object types: padding_[start|end|before|after] apply only to
+ * apply to all object types: Padding_[start|end|before|after] apply only to
  * #GstSubtitleRegions, for example, while font_style applies only to
  * #GstSubtitleElements. Some attributes apply to multiple object types:
  * bg_color, for example, applies to all object types. The types to which each
@@ -387,7 +387,7 @@ void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset);
 
 /**
  * GstSubtitleElement:
- * @mini_object: the parent #GstMiniObject.
+ * @mini_object: The parent #GstMiniObject.
  * @style_set: Styling associated with this element.
  * @text_index: Index into the #GstBuffer associated with this
  * #GstSubtitleElement; the index identifies the #GstMemory within the
@@ -417,7 +417,7 @@ GstSubtitleElement * gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
 
 /**
  * gst_subtitle_element_ref:
- * @element: a #GstSubtitleElement.
+ * @element: A #GstSubtitleElement.
  *
  * Increments the refcount of @element.
  *
@@ -432,7 +432,7 @@ gst_subtitle_element_ref (GstSubtitleElement * element)
 
 /**
  * gst_subtitle_element_unref:
- * @element: (transfer full): a #GstSubtitleElement.
+ * @element: (transfer full): A #GstSubtitleElement.
  *
  * Decrements the refcount of @element. If the refcount reaches 0, @element
  * will be freed.
@@ -446,7 +446,7 @@ gst_subtitle_element_unref (GstSubtitleElement * element)
 
 /**
  * GstSubtitleBlock:
- * @mini_object: the parent #GstMiniObject.
+ * @mini_object: The parent #GstMiniObject.
  * @style_set: Styling associated with this block.
  *
  * Represents a text block made up of one or more inline text elements (i.e.,
@@ -481,7 +481,7 @@ GstSubtitleElement * gst_subtitle_block_get_element (
 
 /**
  * gst_subtitle_block_ref:
- * @block: a #GstSubtitleBlock.
+ * @block: A #GstSubtitleBlock.
  *
  * Increments the refcount of @block.
  *
@@ -496,7 +496,7 @@ gst_subtitle_block_ref (GstSubtitleBlock * block)
 
 /**
  * gst_subtitle_block_unref:
- * @block: (transfer full): a #GstSubtitleBlock.
+ * @block: (transfer full): A #GstSubtitleBlock.
  *
  * Decrements the refcount of @block. If the refcount reaches 0, @block will
  * be freed.
@@ -510,15 +510,16 @@ gst_subtitle_block_unref (GstSubtitleBlock * block)
 
 /**
  * GstSubtitleRegion:
- * @mini_object: the parent #GstMiniObject.
+ * @mini_object: The parent #GstMiniObject.
  * @style_set: Styling associated with this region.
  *
  * Represents a displayed region made up of zero or more #GstSubtitleBlocks.
  *
- * In TTML this corresponds to a <region> into which zero or more <p>s may be
- * rendered. A #GstSubtitleRegion allows a background rectangle to be displayed
- * even if no text blocks are rendered into it, as per the behaviour allowed by
- * TTML regions whose tts:showBackground style attribute is set to "always".
+ * In TTML this corresponds to a &lt;region&gt; into which zero or more
+ * &lt;p&gt;s may be rendered. A #GstSubtitleRegion allows a background
+ * rectangle to be displayed even if no text blocks are rendered into it, as
+ * per the behaviour allowed by TTML regions whose tts:showBackground style
+ * attribute is set to "always".
  */
 struct _GstSubtitleRegion
 {
@@ -546,7 +547,7 @@ GstSubtitleBlock * gst_subtitle_region_get_block (
 
 /**
  * gst_subtitle_region_ref:
- * @region: a #GstSubtitleRegion.
+ * @region: A #GstSubtitleRegion.
  *
  * Increments the refcount of @region.
  *
@@ -561,10 +562,10 @@ gst_subtitle_region_ref (GstSubtitleRegion * region)
 
 /**
  * gst_subtitle_region_unref:
- * @region: (transfer full): a #GstSubtitleRegion.
+ * @region: (transfer full): A #GstSubtitleRegion.
  *
- * Decrements the refcount of @region. If the refcount reaches 0, @region will be
- * freed.
+ * Decrements the refcount of @region. If the refcount reaches 0, @region will
+ * be freed.
  */
 static inline void
 gst_subtitle_region_unref (GstSubtitleRegion * region)
