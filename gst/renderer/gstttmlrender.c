@@ -2283,6 +2283,7 @@ beach:
 }
 
 
+/* Free returned string after use. */
 static gchar *
 gst_ttml_render_color_to_rgb_string (GstSubtitleColor color)
 {
@@ -2332,6 +2333,9 @@ _text_range_free (TextRange * range)
   g_slice_free (TextRange, range);
 }
 
+/* From the elements within @block, generate a string of the subtitle text
+ * marked-up using pango-markup. Also, store the ranges of characters belonging
+ * to the text of each element in @text_ranges. */
 static gchar *
 gst_ttml_render_generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
     GstBuffer * text_buf, GPtrArray ** text_ranges)
@@ -2418,6 +2422,7 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender * render, GstSubtitleBl
 }
 
 
+/* Render the text in a pango-markup string. */
 static GstTtmlRenderRenderedText *
 gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
     PangoAlignment alignment, guint line_height, guint max_font_size,
