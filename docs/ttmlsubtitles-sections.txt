@@ -4,6 +4,7 @@
 GstSubtitleStyleSet
 gst_subtitle_style_set_new
 gst_subtitle_style_set_free
+GstSubtitleColor
 GstSubtitleWritingMode
 GstSubtitleDisplayAlign
 GstSubtitleBackgroundMode
