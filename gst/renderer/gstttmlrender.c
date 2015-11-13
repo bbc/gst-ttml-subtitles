@@ -317,9 +317,13 @@ static gboolean gst_ttml_render_can_handle_caps (GstCaps * incaps);
 static gboolean gst_text_overlay_filter_foreground_attr (PangoAttribute * attr,
     gpointer data);
 
-static GstTtmlRenderRenderedImage * rendered_image_new (GstBuffer * image,
+static GstTtmlRenderRenderedImage * gst_ttml_render_rendered_image_new (GstBuffer * image,
     gint x, gint y, guint width, guint height);
-static GstTtmlRenderRenderedImage * rendered_image_new_empty ();
+static GstTtmlRenderRenderedImage * gst_ttml_render_rendered_image_new_empty ();
+static GstTtmlRenderRenderedImage * gst_ttml_render_rendered_image_copy
+(GstTtmlRenderRenderedImage * image);
+static void gst_ttml_render_rendered_image_free (
+    GstTtmlRenderRenderedImage * image);
 
 GType
 gst_ttml_render_get_type (void)
@@ -2280,14 +2284,14 @@ beach:
 
 
 static gchar *
-color_to_rgb_string (GstSubtitleColor color)
+gst_ttml_render_color_to_rgb_string (GstSubtitleColor color)
 {
   return g_strdup_printf ("#%02x%02x%02x", color.r, color.g, color.b);
 }
 
 
 static GstBuffer *
-draw_rectangle (guint width, guint height, GstSubtitleColor color)
+gst_ttml_render_draw_rectangle (guint width, guint height, GstSubtitleColor color)
 {
   GstMapInfo map;
   cairo_surface_t *surface;
@@ -2323,13 +2327,13 @@ typedef struct {
 } TextRange;
 
 static void
-text_range_free (TextRange * range)
+_text_range_free (TextRange * range)
 {
   g_slice_free (TextRange, range);
 }
 
 static gchar *
-generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
+gst_ttml_render_generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
     GstBuffer * text_buf, GPtrArray ** text_ranges)
 {
   GstSubtitleElement *element;
@@ -2347,7 +2351,7 @@ generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
     g_ptr_array_unref (*text_ranges);
   *text_ranges =
     g_ptr_array_new_full (gst_subtitle_block_get_element_count (block),
-      (GDestroyNotify) text_range_free);
+      (GDestroyNotify) _text_range_free);
 
   for (i = 0; i < gst_subtitle_block_get_element_count (block); ++i) {
     TextRange *range = g_slice_new0 (TextRange);
@@ -2369,7 +2373,7 @@ generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
 
     range->first_char = total_text_length;
 
-    fgcolor = color_to_rgb_string (element->style_set->color);
+    fgcolor = gst_ttml_render_color_to_rgb_string (element->style_set->color);
     font_size = g_strdup_printf ("%u",
         (guint) (round (element->style_set->font_size * render->height)));
     font_family =
@@ -2415,7 +2419,7 @@ generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
 
 
 static GstTtmlRenderRenderedText *
-draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
+gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
     PangoAlignment alignment, guint line_height, guint max_font_size,
     gboolean wrap)
 {
@@ -2434,7 +2438,7 @@ draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
   gint stride;
 
   ret = g_slice_new0 (GstTtmlRenderRenderedText);
-  ret->text_image = rendered_image_new_empty ();
+  ret->text_image = gst_ttml_render_rendered_image_new_empty ();
 
   class = GST_TTML_RENDER_GET_CLASS (render);
   ret->layout = pango_layout_new (class->pango_context);
@@ -2539,7 +2543,7 @@ draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
 
 /* If any of an array of elements has line wrapping enabled, return TRUE. */
 static gboolean
-elements_are_wrapped (GPtrArray * elements)
+gst_ttml_render_elements_are_wrapped (GPtrArray * elements)
 {
   GstSubtitleElement *element;
   guint i;
@@ -2556,7 +2560,7 @@ elements_are_wrapped (GPtrArray * elements)
 
 /* Return the maximum font size used in an array of elements. */
 static gdouble
-get_max_font_size (GPtrArray * elements)
+gst_ttml_render_get_max_font_size (GPtrArray * elements)
 {
   GstSubtitleElement *element;
   guint i;
@@ -2573,7 +2577,7 @@ get_max_font_size (GPtrArray * elements)
 
 
 static GstTtmlRenderRenderedImage *
-rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
+gst_ttml_render_rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
     guint height)
 {
   GstTtmlRenderRenderedImage *ret;
@@ -2581,7 +2585,7 @@ rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
   ret = g_slice_new0 (GstTtmlRenderRenderedImage);
   /*gst_mini_object_init (GST_MINI_OBJECT_CAST (element), 0,
       rendered_image_get_type (), NULL, NULL,
-      (GstMiniObjectFreeFunction) rendered_image_free);*/
+      (GstMiniObjectFreeFunction) gst_ttml_render_rendered_image_free);*/
 
   ret->image = image;
   ret->x = x;
@@ -2593,14 +2597,14 @@ rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
 }
 
 static GstTtmlRenderRenderedImage *
-rendered_image_new_empty ()
+gst_ttml_render_rendered_image_new_empty ()
 {
-  return rendered_image_new (NULL, 0, 0, 0, 0);
+  return gst_ttml_render_rendered_image_new (NULL, 0, 0, 0, 0);
 }
 
 
 static GstTtmlRenderRenderedImage *
-rendered_image_copy (GstTtmlRenderRenderedImage * image)
+gst_ttml_render_rendered_image_copy (GstTtmlRenderRenderedImage * image)
 {
   GstTtmlRenderRenderedImage *ret
     = g_slice_new0 (GstTtmlRenderRenderedImage);
@@ -2616,7 +2620,7 @@ rendered_image_copy (GstTtmlRenderRenderedImage * image)
 
 
 static void
-rendered_image_free (GstTtmlRenderRenderedImage * image)
+gst_ttml_render_rendered_image_free (GstTtmlRenderRenderedImage * image)
 {
   if (!image) return;
   gst_buffer_unref (image->image);
@@ -2650,7 +2654,7 @@ output_image (const GstTtmlRenderRenderedImage * image, const gchar * filename)
 /* The order of arguments is significant: @image2 will be rendered on top of
  * @image1. */
 static GstTtmlRenderRenderedImage *
-rendered_image_combine (GstTtmlRenderRenderedImage * image1,
+gst_ttml_render_rendered_image_combine (GstTtmlRenderRenderedImage * image1,
     GstTtmlRenderRenderedImage * image2)
 {
   GstTtmlRenderRenderedImage *ret;
@@ -2659,9 +2663,9 @@ rendered_image_combine (GstTtmlRenderRenderedImage * image1,
   cairo_t *state_dest;
 
   if (image1 && !image2)
-    return rendered_image_copy (image1);
+    return gst_ttml_render_rendered_image_copy (image1);
   if (image2 && !image1)
-    return rendered_image_copy (image2);
+    return gst_ttml_render_rendered_image_copy (image2);
 
   ret = g_slice_new0 (GstTtmlRenderRenderedImage);
 
@@ -2725,8 +2729,8 @@ rendered_image_combine (GstTtmlRenderRenderedImage * image1,
 
 
 static GstTtmlRenderRenderedImage *
-rendered_image_crop (GstTtmlRenderRenderedImage * image, gint x, gint y,
-    guint width, guint height)
+gst_ttml_render_rendered_image_crop (GstTtmlRenderRenderedImage * image,
+    gint x, gint y, guint width, guint height)
 {
   GstTtmlRenderRenderedImage *ret;
   GstMapInfo map_src, map_dest;
@@ -2735,7 +2739,7 @@ rendered_image_crop (GstTtmlRenderRenderedImage * image, gint x, gint y,
 
   if ((x <= image->x) && (y <= image->y) && (width >= image->width)
       && (height >= image->height))
-    return rendered_image_copy (image);
+    return gst_ttml_render_rendered_image_copy (image);
 
   if (image->x >= (x + (gint)width)
       || (image->x + (gint)image->width) <= x
@@ -2789,7 +2793,7 @@ rendered_image_crop (GstTtmlRenderRenderedImage * image, gint x, gint y,
 
 
 static gboolean
-color_is_transparent (GstSubtitleColor * color)
+gst_ttml_render_color_is_transparent (GstSubtitleColor * color)
 {
   return (color->a == 0);
 }
@@ -2797,7 +2801,7 @@ color_is_transparent (GstSubtitleColor * color)
 
 /* Render the background rectangles to be placed behind each element. */
 static GstTtmlRenderRenderedImage *
-render_element_backgrounds (GstSubtitleBlock * block, GPtrArray * char_ranges,
+gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block, GPtrArray * char_ranges,
     PangoLayout * layout, guint origin_x, guint origin_y, guint line_height,
     guint line_padding, guint horiz_offset)
 {
@@ -2888,16 +2892,18 @@ render_element_backgrounds (GstSubtitleBlock * block, GPtrArray * char_ranges,
       rect_width = (area_end - area_start);
 
       if (rect_width > 0    /* <br>s will result in zero-width rectangle */
-          && !color_is_transparent (&element->style_set->bg_color)) {
+          && !gst_ttml_render_color_is_transparent (
+            &element->style_set->bg_color)) {
         GstTtmlRenderRenderedImage *image, *tmp;
-        rectangle = draw_rectangle (rect_width, line_height,
+        rectangle = gst_ttml_render_draw_rectangle (rect_width, line_height,
             element->style_set->bg_color);
-        image = rendered_image_new (rectangle, origin_x + area_start,
-            origin_y + (cur_line * line_height), rect_width, line_height);
+        image = gst_ttml_render_rendered_image_new (rectangle,
+            origin_x + area_start, origin_y + (cur_line * line_height),
+            rect_width, line_height);
         tmp = ret;
-        ret = rendered_image_combine (ret, image);
-        if (tmp) rendered_image_free (tmp);
-        rendered_image_free (image);
+        ret = gst_ttml_render_rendered_image_combine (ret, image);
+        if (tmp) gst_ttml_render_rendered_image_free (tmp);
+        gst_ttml_render_rendered_image_free (image);
       }
     }
   }
@@ -2907,7 +2913,7 @@ render_element_backgrounds (GstSubtitleBlock * block, GPtrArray * char_ranges,
 
 
 static PangoAlignment
-get_alignment (GstSubtitleStyleSet * style_set)
+gst_ttml_render_get_alignment (GstSubtitleStyleSet * style_set)
 {
   PangoAlignment align = PANGO_ALIGN_LEFT;
 
@@ -2950,7 +2956,7 @@ get_alignment (GstSubtitleStyleSet * style_set)
 
 
 static GstTtmlRenderRenderedImage *
-stitch_blocks (GList * blocks)
+gst_ttml_render_stitch_blocks (GList * blocks)
 {
   guint vert_offset = 0;
   GList *block_entry;
@@ -2966,8 +2972,8 @@ stitch_blocks (GList * blocks)
     GST_CAT_LOG (ttmlrender, "Rendering block at vertical offset %u",
         vert_offset);
     vert_offset = block->y + block->height;
-    ret = rendered_image_combine (ret, block);
-    if (tmp) rendered_image_free (tmp);
+    ret = gst_ttml_render_rendered_image_combine (ret, block);
+    if (tmp) gst_ttml_render_rendered_image_free (tmp);
   }
 
   GST_CAT_LOG (ttmlrender, "Height of stitched image: %u", ret->height);
@@ -2977,10 +2983,10 @@ stitch_blocks (GList * blocks)
 
 
 static void
-rendered_text_free (GstTtmlRenderRenderedText * text)
+gst_ttml_render_rendered_text_free (GstTtmlRenderRenderedText * text)
 {
   if (text->text_image)
-    rendered_image_free (text->text_image);
+    gst_ttml_render_rendered_image_free (text->text_image);
   if (text->layout)
     g_object_unref (text->layout);
   g_slice_free (GstTtmlRenderRenderedText, text);
@@ -2988,8 +2994,9 @@ rendered_text_free (GstTtmlRenderRenderedText * text)
 
 
 static GstTtmlRenderRenderedImage *
-render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
-    GstBuffer * text_buf, guint width, gboolean overflow)
+gst_ttml_render_render_text_block (GstTtmlRender * render,
+    GstSubtitleBlock * block, GstBuffer * text_buf, guint width,
+    gboolean overflow)
 {
   GPtrArray *char_ranges = NULL;
   gchar *marked_up_string;
@@ -3002,21 +3009,21 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
   GstTtmlRenderRenderedImage *ret;
 
   /* Join text from elements to form a single marked-up string. */
-  marked_up_string = generate_marked_up_string (render, block, text_buf,
-      &char_ranges);
+  marked_up_string = gst_ttml_render_generate_marked_up_string (render, block,
+      text_buf, &char_ranges);
 
-  max_font_size = (guint) (get_max_font_size (block->elements)
+  max_font_size = (guint) (gst_ttml_render_get_max_font_size (block->elements)
       * render->height);
   GST_CAT_DEBUG (ttmlrender, "Max font size: %u", max_font_size);
 
   line_padding = (guint) (block->style_set->line_padding * render->width);
-  alignment = get_alignment (block->style_set);
+  alignment = gst_ttml_render_get_alignment (block->style_set);
 
   /* Render text to buffer. */
-  rendered_text = draw_text (render, marked_up_string,
+  rendered_text = gst_ttml_render_draw_text (render, marked_up_string,
       (width - (2 * line_padding)), alignment,
       (guint) (block->style_set->line_height * max_font_size), max_font_size,
-      elements_are_wrapped (block->elements));
+      gst_ttml_render_elements_are_wrapped (block->elements));
 
   switch (block->style_set->text_align) {
     case GST_SUBTITLE_TEXT_ALIGN_START:
@@ -3037,29 +3044,31 @@ render_text_block (GstTtmlRender * render, GstSubtitleBlock * block,
   rendered_text->text_image->x = text_offset;
 
   /* Render background rectangles, if any. */
-  backgrounds = render_element_backgrounds (block, char_ranges,
+  backgrounds = gst_ttml_render_render_element_backgrounds (block, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
       (guint) (block->style_set->line_height * max_font_size), line_padding,
       rendered_text->horiz_offset);
 
   /* Render block background, if non-transparent. */
-  if (!color_is_transparent (&block->style_set->bg_color)) {
+  if (!gst_ttml_render_color_is_transparent (&block->style_set->bg_color)) {
     GstTtmlRenderRenderedImage *block_background;
     GstTtmlRenderRenderedImage *tmp = backgrounds;
 
-    GstBuffer *block_bg_image = draw_rectangle (width, backgrounds->height,
-        block->style_set->bg_color);
-    block_background = rendered_image_new (block_bg_image, 0, 0, width,
-        backgrounds->height);
-    backgrounds = rendered_image_combine (block_background, backgrounds);
-    rendered_image_free (tmp);
-    rendered_image_free (block_background);
+    GstBuffer *block_bg_image = gst_ttml_render_draw_rectangle (width,
+        backgrounds->height, block->style_set->bg_color);
+    block_background = gst_ttml_render_rendered_image_new (block_bg_image, 0,
+        0, width, backgrounds->height);
+    backgrounds = gst_ttml_render_rendered_image_combine (block_background,
+        backgrounds);
+    gst_ttml_render_rendered_image_free (tmp);
+    gst_ttml_render_rendered_image_free (block_background);
   }
 
   /* Combine text and background images. */
-  ret = rendered_image_combine (backgrounds, rendered_text->text_image);
-  rendered_image_free (backgrounds);
-  rendered_text_free (rendered_text);
+  ret = gst_ttml_render_rendered_image_combine (backgrounds,
+      rendered_text->text_image);
+  gst_ttml_render_rendered_image_free (backgrounds);
+  gst_ttml_render_rendered_text_free (rendered_text);
 
   g_free (marked_up_string);
   g_ptr_array_unref (char_ranges);
@@ -3089,8 +3098,8 @@ gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage * image)
 
 
 static GstVideoOverlayComposition *
-render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
-  GstBuffer * text_buf)
+gst_ttml_render_render_text_region (GstTtmlRender * render,
+    GstSubtitleRegion * region, GstBuffer * text_buf)
 {
   GList *blocks = NULL;
   guint region_x, region_y, region_width, region_height;
@@ -3128,13 +3137,13 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
       padding_start, padding_end, padding_before, padding_after);
 
   /* Render region background, if non-transparent. */
-  if (!color_is_transparent (&region->style_set->bg_color)) {
+  if (!gst_ttml_render_color_is_transparent (&region->style_set->bg_color)) {
     GstBuffer *bg_rect;
 
-    bg_rect = draw_rectangle (region_width, region_height,
+    bg_rect = gst_ttml_render_draw_rectangle (region_width, region_height,
         region->style_set->bg_color);
-    region_image = rendered_image_new (bg_rect, region_x, region_y,
-        region_width, region_height);
+    region_image = gst_ttml_render_rendered_image_new (bg_rect, region_x,
+        region_y, region_width, region_height);
   }
 
   /* Render each block and append to list. */
@@ -3143,7 +3152,7 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
     GstTtmlRenderRenderedImage *rendered_block;
 
     block = gst_subtitle_region_get_block (region, i);
-    rendered_block = render_text_block (render, block, text_buf,
+    rendered_block = gst_ttml_render_render_text_block (render, block, text_buf,
         window_width, TRUE);
 
     blocks = g_list_append (blocks, rendered_block);
@@ -3152,8 +3161,9 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
   if (blocks) {
     GstTtmlRenderRenderedImage *tmp;
 
-    blocks_image = stitch_blocks (blocks);
-    g_list_free_full (blocks, (GDestroyNotify) rendered_image_free);
+    blocks_image = gst_ttml_render_stitch_blocks (blocks);
+    g_list_free_full (blocks,
+        (GDestroyNotify) gst_ttml_render_rendered_image_free);
     blocks_image->x += window_x;
 
     switch (region->style_set->display_align) {
@@ -3174,22 +3184,23 @@ render_text_region (GstTtmlRender * render, GstSubtitleRegion * region,
         && ((blocks_image->height > window_height)
           || (blocks_image->width > window_width))) {
       GstTtmlRenderRenderedImage *tmp = blocks_image;
-      blocks_image = rendered_image_crop (blocks_image, window_x, window_y,
-          window_width, window_height);
-      rendered_image_free (tmp);
+      blocks_image = gst_ttml_render_rendered_image_crop (blocks_image,
+          window_x, window_y, window_width, window_height);
+      gst_ttml_render_rendered_image_free (tmp);
     }
 
     tmp = region_image;
-    region_image = rendered_image_combine (region_image, blocks_image);
-    if (tmp) rendered_image_free (tmp);
-    rendered_image_free (blocks_image);
+    region_image = gst_ttml_render_rendered_image_combine (region_image,
+        blocks_image);
+    if (tmp) gst_ttml_render_rendered_image_free (tmp);
+    gst_ttml_render_rendered_image_free (blocks_image);
   }
 
   GST_CAT_DEBUG (ttmlrender, "Height of rendered region: %u",
       region_image->height);
 
   ret = gst_ttml_render_compose_overlay (region_image);
-  rendered_image_free (region_image);
+  gst_ttml_render_rendered_image_free (region_image);
   return ret;
 }
 
@@ -3380,7 +3391,7 @@ wait_for_text_buf:
             GstVideoOverlayComposition *composition;
             region = g_ptr_array_index (subtitle_meta->regions, i);
             g_assert (region != NULL);
-            composition = render_text_region (render, region,
+            composition = gst_ttml_render_render_text_region (render, region,
                 render->text_buffer);
             render->compositions = g_list_append (render->compositions,
                 composition);
