@@ -20,6 +20,12 @@
  * Boston, MA 02110-1301, USA.
  */
 
+/*
+ * Parses subtitle files encoded using the EBU-TT-D profile of TTML, as defined
+ * in https://tech.ebu.ch/files/live/sites/tech/files/shared/tech/tech3380.pdf
+ * and http://www.w3.org/TR/ttaf1-dfxp/, respectively.
+ */
+
 #include <glib.h>
 #include <gst/subtitle/subtitle.h>
 
@@ -52,6 +58,7 @@ ttml_hex_pair_to_byte (const gchar * hex_pair)
 }
 
 
+/* Color strings in EBU-TT-D can have the form "#RRBBGG" or "#RRBBGGAA". */
 static GstSubtitleColor
 ttml_parse_colorstring (const gchar * color)
 {
@@ -62,7 +69,6 @@ ttml_parse_colorstring (const gchar * color)
   if (!color)
     return ret;
 
-  /* Color strings in EBU-TT-D can have the form "#RRBBGG" or "#RRBBGGAA". */
   length = strlen (color);
   if (((length == 7) || (length == 9)) && *color == '#') {
     c = color + 1;
@@ -346,6 +352,7 @@ ttml_get_xml_property (const xmlNode * node, const char *name)
 }
 
 
+/* EBU-TT-D timecodes have format hours:minutes:seconds[.fraction] */
 static GstClockTime
 ttml_parse_timecode (const gchar * timestring)
 {
@@ -441,9 +448,6 @@ ttml_parse_element (const xmlNode * node)
     g_free (value);
   }
 
-  /* XXX: Place parsing of attributes that are common to all element types
-   * before this line. */
-
   if (element->type == TTML_ELEMENT_TYPE_STYLE
       || element->type == TTML_ELEMENT_TYPE_REGION) {
     TtmlStyleSet *ss;
@@ -503,217 +507,219 @@ ttml_parse_body (const xmlNode * node)
 }
 
 
+/* Update the fields of a GstSubtitleStyleSet, @style_set, according to the
+ * values defined in a TtmlStyleSet, @tss, and a given cell resolution. */
 static void
-ttml_update_style_set (GstSubtitleStyleSet * ss, TtmlStyleSet * ess,
+ttml_update_style_set (GstSubtitleStyleSet * style_set, TtmlStyleSet * tss,
     guint cellres_x, guint cellres_y)
 {
-  GST_CAT_LOG (ttmlparse, "cellres_x: %u  cellres_y: %u", cellres_x,
-      cellres_y);
-
-  if (ess->text_direction) {
-    if (g_strcmp0 (ess->text_direction, "rtl") == 0)
-      ss->text_direction = GST_SUBTITLE_TEXT_DIRECTION_RTL;
+  if (tss->text_direction) {
+    if (g_strcmp0 (tss->text_direction, "rtl") == 0)
+      style_set->text_direction = GST_SUBTITLE_TEXT_DIRECTION_RTL;
     else
-      ss->text_direction = GST_SUBTITLE_TEXT_DIRECTION_LTR;
+      style_set->text_direction = GST_SUBTITLE_TEXT_DIRECTION_LTR;
   }
 
-  if (ess->font_family) {
-    if (strlen (ess->font_family) <= MAX_FONT_FAMILY_NAME_LENGTH) {
-      g_free (ss->font_family);
-      ss->font_family = g_strdup (ess->font_family);
+  if (tss->font_family) {
+    if (strlen (tss->font_family) <= MAX_FONT_FAMILY_NAME_LENGTH) {
+      g_free (style_set->font_family);
+      style_set->font_family = g_strdup (tss->font_family);
     } else {
       GST_CAT_WARNING (ttmlparse,
           "Ignoring font family name as it's overly long.");
     }
   }
 
-  if (ess->font_size) {
-    ss->font_size = g_ascii_strtod (ess->font_size, NULL) / 100.0;
+  if (tss->font_size) {
+    style_set->font_size = g_ascii_strtod (tss->font_size, NULL) / 100.0;
   }
-  ss->font_size *= (1.0 / cellres_y);
+  style_set->font_size *= (1.0 / cellres_y);
 
-  if (ess->line_height) {
-    if (g_strcmp0 (ess->line_height, "normal") == 0)
-      ss->line_height = 1.25;
+  if (tss->line_height) {
+    /* The TTML spec (section 8.2.12) recommends using a line height of 125%
+     * when "normal" is specified. */
+    if (g_strcmp0 (tss->line_height, "normal") == 0)
+      style_set->line_height = 1.25;
     else
-      ss->line_height = g_ascii_strtod (ess->line_height, NULL) / 100.0;
+      style_set->line_height = g_ascii_strtod (tss->line_height, NULL) / 100.0;
   }
 
-  if (ess->text_align) {
-    if (g_strcmp0 (ess->text_align, "left") == 0)
-      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_LEFT;
-    else if (g_strcmp0 (ess->text_align, "center") == 0)
-      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_CENTER;
-    else if (g_strcmp0 (ess->text_align, "right") == 0)
-      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_RIGHT;
-    else if (g_strcmp0 (ess->text_align, "end") == 0)
-      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_END;
+  if (tss->text_align) {
+    if (g_strcmp0 (tss->text_align, "left") == 0)
+      style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_LEFT;
+    else if (g_strcmp0 (tss->text_align, "center") == 0)
+      style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_CENTER;
+    else if (g_strcmp0 (tss->text_align, "right") == 0)
+      style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_RIGHT;
+    else if (g_strcmp0 (tss->text_align, "end") == 0)
+      style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_END;
     else
-      ss->text_align = GST_SUBTITLE_TEXT_ALIGN_START;
+      style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_START;
   }
 
-  if (ess->color) {
-    ss->color = ttml_parse_colorstring (ess->color);
+  if (tss->color) {
+    style_set->color = ttml_parse_colorstring (tss->color);
   }
 
-  if (ess->bg_color) {
-    ss->bg_color = ttml_parse_colorstring (ess->bg_color);
+  if (tss->bg_color) {
+    style_set->bg_color = ttml_parse_colorstring (tss->bg_color);
   }
 
-  if (ess->font_style) {
-    if (g_strcmp0 (ess->font_style, "italic") == 0)
-      ss->font_style = GST_SUBTITLE_FONT_STYLE_ITALIC;
+  if (tss->font_style) {
+    if (g_strcmp0 (tss->font_style, "italic") == 0)
+      style_set->font_style = GST_SUBTITLE_FONT_STYLE_ITALIC;
     else
-      ss->font_style = GST_SUBTITLE_FONT_STYLE_NORMAL;
+      style_set->font_style = GST_SUBTITLE_FONT_STYLE_NORMAL;
   }
 
-  if (ess->font_weight) {
-    if (g_strcmp0 (ess->font_weight, "bold") == 0)
-      ss->font_weight = GST_SUBTITLE_FONT_WEIGHT_BOLD;
+  if (tss->font_weight) {
+    if (g_strcmp0 (tss->font_weight, "bold") == 0)
+      style_set->font_weight = GST_SUBTITLE_FONT_WEIGHT_BOLD;
     else
-      ss->font_weight = GST_SUBTITLE_FONT_WEIGHT_NORMAL;
+      style_set->font_weight = GST_SUBTITLE_FONT_WEIGHT_NORMAL;
   }
 
-  if (ess->text_decoration) {
-    if (g_strcmp0 (ess->text_decoration, "underline") == 0)
-      ss->text_decoration = GST_SUBTITLE_TEXT_DECORATION_UNDERLINE;
+  if (tss->text_decoration) {
+    if (g_strcmp0 (tss->text_decoration, "underline") == 0)
+      style_set->text_decoration = GST_SUBTITLE_TEXT_DECORATION_UNDERLINE;
     else
-      ss->text_decoration = GST_SUBTITLE_TEXT_DECORATION_NONE;
+      style_set->text_decoration = GST_SUBTITLE_TEXT_DECORATION_NONE;
   }
 
-  if (ess->unicode_bidi) {
-    if (g_strcmp0 (ess->unicode_bidi, "embed") == 0)
-      ss->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_EMBED;
-    else if (g_strcmp0 (ess->unicode_bidi, "bidiOverride") == 0)
-      ss->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_OVERRIDE;
+  if (tss->unicode_bidi) {
+    if (g_strcmp0 (tss->unicode_bidi, "embed") == 0)
+      style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_EMBED;
+    else if (g_strcmp0 (tss->unicode_bidi, "bidiOverride") == 0)
+      style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_OVERRIDE;
     else
-      ss->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;
+      style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;
   }
 
-  if (ess->wrap_option) {
-    if (g_strcmp0 (ess->wrap_option, "noWrap") == 0)
-      ss->wrap_option = GST_SUBTITLE_WRAPPING_OFF;
+  if (tss->wrap_option) {
+    if (g_strcmp0 (tss->wrap_option, "noWrap") == 0)
+      style_set->wrap_option = GST_SUBTITLE_WRAPPING_OFF;
     else
-      ss->wrap_option = GST_SUBTITLE_WRAPPING_ON;
+      style_set->wrap_option = GST_SUBTITLE_WRAPPING_ON;
   }
 
-  if (ess->multi_row_align) {
-    if (g_strcmp0 (ess->multi_row_align, "start") == 0)
-      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_START;
-    else if (g_strcmp0 (ess->multi_row_align, "center") == 0)
-      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_CENTER;
-    else if (g_strcmp0 (ess->multi_row_align, "end") == 0)
-      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_END;
+  if (tss->multi_row_align) {
+    if (g_strcmp0 (tss->multi_row_align, "start") == 0)
+      style_set->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_START;
+    else if (g_strcmp0 (tss->multi_row_align, "center") == 0)
+      style_set->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_CENTER;
+    else if (g_strcmp0 (tss->multi_row_align, "end") == 0)
+      style_set->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_END;
     else
-      ss->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_AUTO;
+      style_set->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_AUTO;
   }
 
-  if (ess->line_padding) {
-    ss->line_padding = g_ascii_strtod (ess->line_padding, NULL);
-    ss->line_padding *= (1.0 / cellres_x);
+  if (tss->line_padding) {
+    style_set->line_padding = g_ascii_strtod (tss->line_padding, NULL);
+    style_set->line_padding *= (1.0 / cellres_x);
   }
 
-  if (ess->origin) {
+  if (tss->origin) {
     gchar *c;
-    ss->origin_x = g_ascii_strtod (ess->origin, &c) / 100.0;
+    style_set->origin_x = g_ascii_strtod (tss->origin, &c) / 100.0;
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
-    ss->origin_y = g_ascii_strtod (c, NULL) / 100.0;
+    style_set->origin_y = g_ascii_strtod (c, NULL) / 100.0;
   }
 
-  if (ess->extent) {
+  if (tss->extent) {
     gchar *c;
-    ss->extent_w = g_ascii_strtod (ess->extent, &c) / 100.0;
-    if ((ss->origin_x + ss->extent_w) > 1.0) {
-      ss->extent_w = 1.0 - ss->origin_x;
+    style_set->extent_w = g_ascii_strtod (tss->extent, &c) / 100.0;
+    if ((style_set->origin_x + style_set->extent_w) > 1.0) {
+      style_set->extent_w = 1.0 - style_set->origin_x;
     }
     while (!g_ascii_isdigit (*c) && *c != '+' && *c != '-') ++c;
-    ss->extent_h = g_ascii_strtod (c, NULL) / 100.0;
-    if ((ss->origin_y + ss->extent_h) > 1.0) {
-      ss->extent_h = 1.0 - ss->origin_y;
+    style_set->extent_h = g_ascii_strtod (c, NULL) / 100.0;
+    if ((style_set->origin_y + style_set->extent_h) > 1.0) {
+      style_set->extent_h = 1.0 - style_set->origin_y;
     }
   }
 
-  if (ess->display_align) {
-    if (g_strcmp0 (ess->display_align, "center") == 0)
-      ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_CENTER;
-    else if (g_strcmp0 (ess->display_align, "after") == 0)
-      ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_AFTER;
+  if (tss->display_align) {
+    if (g_strcmp0 (tss->display_align, "center") == 0)
+      style_set->display_align = GST_SUBTITLE_DISPLAY_ALIGN_CENTER;
+    else if (g_strcmp0 (tss->display_align, "after") == 0)
+      style_set->display_align = GST_SUBTITLE_DISPLAY_ALIGN_AFTER;
     else
-      ss->display_align = GST_SUBTITLE_DISPLAY_ALIGN_BEFORE;
+      style_set->display_align = GST_SUBTITLE_DISPLAY_ALIGN_BEFORE;
   }
 
-  if (ess->padding) {
+  if (tss->padding) {
     gchar **decimals;
     guint n_decimals;
     guint i;
 
-    decimals = g_strsplit (ess->padding, "%", 0);
+    decimals = g_strsplit (tss->padding, "%", 0);
     n_decimals = g_strv_length (decimals) - 1;
     for (i = 0; i < n_decimals; ++i)
       g_strstrip (decimals[i]);
 
     switch (n_decimals) {
       case 1:
-        ss->padding_start = ss->padding_end =
-          ss->padding_before = ss->padding_after =
+        style_set->padding_start = style_set->padding_end =
+          style_set->padding_before = style_set->padding_after =
           g_ascii_strtod (decimals[0], NULL) / 100.0;
         break;
 
       case 2:
-        ss->padding_before = ss->padding_after =
+        style_set->padding_before = style_set->padding_after =
           g_ascii_strtod (decimals[0], NULL) / 100.0;
-        ss->padding_start = ss->padding_end =
+        style_set->padding_start = style_set->padding_end =
           g_ascii_strtod (decimals[1], NULL) / 100.0;
         break;
 
       case 3:
-        ss->padding_before = g_ascii_strtod (decimals[0], NULL) / 100.0;
-        ss->padding_start = ss->padding_end =
+        style_set->padding_before = g_ascii_strtod (decimals[0], NULL) / 100.0;
+        style_set->padding_start = style_set->padding_end =
           g_ascii_strtod (decimals[1], NULL) / 100.0;
-        ss->padding_after = g_ascii_strtod (decimals[2], NULL) / 100.0;
+        style_set->padding_after = g_ascii_strtod (decimals[2], NULL) / 100.0;
         break;
 
       case 4:
-        ss->padding_before = g_ascii_strtod (decimals[0], NULL) / 100.0;
-        ss->padding_end = g_ascii_strtod (decimals[1], NULL) / 100.0;
-        ss->padding_after = g_ascii_strtod (decimals[2], NULL) / 100.0;
-        ss->padding_start = g_ascii_strtod (decimals[3], NULL) / 100.0;
+        style_set->padding_before = g_ascii_strtod (decimals[0], NULL) / 100.0;
+        style_set->padding_end = g_ascii_strtod (decimals[1], NULL) / 100.0;
+        style_set->padding_after = g_ascii_strtod (decimals[2], NULL) / 100.0;
+        style_set->padding_start = g_ascii_strtod (decimals[3], NULL) / 100.0;
         break;
     }
     g_strfreev (decimals);
 
-    /* Padding values are relative to the region size; make them relative to
-     * the overall display size like all other dimensions. */
-    ss->padding_before *= ss->extent_h;
-    ss->padding_after *= ss->extent_h;
-    ss->padding_end *= ss->extent_w;
-    ss->padding_start *= ss->extent_w;
+    /* Padding values in TTML files are relative to the region width & height;
+     * make them relative to the overall display width & height like all other
+     * dimensions. */
+    style_set->padding_before *= style_set->extent_h;
+    style_set->padding_after *= style_set->extent_h;
+    style_set->padding_end *= style_set->extent_w;
+    style_set->padding_start *= style_set->extent_w;
   }
 
-  if (ess->writing_mode) {
-    if (g_str_has_prefix (ess->writing_mode, "rl"))
-      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_RLTB;
-    else if ((g_strcmp0 (ess->writing_mode, "tbrl") == 0)
-        || (g_strcmp0 (ess->writing_mode, "tb") == 0))
-      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_TBRL;
-    else if (g_strcmp0 (ess->writing_mode, "tblr") == 0)
-      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_TBLR;
+  if (tss->writing_mode) {
+    if (g_str_has_prefix (tss->writing_mode, "rl"))
+      style_set->writing_mode = GST_SUBTITLE_WRITING_MODE_RLTB;
+    else if ((g_strcmp0 (tss->writing_mode, "tbrl") == 0)
+        || (g_strcmp0 (tss->writing_mode, "tb") == 0))
+      style_set->writing_mode = GST_SUBTITLE_WRITING_MODE_TBRL;
+    else if (g_strcmp0 (tss->writing_mode, "tblr") == 0)
+      style_set->writing_mode = GST_SUBTITLE_WRITING_MODE_TBLR;
     else
-      ss->writing_mode = GST_SUBTITLE_WRITING_MODE_LRTB;
+      style_set->writing_mode = GST_SUBTITLE_WRITING_MODE_LRTB;
   }
 
-  if (ess->show_background) {
-    if (g_strcmp0 (ess->show_background, "whenActive") == 0)
-      ss->show_background = GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE;
+  if (tss->show_background) {
+    if (g_strcmp0 (tss->show_background, "whenActive") == 0)
+      style_set->show_background = GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE;
     else
-      ss->show_background = GST_SUBTITLE_BACKGROUND_MODE_ALWAYS;
+      style_set->show_background = GST_SUBTITLE_BACKGROUND_MODE_ALWAYS;
   }
 
-  if (ess->overflow) {
-    if (g_strcmp0 (ess->overflow, "visible") == 0)
-      ss->overflow = GST_SUBTITLE_OVERFLOW_MODE_VISIBLE;
+  if (tss->overflow) {
+    if (g_strcmp0 (tss->overflow, "visible") == 0)
+      style_set->overflow = GST_SUBTITLE_OVERFLOW_MODE_VISIBLE;
     else
-      ss->overflow = GST_SUBTITLE_OVERFLOW_MODE_HIDDEN;
+      style_set->overflow = GST_SUBTITLE_OVERFLOW_MODE_HIDDEN;
   }
 }
 
@@ -851,15 +857,15 @@ ttml_inherit_styling (TtmlStyleSet * parent, TtmlStyleSet * child)
 
   /*
    * The following styling attributes are not inherited:
-   *   - backgroundColor
-   *   - origin
-   *   - extent
-   *   - displayAlign
-   *   - overflow
-   *   - padding
-   *   - writingMode
-   *   - showBackground
-   *   - unicodeBidi
+   *   - tts:backgroundColor
+   *   - tts:origin
+   *   - tts:extent
+   *   - tts:displayAlign
+   *   - tts:overflow
+   *   - tts:padding
+   *   - tts:writingMode
+   *   - tts:showBackground
+   *   - tts:unicodeBidi
    */
 
   if (child) {
@@ -880,7 +886,7 @@ ttml_inherit_styling (TtmlStyleSet * parent, TtmlStyleSet * child)
      * fontSize, then the child's fontSize is relative to the document's cell
      * size. Therefore, if the former is true, we calculate the value of
      * font_size based on the parent's font_size; otherwise, we simply keep the
-     * value defined in the child's styleset. */
+     * value defined in the child's style set. */
     if (parent->font_size) {
       if (!ret->font_size) {
         ret->font_size = g_strdup (parent->font_size);
@@ -1185,6 +1191,7 @@ ttml_find_next_transition (GList * trees, GstClockTime time)
 }
 
 
+/* Remove nodes from tree that are not visible at @time. */
 static GNode *
 ttml_remove_nodes_by_time (GNode * node, GstClockTime time)
 {
@@ -1200,8 +1207,6 @@ ttml_remove_nodes_by_time (GNode * node, GstClockTime time)
     next_child = child ? child->next : NULL;
   }
 
-  /* XXX: Should we be relying on GST_CLOCK_TIME-NONE being MAX_UINT64?
-   * Or should we have explicit tests for validity of begin & end? */
   if (!node->children && ((element->begin > time) || (element->end <= time))) {
     g_node_destroy (node);
     node = NULL;
@@ -1270,7 +1275,6 @@ ttml_create_scenes (GList * region_trees)
     }
   }
 
-  g_assert (cur_scene == NULL);
   return output_scenes;
 }
 
@@ -1288,8 +1292,8 @@ ttml_strip_whitespace (GNode * node, gpointer data)
 static void
 ttml_strip_surrounding_whitespace (GNode * tree)
 {
-  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1, ttml_strip_whitespace,
-      NULL);
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
+      ttml_strip_whitespace, NULL);
 }
 
 
@@ -1490,7 +1494,7 @@ ttml_add_element (GstSubtitleBlock * block, TtmlElement * element,
 }
 
 
-/* Returns TRUE if @color is totally transparent. */
+/* Return TRUE if @color is totally transparent. */
 static gboolean
 ttml_color_is_transparent (const GstSubtitleColor * color)
 {
@@ -1501,6 +1505,10 @@ ttml_color_is_transparent (const GstSubtitleColor * color)
 }
 
 
+/* Blend @color2 over @color1 and return the resulting color. This is currently
+ * a dummy implementation that simply returns color2 as long as it's
+ * not fully transparent. */
+/* TODO: Implement actual blending of colors. */
 static GstSubtitleColor
 ttml_blend_colors (GstSubtitleColor color1, GstSubtitleColor color2)
 {
