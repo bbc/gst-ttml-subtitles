@@ -46,7 +46,7 @@ G_BEGIN_DECLS
 #define GST_IS_TTML_RENDER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass),\
                                          GST_TYPE_TTML_RENDER))
 
-typedef struct _GstTtmlRender      GstTtmlRender;
+typedef struct _GstTtmlRender GstTtmlRender;
 typedef struct _GstTtmlRenderClass GstTtmlRenderClass;
 typedef struct _GstTtmlRenderRenderedImage GstTtmlRenderRenderedImage;
 typedef struct _GstTtmlRenderRenderedText GstTtmlRenderRenderedText;
