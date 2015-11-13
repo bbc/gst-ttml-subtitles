@@ -382,7 +382,7 @@ struct _GstSubtitleStyleSet {
 
 GstSubtitleStyleSet * gst_subtitle_style_set_new ();
 
-void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset);
+void gst_subtitle_style_set_free (GstSubtitleStyleSet * style_set);
 
 
 /**

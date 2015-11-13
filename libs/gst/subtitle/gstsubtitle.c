@@ -62,15 +62,15 @@ gst_subtitle_style_set_new ()
 
 /**
  * gst_subtitle_style_set_free:
- * @styleset: A #GstSubtitleStyleSet.
+ * @style_set: A #GstSubtitleStyleSet.
  *
- * Free @styleset and its associated memory.
+ * Free @style_set and its associated memory.
  */
-void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset)
+void gst_subtitle_style_set_free (GstSubtitleStyleSet * style_set)
 {
-  g_return_if_fail (styleset != NULL);
-  g_free (styleset->font_family);
-  g_slice_free (GstSubtitleStyleSet, styleset);
+  g_return_if_fail (style_set != NULL);
+  g_free (style_set->font_family);
+  g_slice_free (GstSubtitleStyleSet, style_set);
 }
 
 
