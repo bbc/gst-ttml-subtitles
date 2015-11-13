@@ -2627,8 +2627,10 @@ gst_ttml_render_rendered_image_free (GstTtmlRenderRenderedImage * image)
 }
 
 
+#if 0
+/* Helper function for outputting a GstTtmlRenderRenderedImage to a PNG file. */
 static void
-output_image (const GstTtmlRenderRenderedImage * image, const gchar * filename)
+_output_image (const GstTtmlRenderRenderedImage * image, const gchar * filename)
 {
   GstMapInfo map;
   cairo_surface_t *surface;
@@ -2648,6 +2650,7 @@ output_image (const GstTtmlRenderRenderedImage * image, const gchar * filename)
   cairo_surface_destroy(surface);
   gst_buffer_unmap (image->image, &map);
 }
+#endif
 
 
 /* The order of arguments is significant: @image2 will be rendered on top of
