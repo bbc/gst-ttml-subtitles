@@ -53,7 +53,7 @@ typedef enum {
     GST_SUBTITLE_WRITING_MODE_RLTB,
     GST_SUBTITLE_WRITING_MODE_TBRL,
     GST_SUBTITLE_WRITING_MODE_TBLR
-} GstSubtitleWritingMode; /* Or GstSubtitleTextProgression? */
+} GstSubtitleWritingMode;
 
 /**
  * GstSubtitleDisplayAlign:
@@ -135,7 +135,7 @@ struct _GstSubtitleColor {
 typedef enum {
   GST_SUBTITLE_TEXT_DIRECTION_LTR,
   GST_SUBTITLE_TEXT_DIRECTION_RTL
-} GstSubtitleTextDirection; /* XXX: GstSubtitleDirection? */
+} GstSubtitleTextDirection;
 
 /**
  * GstSubtitleTextAlign:
@@ -268,103 +268,78 @@ typedef enum {
  * @text_direction: Defines the direction of text that has been declared by the
  * @unicode_bidi attribute to be embbedded or overridden. Applies to both
  * #GstSubtitleBlocks and #GstSubtitleElements.
- *
  * @font_family: The name of the font family that should be used to render the
  * text from a particular element. Applies only to #GstSubtitleElements.
- *
  * @font_size: The size of the font that should be used to render the text
  * corresponding to the associated element. The size is given as a multiple of
  * the display height. Applies only to #GstSubtitleElements.
- *
  * @line_height: The inter-baseline separation between lines generated when
  * rendering the text corresponding to the associated element. The height is
  * given as a multiple of the the overall display height. Applies only to
  * #GstSubtitleBlocks.
- *
  * @text_align: Controls the alignent of lines of text within a block area.
  * Note that this attribute does not control the alignment of lines with each
  * other within a block area: that is determined by @multi_row_align. Applies
  * only to #GstSubtitleBlocks.
- *
  * @color: The color that should be used when rendering the text corresponding
  * to the associated element. Applies only to #GstSubtitleElements.
- *
  * @bg_color: The color of the rectangle that should be rendered behind the
  * contents of a #GstSubtitleRegion, #GstSubtitleBlock or #GstSubtitleElement.
- *
  * @font_style: The style of the font that should be used to render the text
  * corresponding to the associated element. Applies only to
  * #GstSubtitleElements.
- *
  * @font_weight: The weight of the font that should be used to render the text
  * corresponding to the associated element. Applies only to
  * #GstSubtitleElements.
- *
  * @text_decoration: The decoration that should be applied to the text
  * corresponding to the associated element. Applies only to
  * #GstSubtitleElements.
- *
  * @unicode_bidi: Controls how unicode text within a block or inline element
  * should be treated by the unicode bidirectional algorithm. Applies to both
  * #GstSubtitleBlocks and #GstSubtitleElements.
- *
  * @wrap_option: Defines whether or not automatic line breaking should apply to
  * the lines generated when rendering a block of text elements. Applies only to
  * #GstSubtitleBlocks.
- *
  * @multi_row_align: Defines how 'rows' (i.e., lines) within a text block
  * should be aligned relative to each other. Note that this does attribute does
  * not determine how lines of text within a block are aligned within that block
  * area: that is determined by @text_align. Applies only to #GstSubtitleBlocks.
- *
  * @line_padding: Defines how much horizontal padding should be added on the
  * start and end of each rendered line; this allows space between the start and
  * end of text lines and their background rectangles for better-looking
  * subtitles. Applies only to #GstSubtitleBlocks.
- *
  * @origin_x: The horizontal origin of a region into which text blocks may be
  * rendered. Given as a multiple of the overall display width. Applies only to
  * #GstSubtitleRegions.
- *
  * @origin_y: The vertical origin of a region into which text blocks may be
  * rendered. Given as a multiple of the overall display height. Applies only to
  * #GstSubtitleRegions.
- *
  * @extent_w: The horizontal extent of a region into which text blocks may be
  * rendered. Given as a multiple of the overall display width. Applies only to
  * #GstSubtitleRegions.
- *
  * @extent_h: The vertical extent of a region into which text blocks may be
  * rendered. Given as a multiple of the overall display height. Applies only to
  * #GstSubtitleRegions.
- *
  * @display_align: The vertical alignment of generated text blocks. Applies
  * only to #GstSubtitleRegions.
- *
  * @padding_start: The horizontal inset from the leading edge of a
  * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
  * the overall display width. Applies only to #GstSubtitleRegions.
- *
  * @padding_end: The horizontal inset from the trailing edge of a
  * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
  * the overall display width. Applies only to #GstSubtitleRegions.
- *
  * @padding_before: The vertical inset from the leading edge of a
  * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
  * the overall display height. Applies only to #GstSubtitleRegions.
- *
  * @padding_after: The vertical inset from the trailing edge of a
  * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
  * the overall display height. Applies only to #GstSubtitleRegions.
- *
  * @writing_mode: Defines the direction in which both inline and block elements
  * should be stacked when rendered into an on-screen region. Applies only to
  * #GstSubtitleRegions.
- *
  * @show_background: Defines whether the background of a #GstSubtitleRegion
  * should be displayed at all times or only when it has text rendered into it.
  * Applies only to #GstSubtitleRegions.
- *
  * @overflow: Defines what should happen if text and background rectangles
  * generated by rendering #GstSubtitleBlocks overflow the size of their
  * containing #GstSubtitleRegion. Applies only to #GstSubtitleRegions.
@@ -388,7 +363,7 @@ struct _GstSubtitleStyleSet {
   gdouble line_height;
   GstSubtitleTextAlign text_align;
   GstSubtitleColor color;
-  GstSubtitleColor bg_color; /*XXX: background_color? */
+  GstSubtitleColor bg_color;
   GstSubtitleFontStyle font_style;
   GstSubtitleFontWeight font_weight;
   GstSubtitleTextDecoration text_decoration;
@@ -415,13 +390,14 @@ void gst_subtitle_style_set_free (GstSubtitleStyleSet * styleset);
  * @mini_object: the parent #GstMiniObject.
  * @style_set: Styling associated with this element.
  * @text_index: Index into the #GstBuffer associated with this
- * #GstSubtitleElement; the index identifies the #GstMemory within that
+ * #GstSubtitleElement; the index identifies the #GstMemory within the
  * #GstBuffer that holds the #GstSubtitleElement's text.
  *
  * Represents an inline text element.
  *
- * In TTML this would correspond to inline text resulting from a <span>
- * element, an anonymous span (e.g., text within a <p> tag), or a <br> element.
+ * In TTML this would correspond to inline text resulting from a &lt;span&gt;
+ * element, an anonymous span (e.g., text within a &lt;p&gt; tag), or a
+ * &lt;br&gt; element.
  */
 struct _GstSubtitleElement
 {
@@ -477,7 +453,7 @@ gst_subtitle_element_unref (GstSubtitleElement * element)
  * one or more #GstSubtitleElements).
  *
  * In TTML this would correspond to the block of text resulting from the inline
- * elements within a single <p>.
+ * elements within a single &lt;p&gt;.
  */
 struct _GstSubtitleBlock
 {

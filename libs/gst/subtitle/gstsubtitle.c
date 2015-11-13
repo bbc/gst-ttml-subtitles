@@ -38,7 +38,7 @@
  * Create a new #GstSubtitleStyleSet with default values for all properties.
  *
  * Returns: (transfer full): A newly-allocated #GstSubtitleStyleSet.
- * */
+ */
 GstSubtitleStyleSet *
 gst_subtitle_style_set_new ()
 {

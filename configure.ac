@@ -86,6 +86,9 @@ GST_API_VERSION=1.0
 AC_SUBST(GST_API_VERSION)
 AC_DEFINE_UNQUOTED(GST_API_VERSION, "$GST_API_VERSION", [GStreamer API Version])
 
+GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
+AC_CONFIG_MACRO_DIR(m4)
+
 PKG_CHECK_MODULES([LIBXML2], [ libxml-2.0 ], [ HAVE_LIBXML2="yes" ], [ HAVE_LIBXML2="no" ])
 PKG_CHECK_MODULES([PANGO], [ pango ], [ HAVE_PANGO="yes" ], [ HAVE_PANGO="no" ])
 PKG_CHECK_MODULES([CAIRO], [ cairo ], [ HAVE_CAIRO="yes" ], [ HAVE_CAIRO="no" ])
@@ -99,6 +102,7 @@ gst/renderer/Makefile
 libs/Makefile
 libs/gst/Makefile
 libs/gst/subtitle/Makefile
+docs/Makefile
 )
 AC_OUTPUT
 
