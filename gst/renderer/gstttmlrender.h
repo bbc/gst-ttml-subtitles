@@ -67,9 +67,10 @@ struct _GstTtmlRenderRenderedText {
    * used to render that paragraph. */
   PangoLayout *layout;
 
-  /* XXX: This isn't very helpful; either change the comment, or change the code so we don't need to pass this information. */
-  /* To cope with the fact that pango positions text at a different horizontal
-   * location depending on whether wrapping is enabled or not. */
+  /* The coordinates in @layout will be offset horizontally with respect to the
+   * position of those characters in @text_image. Store that offset here so
+   * that the information in @layout can be used to locate the position and
+   * extent of text areas in @text_image. */
   guint horiz_offset;
 };
 
