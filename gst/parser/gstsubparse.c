@@ -1362,7 +1362,7 @@ gst_ttml_parse_data_format_autodetect (gchar * match_str)
       return GST_TTML_PARSE_FORMAT_LRC;
   }
 
-  if (match_str) { /* XXX: This looks like a hack; need to add better detection. */
+  if (match_str) {
     return GST_TTML_PARSE_FORMAT_TTML;
   }
 
@@ -1439,7 +1439,7 @@ gst_ttml_parse_format_autodetect (GstTtmlParse * self)
       GstCapsFeatures *features = gst_caps_features_new ("meta:GstSubtitleMeta",
           NULL);
 
-      self->parse_line = NULL; /* XXX: What is the significance of this? */
+      self->parse_line = NULL;
 
       caps = gst_caps_new_empty_simple ("text/x-raw");
       gst_caps_set_features (caps, 0, features);
