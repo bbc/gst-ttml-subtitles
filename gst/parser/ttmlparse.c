@@ -1605,8 +1605,11 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
 }
 
 
+/* For each scene, create data objects to describe the layout and styling of
+ * that scene and attach it as metadata to the GstBuffer that will be used to
+ * carry that scene's text. */
 static void
-ttml_create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_y)
+ttml_attach_scene_metadata (GList * scenes, guint cellres_x, guint cellres_y)
 {
   GList *scene_entry;
 
@@ -1790,8 +1793,7 @@ ttml_parse (const gchar * input, GstClockTime begin,
     scenes = ttml_create_scenes (region_trees);
     GST_CAT_LOG (ttmlparse, "There are %u scenes in all.",
         g_list_length (scenes));
-    /* XXX: Might this be confusing, as input docs can contain metadata...? */
-    ttml_create_and_attach_metadata (scenes, cellres_x, cellres_y);
+    ttml_attach_scene_metadata (scenes, cellres_x, cellres_y);
     output_buffers = create_buffer_list (scenes);
 
     g_list_free_full (scenes, (GDestroyNotify) ttml_delete_scene);
