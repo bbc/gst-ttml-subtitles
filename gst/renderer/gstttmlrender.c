@@ -2582,9 +2582,6 @@ gst_ttml_render_rendered_image_new (GstBuffer * image, gint x, gint y, guint wid
   GstTtmlRenderRenderedImage *ret;
 
   ret = g_slice_new0 (GstTtmlRenderRenderedImage);
-  /*gst_mini_object_init (GST_MINI_OBJECT_CAST (element), 0,
-      rendered_image_get_type (), NULL, NULL,
-      (GstMiniObjectFreeFunction) gst_ttml_render_rendered_image_free);*/
 
   ret->image = image;
   ret->x = x;
