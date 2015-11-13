@@ -44,7 +44,6 @@ gst_subtitle_meta_api_get_type (void)
 gboolean
 gst_subtitle_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 {
-  /* XXX: Do we need checks that parameters are non-NULL? */
   GstSubtitleMeta *subtitle_meta = (GstSubtitleMeta *) meta;
 
   subtitle_meta->regions = NULL;
@@ -54,7 +53,6 @@ gst_subtitle_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 void
 gst_subtitle_meta_free (GstMeta * meta, GstBuffer * buffer)
 {
-  /* XXX: Do we need checks that parameters are non-NULL? */
   GstSubtitleMeta *subtitle_meta = (GstSubtitleMeta *) meta;
 
   if (subtitle_meta->regions)
