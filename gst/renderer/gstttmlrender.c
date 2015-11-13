@@ -2461,11 +2461,6 @@ gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text, guint max
   pango_layout_set_alignment (ret->layout, alignment);
   pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
 
-  /* XXX: Is this the best way to do it? Could we alternatively find the
-   * extents of the first line? */
-  /* XXX: This will only really work if PangoLayout has spaced all lines by the
-   * same amount, which might not be the case if there are multiple spans with
-   * different sized fonts - need to test. */
   cur_height = (gdouble)logical_rect.height
     / pango_layout_get_line_count (ret->layout);
   cur_spacing = cur_height - (gdouble)max_font_size;
@@ -2514,7 +2509,6 @@ gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text, guint max
    * rendered text: it may also contain blankspace around the rendered text.
    * The following code crops blankspace from around the rendered text,
    * returning only the rendered text itself in a GstBuffer. */
-  /* TODO: move into a separate function? */
   ret->text_image->image =
     gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
   gst_buffer_memset (ret->text_image->image, 0, 0U, 4 * buf_width * buf_height);
@@ -2835,7 +2829,6 @@ gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block, GPtrArray 
     pango_layout_index_to_line_x (layout, range->last_char, 0,
         &last_line, NULL);
 
-    /* XXX: Or could leave everything in Pango units until later? */
     first_char_start = PANGO_PIXELS (first_char_pos.x) - horiz_offset;
     last_char_end = PANGO_PIXELS (last_char_pos.x + last_char_pos.width)
       - horiz_offset;
