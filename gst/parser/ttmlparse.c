@@ -1605,7 +1605,7 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
 }
 
 
-static GNode *
+static void
 ttml_create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_y)
 {
   GList *scene_entry;
@@ -1633,8 +1633,6 @@ ttml_create_and_attach_metadata (GList * scenes, guint cellres_x, guint cellres_
     gst_buffer_add_subtitle_meta (scene->buf, regions);
     g_ptr_array_unref (regions);
   }
-
-  return NULL;
 }
 
 
