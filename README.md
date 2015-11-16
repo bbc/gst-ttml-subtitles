@@ -96,7 +96,7 @@ For each scene, the parser creates objects of the above types to describe the la
 
 The figure below shows the types created for a simple subtitle file that contains a single scene:
 
-![Submeta](file:///C:/tmp/submeta.png)
+![Submeta](/docs/images/submeta.png)
 
 #### Renderer element (ttmlrender)
 
