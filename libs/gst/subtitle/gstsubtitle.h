@@ -57,7 +57,6 @@ typedef enum {
 
 /**
  * GstSubtitleDisplayAlign:
- *
  * @GST_SUBTITLE_DISPLAY_ALIGN_BEFORE: Blocks should be aligned at the start of
  * the containing region.
  * @GST_SUBTITLE_DISPLAY_ALIGN_CENTER: Blocks should be aligned in the center
@@ -65,8 +64,8 @@ typedef enum {
  * @GST_SUBTITLE_DISPLAY_ALIGN_AFTER: Blocks should be aligned to the end of
  * the containing region.
  *
- * Defines the alignment of text blocks within a region in the block
- * progression direction. For text that is written left-to-right and
+ * Defines the alignment of text blocks within a region in the direction in
+ * which blocks are being stacked. For text that is written left-to-right and
  * top-to-bottom, this corresponds to the vertical alignment of text blocks.
  */
 typedef enum {
@@ -93,7 +92,7 @@ typedef enum {
 /**
  * GstSubtitleOverflowMode:
  * @GST_SUBTITLE_OVERFLOW_MODE_HIDDEN: If text and/or background rectangles
- * flowed into the region overflow the bounds of that region, the text should
+ * flowed into the region overflow the bounds of that region, they should
  * be clipped at the region boundary.
  * @GST_SUBTITLE_OVERFLOW_MODE_VISIBLE: If text and/or background rectangles
  * flowed into the region overflow the bounds of that region, they should be
@@ -172,7 +171,8 @@ typedef enum {
  * @GST_SUBTITLE_FONT_STYLE_NORMAL: Normal font style.
  * @GST_SUBTITLE_FONT_STYLE_ITALIC: Italic font style.
  *
- * Defines styling that should be applied to the glyphs of a font used to render text within an inline text element.
+ * Defines styling that should be applied to the glyphs of a font used to
+ * render text within an inline text element.
  */
 typedef enum {
   GST_SUBTITLE_FONT_STYLE_NORMAL,
@@ -255,6 +255,9 @@ typedef enum {
  *
  * Defines how multiple 'rows' (i.e, lines) in a block should be aligned
  * relative to each other.
+ *
+ * This is based upon the ebutts:multiRowAlign attribute defined in the
+ * EBU-TT-D specification.
  */
 typedef enum {
   GST_SUBTITLE_MULTI_ROW_ALIGN_AUTO,
@@ -266,34 +269,32 @@ typedef enum {
 /**
  * GstSubtitleStyleSet:
  * @text_direction: Defines the direction of text that has been declared by the
- * @unicode_bidi attribute to be embbedded or overridden. Applies to both
- * #GstSubtitleBlocks and #GstSubtitleElements.
+ * #GstSubtitleStyleSet:unicode_bidi attribute to be embbedded or overridden.
+ * Applies to both #GstSubtitleBlocks and #GstSubtitleElements.
  * @font_family: The name of the font family that should be used to render the
- * text from a particular element. Applies only to #GstSubtitleElements.
+ * text of an inline element. Applies only to #GstSubtitleElements.
  * @font_size: The size of the font that should be used to render the text
- * corresponding to the associated element. The size is given as a multiple of
- * the display height. Applies only to #GstSubtitleElements.
+ * of an inline element. The size is given as a multiple of the display height,
+ * where 1.0 equals the height of the display. Applies only to
+ * #GstSubtitleElements.
  * @line_height: The inter-baseline separation between lines generated when
- * rendering the text corresponding to the associated element. The height is
- * given as a multiple of the the overall display height. Applies only to
- * #GstSubtitleBlocks.
+ * rendering inline text elements within a block area. The height is given as a
+ * multiple of the the overall display height, where 1.0 equals the height of
+ * the display. Applies only to #GstSubtitleBlocks.
  * @text_align: Controls the alignent of lines of text within a block area.
- * Note that this attribute does not control the alignment of lines with each
- * other within a block area: That is determined by @multi_row_align. Applies
- * only to #GstSubtitleBlocks.
- * @color: The color that should be used when rendering the text corresponding
- * to the associated element. Applies only to #GstSubtitleElements.
+ * Note that this attribute does not control the alignment of lines relative to
+ * each other within a block area: that is determined by
+ * #GstSubtitleStyleSet:multi_row_align. Applies only to #GstSubtitleBlocks.
+ * @color: The color that should be used when rendering the text of an inline
+ * element. Applies only to #GstSubtitleElements.
  * @bg_color: The color of the rectangle that should be rendered behind the
  * contents of a #GstSubtitleRegion, #GstSubtitleBlock or #GstSubtitleElement.
  * @font_style: The style of the font that should be used to render the text
- * corresponding to the associated element. Applies only to
- * #GstSubtitleElements.
+ * of an inline element. Applies only to #GstSubtitleElements.
  * @font_weight: The weight of the font that should be used to render the text
- * corresponding to the associated element. Applies only to
- * #GstSubtitleElements.
- * @text_decoration: The decoration that should be applied to the text
- * corresponding to the associated element. Applies only to
- * #GstSubtitleElements.
+ * of an inline element. Applies only to #GstSubtitleElements.
+ * @text_decoration: The decoration that should be applied to the text of an
+ * inline element. Applies only to #GstSubtitleElements.
  * @unicode_bidi: Controls how unicode text within a block or inline element
  * should be treated by the unicode bidirectional algorithm. Applies to both
  * #GstSubtitleBlocks and #GstSubtitleElements.
@@ -301,60 +302,68 @@ typedef enum {
  * the lines generated when rendering a block of text elements. Applies only to
  * #GstSubtitleBlocks.
  * @multi_row_align: Defines how 'rows' (i.e., lines) within a text block
- * should be aligned relative to each other. Note that this does attribute does
- * not determine how lines of text within a block are aligned within that block
- * area: That is determined by @text_align. Applies only to #GstSubtitleBlocks.
+ * should be aligned relative to each other. Note that this attribute does not
+ * determine how a block of text is aligned within that block area: that is
+ * determined by @text_align. Applies only to #GstSubtitleBlocks.
  * @line_padding: Defines how much horizontal padding should be added on the
- * start and end of each rendered line; this allows space between the start and
- * end of text lines and their background rectangles for better-looking
- * subtitles. Applies only to #GstSubtitleBlocks.
+ * start and end of each rendered line; this allows the insertion of space
+ * between the start/end of text lines and their background rectangles for
+ * better-looking subtitles. This is based upon the ebutts:linePadding
+ * attribute defined in the EBU-TT-D specification. Applies only to
+ * #GstSubtitleBlocks.
  * @origin_x: The horizontal origin of a region into which text blocks may be
- * rendered. Given as a multiple of the overall display width. Applies only to
- * #GstSubtitleRegions.
+ * rendered. Given as a multiple of the overall display width, where 1.0 equals
+ * the width of the display. Applies only to #GstSubtitleRegions.
  * @origin_y: The vertical origin of a region into which text blocks may be
- * rendered. Given as a multiple of the overall display height. Applies only to
- * #GstSubtitleRegions.
+ * rendered. Given as a multiple of the overall display height, where 1.0
+ * equals the height of the display. Applies only to #GstSubtitleRegions.
  * @extent_w: The horizontal extent of a region into which text blocks may be
- * rendered. Given as a multiple of the overall display width. Applies only to
- * #GstSubtitleRegions.
+ * rendered. Given as a multiple of the overall display width, where 1.0 equals
+ * the width of the display. Applies only to #GstSubtitleRegions.
  * @extent_h: The vertical extent of a region into which text blocks may be
- * rendered. Given as a multiple of the overall display height. Applies only to
+ * rendered. Given as a multiple of the overall display height, where 1.0
+ * equals the height of the display. Applies only to #GstSubtitleRegions.
+ * @display_align: The alignment of generated text blocks in the direction in
+ * which blocks are being stacked. For text that flows left-to-right and
+ * top-to-bottom, for example, this corresponds to the vertical alignment of
+ * text blocks. Applies only to #GstSubtitleRegions.
+ * @padding_start: The horizontal indent of text from the leading edge of a
+ * region into which blocks may be rendered. Given as a multiple of the overall
+ * display width, where 1.0 equals the width of the display. Applies only to
  * #GstSubtitleRegions.
- * @display_align: The vertical alignment of generated text blocks. Applies
+ * @padding_end: The horizontal indent of text from the trailing edge of a
+ * region into which blocks may be rendered. Given as a multiple of the overall
+ * display width, where 1.0 equals the width of the display. Applies only to
+ * #GstSubtitleRegions.
+ * @padding_before: The vertical indent of text from the top edge of a region
+ * into which blocks may be rendered. Given as a multiple of the overall
+ * display height, where 1.0 equals the height of the display. Applies only to
+ * #GstSubtitleRegions.
+ * @padding_after: The vertical indent of text from the bottom edge of a
+ * region into which blocks may be rendered. Given as a multiple of the overall
+ * display height, where 1.0 equals the height of the display. Applies only to
+ * #GstSubtitleRegions.
+ * @writing_mode: Defines the direction in which both inline elements and
+ * blocks should be stacked when rendered into an on-screen region. Applies
  * only to #GstSubtitleRegions.
- * @padding_start: The horizontal inset from the leading edge of a
- * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
- * the overall display width. Applies only to #GstSubtitleRegions.
- * @padding_end: The horizontal inset from the trailing edge of a
- * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
- * the overall display width. Applies only to #GstSubtitleRegions.
- * @padding_before: The vertical inset from the leading edge of a
- * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
- * the overall display height. Applies only to #GstSubtitleRegions.
- * @padding_after: The vertical inset from the trailing edge of a
- * #GstSubtitleRegion at which blocks may be rendered. Given as a multiple of
- * the overall display height. Applies only to #GstSubtitleRegions.
- * @writing_mode: Defines the direction in which both inline and block elements
- * should be stacked when rendered into an on-screen region. Applies only to
- * #GstSubtitleRegions.
- * @show_background: Defines whether the background of a #GstSubtitleRegion
- * should be displayed at all times or only when it has text rendered into it.
- * Applies only to #GstSubtitleRegions.
+ * @show_background: Defines whether the background of a region should be
+ * displayed at all times or only when it has text rendered into it. Applies
+ * only to #GstSubtitleRegions.
  * @overflow: Defines what should happen if text and background rectangles
- * generated by rendering #GstSubtitleBlocks overflow the size of their
- * containing #GstSubtitleRegion. Applies only to #GstSubtitleRegions.
+ * generated by rendering text blocks overflow the size of their containing
+ * region. Applies only to #GstSubtitleRegions.
  *
- * Holds a set of attributes that describes the styling and layout that should
- * apply to  #GstSubtitleRegion, #GstSubtitleBlock and #GstSubtitleElement
- * objects.
+ * Holds a set of attributes that describes the styling and layout that apply
+ * to #GstSubtitleRegion, #GstSubtitleBlock and/or #GstSubtitleElement objects.
  *
  * Note that, though each of the above object types have an associated
- * #GstSubtitleElement, not all attributes in the #GstSubtitleStyleSet type
- * apply to all object types: Padding_[start|end|before|after] apply only to
- * #GstSubtitleRegions, for example, while font_style applies only to
- * #GstSubtitleElements. Some attributes apply to multiple object types:
- * bg_color, for example, applies to all object types. The types to which each
- * attribute applies is given in the description of that attribute.
+ * #GstSubtitleStyleSet, not all attributes in a #GstSubtitleStyleSet type
+ * apply to all object types: #GstSubtitleStyleSet:overflow applies only to
+ * #GstSubtitleRegions, for example, while #GstSubtitleStyleSet:font_style
+ * applies only to #GstSubtitleElements. Some attributes apply to multiple
+ * object types: #GstSubtitleStyleSet:bg_color, for example, applies to all
+ * object types. The types to which each attribute applies is given in the
+ * description of that attribute below.
  */
 struct _GstSubtitleStyleSet {
   GstSubtitleTextDirection text_direction;
@@ -513,13 +522,14 @@ gst_subtitle_block_unref (GstSubtitleBlock * block)
  * @mini_object: The parent #GstMiniObject.
  * @style_set: Styling associated with this region.
  *
- * Represents a displayed region made up of zero or more #GstSubtitleBlocks.
+ * Represents an on-screen region in which is displayed zero or more
+ * #GstSubtitleBlocks.
  *
  * In TTML this corresponds to a &lt;region&gt; into which zero or more
  * &lt;p&gt;s may be rendered. A #GstSubtitleRegion allows a background
- * rectangle to be displayed even if no text blocks are rendered into it, as
- * per the behaviour allowed by TTML regions whose tts:showBackground style
- * attribute is set to "always".
+ * rectangle to be displayed in a region area even if no text blocks are
+ * rendered into it, as per the behaviour allowed by TTML regions whose
+ * tts:showBackground style attribute is set to "always".
  */
 struct _GstSubtitleRegion
 {
