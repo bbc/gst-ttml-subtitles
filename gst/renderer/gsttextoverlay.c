@@ -103,10 +103,11 @@ gst_text_overlay_class_init (GstTextOverlayClass * klass)
   gst_element_class_add_pad_template (element_class,
       gst_static_pad_template_get (&text_sink_template_factory));
 
-  gst_element_class_set_static_metadata (element_class, "Text overlay",
-      "Overlay/Subtitle",
-      "Adds text strings on top of a video buffer",
-      "David Schleef <ds@schleef.org>, " "Zeeshan Ali <zeeshan.ali@nokia.com>");
+  gst_element_class_set_static_metadata (element_class,
+      "TTML subtitle renderer", "Overlay/Subtitle",
+      "Render timed-text subtitles on top of video buffers",
+      "David Schleef <ds@schleef.org>, Zeeshan Ali <zeeshan.ali@nokia.com>, "
+      "Chris Bass <dash@rd.bbc.co.uk>");
 }
 
 static void
