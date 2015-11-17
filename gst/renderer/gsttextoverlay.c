@@ -6,6 +6,7 @@
  * Copyright (C) <2006-2008> Tim-Philipp Müller <tim centricular net>
  * Copyright (C) <2009> Young-Ho Cha <ganadist@gmail.com>
  * Copyright (C) <2011> Sebastian Dröge <sebastian.droege@collabora.co.uk>
+ * Copyright (C) <2015> British Broadcasting Corporation <dash@rd.bbc.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
