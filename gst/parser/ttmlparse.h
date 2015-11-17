@@ -20,8 +20,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _EBU_PARSE_H_
-#define _EBU_PARSE_H_
+#ifndef _TTML_PARSE_H_
+#define _TTML_PARSE_H_
 
 #include "gstsubparse.h"
 #include <libxml/xmlmemory.h>
@@ -99,4 +99,4 @@ GList *ttml_parse (const gchar * file, GstClockTime begin,
     GstClockTime duration);
 
 G_END_DECLS
-#endif /* _EBU_PARSE_H_ */
+#endif /* _TTML_PARSE_H_ */
