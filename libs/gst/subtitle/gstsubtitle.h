@@ -287,8 +287,9 @@ typedef enum {
  * #GstSubtitleStyleSet:multi_row_align. Applies only to #GstSubtitleBlocks.
  * @color: The color that should be used when rendering the text of an inline
  * element. Applies only to #GstSubtitleElements.
- * @bg_color: The color of the rectangle that should be rendered behind the
- * contents of a #GstSubtitleRegion, #GstSubtitleBlock or #GstSubtitleElement.
+ * @background_color: The color of the rectangle that should be rendered behind
+ * the contents of a #GstSubtitleRegion, #GstSubtitleBlock or
+ * #GstSubtitleElement.
  * @font_style: The style of the font that should be used to render the text
  * of an inline element. Applies only to #GstSubtitleElements.
  * @font_weight: The weight of the font that should be used to render the text
@@ -361,8 +362,8 @@ typedef enum {
  * apply to all object types: #GstSubtitleStyleSet:overflow applies only to
  * #GstSubtitleRegions, for example, while #GstSubtitleStyleSet:font_style
  * applies only to #GstSubtitleElements. Some attributes apply to multiple
- * object types: #GstSubtitleStyleSet:bg_color, for example, applies to all
- * object types. The types to which each attribute applies is given in the
+ * object types: #GstSubtitleStyleSet:background_color, for example, applies to
+ * all object types. The types to which each attribute applies is given in the
  * description of that attribute below.
  */
 struct _GstSubtitleStyleSet {
@@ -372,7 +373,7 @@ struct _GstSubtitleStyleSet {
   gdouble line_height;
   GstSubtitleTextAlign text_align;
   GstSubtitleColor color;
-  GstSubtitleColor bg_color;
+  GstSubtitleColor background_color;
   GstSubtitleFontStyle font_style;
   GstSubtitleFontWeight font_weight;
   GstSubtitleTextDecoration text_decoration;

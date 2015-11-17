@@ -2891,10 +2891,10 @@ gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block, GPtrArray 
 
       if (rect_width > 0    /* <br>s will result in zero-width rectangle */
           && !gst_ttml_render_color_is_transparent (
-            &element->style_set->bg_color)) {
+            &element->style_set->background_color)) {
         GstTtmlRenderRenderedImage *image, *tmp;
         rectangle = gst_ttml_render_draw_rectangle (rect_width, line_height,
-            element->style_set->bg_color);
+            element->style_set->background_color);
         image = gst_ttml_render_rendered_image_new (rectangle,
             origin_x + area_start, origin_y + (cur_line * line_height),
             rect_width, line_height);
@@ -3048,12 +3048,13 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
       rendered_text->horiz_offset);
 
   /* Render block background, if non-transparent. */
-  if (!gst_ttml_render_color_is_transparent (&block->style_set->bg_color)) {
+  if (!gst_ttml_render_color_is_transparent (
+        &block->style_set->background_color)) {
     GstTtmlRenderRenderedImage *block_background;
     GstTtmlRenderRenderedImage *tmp = backgrounds;
 
     GstBuffer *block_bg_image = gst_ttml_render_draw_rectangle (width,
-        backgrounds->height, block->style_set->bg_color);
+        backgrounds->height, block->style_set->background_color);
     block_background = gst_ttml_render_rendered_image_new (block_bg_image, 0,
         0, width, backgrounds->height);
     backgrounds = gst_ttml_render_rendered_image_combine (block_background,
@@ -3135,11 +3136,12 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
       padding_start, padding_end, padding_before, padding_after);
 
   /* Render region background, if non-transparent. */
-  if (!gst_ttml_render_color_is_transparent (&region->style_set->bg_color)) {
+  if (!gst_ttml_render_color_is_transparent (
+        &region->style_set->background_color)) {
     GstBuffer *bg_rect;
 
     bg_rect = gst_ttml_render_draw_rectangle (region_width, region_height,
-        region->style_set->bg_color);
+        region->style_set->background_color);
     region_image = gst_ttml_render_rendered_image_new (bg_rect, region_x,
         region_y, region_width, region_height);
   }

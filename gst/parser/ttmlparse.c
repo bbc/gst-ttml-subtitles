@@ -158,8 +158,8 @@ ttml_print_style_set (TtmlStyleSet * set)
     GST_CAT_LOG (ttmlparse, "\t\ttext_align: %s", set->text_align);
   if (set->color)
     GST_CAT_LOG (ttmlparse, "\t\tcolor: %s", set->color);
-  if (set->bg_color)
-    GST_CAT_LOG (ttmlparse, "\t\tbg_color: %s", set->bg_color);
+  if (set->background_color)
+    GST_CAT_LOG (ttmlparse, "\t\tbackground_color: %s", set->background_color);
   if (set->font_style)
     GST_CAT_LOG (ttmlparse, "\t\tfont_style: %s", set->font_style);
   if (set->font_weight)
@@ -231,7 +231,7 @@ ttml_parse_style_set (const xmlNode * node)
     g_free (value);
   }
   if ((value = ttml_get_xml_property (node, "backgroundColor"))) {
-    s->bg_color = g_strdup (value);
+    s->background_color = g_strdup (value);
     g_free (value);
   }
   if ((value = ttml_get_xml_property (node, "fontStyle"))) {
@@ -304,7 +304,7 @@ ttml_delete_style_set (TtmlStyleSet * style_set)
   g_free ((gpointer) style_set->line_height);
   g_free ((gpointer) style_set->text_align);
   g_free ((gpointer) style_set->color);
-  g_free ((gpointer) style_set->bg_color);
+  g_free ((gpointer) style_set->background_color);
   g_free ((gpointer) style_set->font_style);
   g_free ((gpointer) style_set->font_weight);
   g_free ((gpointer) style_set->text_decoration);
@@ -561,8 +561,9 @@ ttml_update_style_set (GstSubtitleStyleSet * style_set, TtmlStyleSet * tss,
     style_set->color = ttml_parse_colorstring (tss->color);
   }
 
-  if (tss->bg_color) {
-    style_set->bg_color = ttml_parse_colorstring (tss->bg_color);
+  if (tss->background_color) {
+    style_set->background_color =
+      ttml_parse_colorstring (tss->background_color);
   }
 
   if (tss->font_style) {
@@ -743,8 +744,8 @@ ttml_copy_style_set (TtmlStyleSet * style_set)
     ret->text_align = g_strdup (style_set->text_align);
   if (style_set->color)
     ret->color = g_strdup (style_set->color);
-  if (style_set->bg_color)
-    ret->bg_color = g_strdup (style_set->bg_color);
+  if (style_set->background_color)
+    ret->background_color = g_strdup (style_set->background_color);
   if (style_set->font_style)
     ret->font_style = g_strdup (style_set->font_style);
   if (style_set->font_weight)
@@ -798,8 +799,8 @@ ttml_merge_style_sets (TtmlStyleSet * set1, TtmlStyleSet * set2)
         ret->line_height = g_strdup (set2->line_height);
       if (set2->text_align)
         ret->text_align = g_strdup (set2->text_align);
-      if (set2->bg_color)
-        ret->bg_color = g_strdup (set2->bg_color);
+      if (set2->background_color)
+        ret->background_color = g_strdup (set2->background_color);
       if (set2->color)
         ret->color = g_strdup (set2->color);
       if (set2->font_style)
@@ -1546,7 +1547,7 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
   g_assert (node->next == NULL);
   element = node->data;
   g_assert (element->type == TTML_ELEMENT_TYPE_BODY);
-  block_color = ttml_parse_colorstring (element->style_set->bg_color);
+  block_color = ttml_parse_colorstring (element->style_set->background_color);
 
   for (node = node->children; node; node = node->next) {
     GNode *p_node;
@@ -1554,7 +1555,7 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
 
     element = node->data;
     g_assert (element->type == TTML_ELEMENT_TYPE_DIV);
-    div_color = ttml_parse_colorstring (element->style_set->bg_color);
+    div_color = ttml_parse_colorstring (element->style_set->background_color);
     block_color = ttml_blend_colors (block_color, div_color);
 
     for (p_node = node->children; p_node; p_node = p_node->next) {
@@ -1565,13 +1566,13 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
 
       element = p_node->data;
       g_assert (element->type == TTML_ELEMENT_TYPE_P);
-      p_color = ttml_parse_colorstring (element->style_set->bg_color);
+      p_color = ttml_parse_colorstring (element->style_set->background_color);
       block_color = ttml_blend_colors (block_color, p_color);
 
       block_style = gst_subtitle_style_set_new ();
       ttml_update_style_set (block_style, element->style_set, cellres_x,
           cellres_y);
-      block_style->bg_color = block_color;
+      block_style->background_color = block_color;
       block = gst_subtitle_block_new (block_style);
       g_assert (block != NULL);
 
@@ -1703,8 +1704,9 @@ ttml_assign_region_times (GList *region_trees, GstClockTime doc_begin,
       || (g_strcmp0 (region->style_set->show_background, "always") == 0);
 
     GstSubtitleColor region_color = { 0, 0, 0, 0 };
-    if (region->style_set->bg_color)
-      region_color = ttml_parse_colorstring (region->style_set->bg_color);
+    if (region->style_set->background_color)
+      region_color =
+        ttml_parse_colorstring (region->style_set->background_color);
 
     if (always_visible && !ttml_color_is_transparent (&region_color)) {
       GST_CAT_DEBUG (ttmlparse, "Assigning times to region.");

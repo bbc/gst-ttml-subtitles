@@ -50,7 +50,7 @@ gst_subtitle_style_set_new ()
   ret->font_size = 1.0;
   ret->line_height = 1.25;
   ret->color = white;
-  ret->bg_color = transparent;
+  ret->background_color = transparent;
   ret->line_padding = 0.0;
   ret->origin_x = ret->origin_y = 0.0;
   ret->extent_w = ret->extent_h = 0.0;

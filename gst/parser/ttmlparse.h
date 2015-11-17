@@ -42,7 +42,7 @@ struct _TtmlStyleSet {
   const gchar *line_height;
   const gchar *text_align;
   const gchar *color;
-  const gchar *bg_color;
+  const gchar *background_color;
   const gchar *font_style;
   const gchar *font_weight;
   const gchar *text_decoration;
