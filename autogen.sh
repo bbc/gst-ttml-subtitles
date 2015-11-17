@@ -3,6 +3,8 @@
 # ACLOCAL, AUTOPOINT and/or LIBTOOLIZE to the right versions, or leave them
 # unset and get the defaults
 
+mkdir -p m4
+
 gtkdocize || exit 1
 
 autoreconf --verbose --force --install --make || {
