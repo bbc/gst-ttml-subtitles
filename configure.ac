@@ -5,8 +5,8 @@ dnl TODO: fill in your package name and package version here
 AC_INIT([ttml-subtitles],[0.9.0])
 
 dnl required versions of gstreamer and plugins-base
-GST_REQUIRED=1.5.0
-GSTPB_REQUIRED=1.5.0
+GST_REQUIRED=1.7.0
+GSTPB_REQUIRED=1.7.0
 
 AC_CONFIG_SRCDIR([gst/parser/gstsubparse.c])
 AC_CONFIG_HEADERS([config.h])
@@ -46,6 +46,7 @@ PKG_CHECK_MODULES(GST, [
   gstreamer-1.0 >= $GST_REQUIRED
   gstreamer-base-1.0 >= $GST_REQUIRED
   gstreamer-controller-1.0 >= $GST_REQUIRED
+  gstreamer-video-1.0 >= $GST_REQUIRED
 ], [
   AC_SUBST(GST_CFLAGS)
   AC_SUBST(GST_LIBS)

@@ -9,6 +9,8 @@ libgstttmlrender_la_SOURCES = \
 # compiler and linker flags used to compile this plugin, set in configure.ac
 libgstttmlrender_la_CFLAGS = \
 	-I $(top_builddir)/libs/ \
+	$(GST_PLUGINS_BASE_CFLAGS) \
+	$(GST_BASE_CFLAGS) \
 	$(GST_CFLAGS) \
 	$(PANGO_CFLAGS) \
 	$(CAIRO_CFLAGS) \
@@ -17,6 +19,7 @@ libgstttmlrender_la_CFLAGS = \
 libgstttmlrender_la_LIBADD = \
 	$(top_builddir)/libs/gst/subtitle/libgstsubtitle-$(GST_API_VERSION).la \
 	$(GST_LIBS) \
+	$(GST_PLUGINS_BASE_LIBS) \
 	$(PANGO_LIBS) \
 	$(CAIRO_LIBS) \
 	$(PANGOCAIRO_LIBS) \
