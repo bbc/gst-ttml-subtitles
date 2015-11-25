@@ -2285,9 +2285,14 @@ beach:
 
 /* Free returned string after use. */
 static gchar *
-gst_ttml_render_color_to_rgb_string (GstSubtitleColor color)
+gst_ttml_render_color_to_string (GstSubtitleColor color)
 {
+#if PANGO_VERSION_CHECK (1,38,0)
+  return g_strdup_printf ("#%02x%02x%02x%02x",
+      color.r, color.g, color.b, color.a);
+#else
   return g_strdup_printf ("#%02x%02x%02x", color.r, color.g, color.b);
+#endif
 }
 
 
@@ -2377,7 +2382,7 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender * render, GstSubtitleBl
 
     range->first_char = total_text_length;
 
-    fgcolor = gst_ttml_render_color_to_rgb_string (element->style_set->color);
+    fgcolor = gst_ttml_render_color_to_string (element->style_set->color);
     font_size = g_strdup_printf ("%u",
         (guint) (round (element->style_set->font_size * render->height)));
     font_family =
