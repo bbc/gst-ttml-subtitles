@@ -2424,9 +2424,9 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender * render, GstSubtitleBl
 
 /* Render the text in a pango-markup string. */
 static GstTtmlRenderRenderedText *
-gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text, guint max_width,
-    PangoAlignment alignment, guint line_height, guint max_font_size,
-    gboolean wrap)
+gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text,
+    guint max_width, PangoAlignment alignment, guint line_height,
+    guint max_font_size, gboolean wrap)
 {
   GstTtmlRenderClass *class;
   GstTtmlRenderRenderedText *ret;
@@ -2800,9 +2800,9 @@ gst_ttml_render_color_is_transparent (GstSubtitleColor * color)
 
 /* Render the background rectangles to be placed behind each element. */
 static GstTtmlRenderRenderedImage *
-gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block, GPtrArray * char_ranges,
-    PangoLayout * layout, guint origin_x, guint origin_y, guint line_height,
-    guint line_padding, guint horiz_offset)
+gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block,
+    GPtrArray * char_ranges, PangoLayout * layout, guint origin_x,
+    guint origin_y, guint line_height, guint line_padding, guint horiz_offset)
 {
   gint first_line, last_line, cur_line;
   guint padding;
