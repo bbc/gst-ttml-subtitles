@@ -2434,13 +2434,12 @@ gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text,
   cairo_t *cairo_state, *cropped_state;
   GstMapInfo map;
   PangoRectangle logical_rect;
-  gdouble cur_height;
   gint spacing = 0;
   guint buf_width, buf_height;
-  gdouble cur_spacing;
-  gdouble padding;
-  guint vertical_offset;
   gint stride;
+  gint max_rendered_line_height = 0;
+  gint min_ascender_offset = G_MAXINT;
+  gint i;
 
   ret = g_slice_new0 (GstTtmlRenderRenderedText);
   ret->text_image = gst_ttml_render_rendered_image_new_empty ();
@@ -2461,21 +2460,19 @@ gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text,
   pango_layout_set_alignment (ret->layout, alignment);
   pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
 
-  cur_height = (gdouble)logical_rect.height
-    / pango_layout_get_line_count (ret->layout);
-  cur_spacing = cur_height - (gdouble)max_font_size;
-  padding = (line_height - max_font_size)/2.0;
-  spacing =
-    (gint) round ((gdouble)line_height - (gdouble)max_font_size - cur_spacing);
+  for (i = 0; i < pango_layout_get_line_count (ret->layout); ++i) {
+    PangoLayoutLine *line = pango_layout_get_line_readonly (ret->layout, i);
+    PangoRectangle r, ink;
+    pango_layout_line_get_pixel_extents (line, &ink, &r);
+    max_rendered_line_height = MAX (max_rendered_line_height, r.height);
+    min_ascender_offset = MIN (min_ascender_offset, ink.y - r.y);
+  }
 
-  /* Offset text downwards by 0.1 * max_font_size is to ensure that text looks
-   * optically in the correct position relative to it's background box. Without
-   * this downward shift, the text looks too high. */
-  vertical_offset =
-    (guint) round ((padding - cur_spacing) + (0.1 * max_font_size));
-  GST_CAT_LOG (ttmlrender, "offset: %g   spacing: %d", cur_spacing,
-      spacing);
+  GST_CAT_LOG (ttmlrender, "Max. rendered line height: %d",
+      max_rendered_line_height);
+  GST_CAT_LOG (ttmlrender, "Min. ascender offset: %d", min_ascender_offset);
   GST_CAT_LOG (ttmlrender, "Requested line_height: %u", line_height);
+  spacing = line_height - max_rendered_line_height;
   pango_layout_set_spacing (ret->layout, PANGO_SCALE * spacing);
   GST_CAT_LOG (ttmlrender, "Line spacing set to %d",
       pango_layout_get_spacing (ret->layout) / PANGO_SCALE);
@@ -2500,7 +2497,7 @@ gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text,
   cairo_restore (cairo_state);
 
   buf_width = logical_rect.width;
-  buf_height = logical_rect.height + vertical_offset;
+  buf_height = logical_rect.height - min_ascender_offset;
   GST_CAT_DEBUG (ttmlrender, "Output buffer width: %u  height: %u",
       buf_width, buf_height);
 
@@ -2517,13 +2514,12 @@ gst_ttml_render_draw_text (GstTtmlRender * render, const gchar * text,
   stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
   cropped_surface =
     cairo_image_surface_create_for_data (
-        map.data + (vertical_offset * stride), CAIRO_FORMAT_ARGB32, buf_width,
+        map.data, CAIRO_FORMAT_ARGB32, buf_width,
         buf_height, stride);
   cropped_state = cairo_create (cropped_surface);
   cairo_set_source_surface (cropped_state, surface, -logical_rect.x,
-      -logical_rect.y);
-  cairo_rectangle (cropped_state, 0, 0, logical_rect.width,
-      logical_rect.height);
+      -(logical_rect.y + min_ascender_offset));
+  cairo_rectangle (cropped_state, 0, 0, buf_width, buf_height);
   cairo_fill (cropped_state);
 
   cairo_destroy (cairo_state);
@@ -2896,8 +2892,9 @@ gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block,
         rectangle = gst_ttml_render_draw_rectangle (rect_width, line_height,
             element->style_set->background_color);
         image = gst_ttml_render_rendered_image_new (rectangle,
-            origin_x + area_start, origin_y + (cur_line * line_height),
-            rect_width, line_height);
+            origin_x + area_start,
+            origin_y + (cur_line * line_height), rect_width,
+            line_height);
         tmp = ret;
         ret = gst_ttml_render_rendered_image_combine (ret, image);
         if (tmp) gst_ttml_render_rendered_image_free (tmp);
@@ -3000,6 +2997,7 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
   gchar *marked_up_string;
   PangoAlignment alignment;
   guint max_font_size;
+  guint line_height;
   guint line_padding;
   gint text_offset = 0;
   GstTtmlRenderRenderedText *rendered_text;
@@ -3013,14 +3011,14 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
   max_font_size = (guint) (gst_ttml_render_get_max_font_size (block->elements)
       * render->height);
   GST_CAT_DEBUG (ttmlrender, "Max font size: %u", max_font_size);
+  line_height = (guint) round (block->style_set->line_height * max_font_size);
 
   line_padding = (guint) (block->style_set->line_padding * render->width);
   alignment = gst_ttml_render_get_alignment (block->style_set);
 
   /* Render text to buffer. */
   rendered_text = gst_ttml_render_draw_text (render, marked_up_string,
-      (width - (2 * line_padding)), alignment,
-      (guint) (block->style_set->line_height * max_font_size), max_font_size,
+      (width - (2 * line_padding)), alignment, line_height, max_font_size,
       gst_ttml_render_elements_are_wrapped (block->elements));
 
   switch (block->style_set->text_align) {
@@ -3044,8 +3042,8 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
   /* Render background rectangles, if any. */
   backgrounds = gst_ttml_render_render_element_backgrounds (block, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
-      (guint) (block->style_set->line_height * max_font_size), line_padding,
-      rendered_text->horiz_offset);
+      (guint) (block->style_set->line_height * max_font_size),
+      line_padding, rendered_text->horiz_offset);
 
   /* Render block background, if non-transparent. */
   if (!gst_ttml_render_color_is_transparent (
@@ -3062,6 +3060,10 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
     gst_ttml_render_rendered_image_free (tmp);
     gst_ttml_render_rendered_image_free (block_background);
   }
+
+  rendered_text->text_image->y +=
+    (gint) round ((line_height - max_font_size) / 2.0);
+  rendered_text->text_image->y = MAX (rendered_text->text_image->y, 0);
 
   /* Combine text and background images. */
   ret = gst_ttml_render_rendered_image_combine (backgrounds,
