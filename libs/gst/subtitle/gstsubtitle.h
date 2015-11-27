@@ -402,6 +402,8 @@ void gst_subtitle_style_set_free (GstSubtitleStyleSet * style_set);
  * @text_index: Index into the #GstBuffer associated with this
  * #GstSubtitleElement; the index identifies the #GstMemory within the
  * #GstBuffer that holds the #GstSubtitleElement's text.
+ * @suppress_whitespace: Indicates whether or not a renderer should suppress
+ * whitespace in the element's text.
  *
  * Represents an inline text element.
  *
@@ -415,6 +417,7 @@ struct _GstSubtitleElement
 
   GstSubtitleStyleSet *style_set;
   guint text_index;
+  gboolean suppress_whitespace;
 
   /*< private >*/
   gpointer _gst_reserved[GST_PADDING];
@@ -423,7 +426,7 @@ struct _GstSubtitleElement
 GType gst_subtitle_element_get_type (void);
 
 GstSubtitleElement * gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
-    guint text_index);
+    guint text_index, gboolean suppress_whitespace);
 
 /**
  * gst_subtitle_element_ref:

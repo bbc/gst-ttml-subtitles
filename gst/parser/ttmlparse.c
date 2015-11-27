@@ -483,6 +483,14 @@ ttml_parse_element (const xmlNode * node)
     element->text = g_strdup ((const gchar*) node->content);
   }
 
+  if ((value = ttml_get_xml_property (node, "space"))) {
+    if (g_strcmp0 (value, "preserve") == 0)
+      element->whitespace_mode = TTML_WHITESPACE_MODE_PRESERVE;
+    else if (g_strcmp0 (value, "default") == 0)
+      element->whitespace_mode = TTML_WHITESPACE_MODE_DEFAULT;
+    g_free (value);
+  }
+
   return element;
 }
 
@@ -1064,6 +1072,38 @@ ttml_inherit_element_styles (GList * trees)
 }
 
 
+/* If whitespace_mode isn't explicitly set for this element, inherit from its
+ * parent. If this element is the root of the tree, set whitespace_mode to
+ * that of the overall document. */
+static gboolean
+ttml_inherit_element_whitespace_mode (GNode * node, gpointer data)
+{
+  TtmlWhitespaceMode *doc_mode = (TtmlWhitespaceMode *)data;
+  TtmlElement *element = node->data;
+  TtmlElement *parent;
+
+  if (element->whitespace_mode != TTML_WHITESPACE_MODE_NONE)
+    return FALSE;
+
+  if (G_NODE_IS_ROOT (node)) {
+    element->whitespace_mode = *doc_mode;
+    return FALSE;
+  }
+
+  parent = node->parent->data;
+  element->whitespace_mode = parent->whitespace_mode;
+  return FALSE;
+}
+
+
+static void
+ttml_inherit_whitespace_mode (GNode * tree, TtmlWhitespaceMode doc_mode)
+{
+  g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
+      ttml_inherit_element_whitespace_mode, &doc_mode);
+}
+
+
 static gboolean
 ttml_resolve_element_timings (GNode * node, gpointer data)
 {
@@ -1280,21 +1320,55 @@ ttml_create_scenes (GList * region_trees)
 }
 
 
+/* Handle element whitespace in accordance with section 7.2.3 of the TTML
+ * specification. Note that stripping of whitespace at the start and end of
+ * line areas can only be done in the renderer once the text from multiple
+ * elements has been laid out. */
 static gboolean
-ttml_strip_whitespace (GNode * node, gpointer data)
+ttml_handle_element_whitespace (GNode * node, gpointer data)
 {
-  TtmlElement *element;
-  element = node->data;
-  if (element->text) g_strstrip (element->text);
+  TtmlElement *element = node->data;
+  if (element->text
+      && (element->whitespace_mode != TTML_WHITESPACE_MODE_PRESERVE)) {
+    guint space_count = 0;
+    guint textlen;
+    gchar *c;
+    gint i;
+
+    /* Replace linefeeds with spaces. */
+    for (c = element->text; *c > 0; c = g_utf8_next_char (c)) {
+      gchar buf[6] = { 0 };
+      gunichar u = g_utf8_get_char (c);
+      gint nbytes = g_unichar_to_utf8 (u, buf);
+      if (nbytes == 1 && buf[0] == 0xA)
+        *c = ' ';
+    }
+
+    /* Compress each run of multiple contiguous spaces into a single space. */
+    textlen = strlen (element->text);
+    for (i = 0; i <= textlen; ++i) {
+      c = element->text + i;
+      if (*c == ' ') {
+        ++space_count;
+      } else {
+        if (space_count > 1) {
+          gchar *new_head = c - space_count + 1;
+          g_strlcpy (new_head, c, textlen);
+          i = new_head - element->text;
+        }
+        space_count = 0;
+      }
+    }
+  }
   return FALSE;
 }
 
 
 static void
-ttml_strip_surrounding_whitespace (GNode * tree)
+ttml_handle_whitespace (GNode * tree)
 {
   g_node_traverse (tree, G_PRE_ORDER, G_TRAVERSE_LEAVES, -1,
-      ttml_strip_whitespace, NULL);
+      ttml_handle_element_whitespace, NULL);
 }
 
 
@@ -1486,7 +1560,8 @@ ttml_add_element (GstSubtitleBlock * block, TtmlElement * element,
 
   GST_CAT_DEBUG (ttmlparse, "Inserted text at index %u in GstBuffer.",
       buffer_index);
-  sub_element = gst_subtitle_element_new (element_style, buffer_index);
+  sub_element = gst_subtitle_element_new (element_style, buffer_index,
+      (element->whitespace_mode != TTML_WHITESPACE_MODE_PRESERVE));
 
   gst_subtitle_block_add_element (block, sub_element);
   GST_CAT_DEBUG (ttmlparse, "Added element to block; there are now %u"
@@ -1726,12 +1801,22 @@ ttml_assign_region_times (GList *region_trees, GstClockTime doc_begin,
 }
 
 
+static xmlNodePtr
+ttml_find_child (xmlNodePtr parent, const gchar * name)
+{
+  xmlNodePtr child = parent->children;
+  while (child && xmlStrcmp (child->name, (const xmlChar *) name) != 0)
+    child = child->next;
+  return child;
+}
+
+
 GList *
 ttml_parse (const gchar * input, GstClockTime begin,
     GstClockTime duration)
 {
   xmlDocPtr doc;
-  xmlNodePtr node;
+  xmlNodePtr root_node, head_node, body_node;
 
   GHashTable *styles_table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) ttml_delete_element);
@@ -1740,6 +1825,7 @@ ttml_parse (const gchar * input, GstClockTime begin,
   GList *output_buffers = NULL;
   gchar *value;
   guint cellres_x, cellres_y;
+  TtmlWhitespaceMode doc_whitespace_mode = TTML_WHITESPACE_MODE_DEFAULT;
 
   GST_DEBUG_CATEGORY_INIT (ttmlparse, "ttmlparse", 0,
       "TTML parser debug category");
@@ -1752,15 +1838,15 @@ ttml_parse (const gchar * input, GstClockTime begin,
     GST_CAT_ERROR (ttmlparse, "Failed to parse document.");
     return NULL;
   }
-  node = xmlDocGetRootElement (doc);
+  root_node = xmlDocGetRootElement (doc);
 
-  if (xmlStrcmp (node->name, (const xmlChar *) "tt") != 0) {
+  if (xmlStrcmp (root_node->name, (const xmlChar *) "tt") != 0) {
     GST_CAT_ERROR (ttmlparse, "Root element of document is not tt:tt.");
     xmlFreeDoc (doc);
     return NULL;
   }
 
-  if ((value = ttml_get_xml_property (node, "cellResolution"))) {
+  if ((value = ttml_get_xml_property (root_node, "cellResolution"))) {
     gchar *ptr = value;
     cellres_x = (guint) g_ascii_strtoull (ptr, &ptr, 10U);
     cellres_y = (guint) g_ascii_strtoull (ptr, NULL, 10U);
@@ -1773,27 +1859,34 @@ ttml_parse (const gchar * input, GstClockTime begin,
   GST_CAT_DEBUG (ttmlparse, "cellres_x: %u   cellres_y: %u", cellres_x,
       cellres_y);
 
-  node = node->children;
-  if (xmlStrcmp (node->name, (const xmlChar *) "head") != 0) {
-    GST_CAT_ERROR (ttmlparse, "First element is not <head>.");
+  if ((value = ttml_get_xml_property (root_node, "space"))) {
+    if (g_strcmp0 (value, "preserve") == 0) {
+      GST_CAT_DEBUG (ttmlparse, "Preserving whitespace...");
+      doc_whitespace_mode = TTML_WHITESPACE_MODE_PRESERVE;
+    }
+    g_free (value);
+  }
+
+  if (!(head_node = ttml_find_child (root_node, "head"))) {
+    GST_CAT_ERROR (ttmlparse, "No <head> element found.");
     xmlFreeDoc (doc);
     return NULL;
   }
-  ttml_parse_head (node, styles_table, regions_table);
-  node = node->next;
+  ttml_parse_head (head_node, styles_table, regions_table);
 
-  if (node && xmlStrcmp (node->name, (const xmlChar *) "body") == 0) {
+  if ((body_node = ttml_find_child (root_node, "body"))) {
     GNode *body_tree;
     GList *region_trees = NULL;
     GList *scenes = NULL;
 
-    body_tree = ttml_parse_body (node);
+    body_tree = ttml_parse_body (body_node);
     GST_CAT_LOG (ttmlparse, "body_tree tree contains %u nodes.",
         g_node_n_nodes (body_tree, G_TRAVERSE_ALL));
     GST_CAT_LOG (ttmlparse, "body_tree tree height is %u",
         g_node_max_height (body_tree));
 
-    ttml_strip_surrounding_whitespace (body_tree);
+    ttml_inherit_whitespace_mode (body_tree, doc_whitespace_mode);
+    ttml_handle_whitespace (body_tree);
     ttml_resolve_timings (body_tree);
     ttml_resolve_regions (body_tree);
     region_trees = ttml_split_body_by_region (body_tree, regions_table);

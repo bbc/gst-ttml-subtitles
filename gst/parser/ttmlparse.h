@@ -72,6 +72,13 @@ typedef enum {
 } TtmlElementType;
 
 
+typedef enum {
+  TTML_WHITESPACE_MODE_NONE,
+  TTML_WHITESPACE_MODE_DEFAULT,
+  TTML_WHITESPACE_MODE_PRESERVE,
+} TtmlWhitespaceMode;
+
+
 struct _TtmlElement {
   TtmlElementType type;
   gchar *id;
@@ -82,6 +89,7 @@ struct _TtmlElement {
   TtmlStyleSet *style_set;
   gchar *text;
   guint text_index;
+  TtmlWhitespaceMode whitespace_mode;
 };
 
 

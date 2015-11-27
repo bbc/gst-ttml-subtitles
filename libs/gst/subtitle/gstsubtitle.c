@@ -98,7 +98,7 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
  */
 GstSubtitleElement *
 gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
-    guint text_index)
+    guint text_index, gboolean suppress_whitespace)
 {
   GstSubtitleElement *element;
 
@@ -111,6 +111,7 @@ gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
 
   element->style_set = style_set;
   element->text_index = text_index;
+  element->suppress_whitespace = suppress_whitespace;
 
   return element;
 }
