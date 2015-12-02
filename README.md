@@ -16,7 +16,7 @@ In order to run this code, you will need the following packages installed:
   * gst-plugins-bad
   * gst-libav
 
-Note that it is not sufficient to have the latest stable releases of the GStreamer modules installed; you must use the git masters, as the TTML subtitling elements depend upon recent additions that have not yet made it into the latest stable releases.
+Note that it is not sufficient to have the latest stable releases of the GStreamer modules installed; you must use the git masters, as the TTML subtitling elements depend upon recent additions that have not yet made it into the latest stable releases. For instructions on how to build GStreamer modules from source see [Building GStreamer modules](#building-gstreamer-modules) below.
 
 ##### Clone this repository
 
@@ -26,7 +26,7 @@ $ git clone https://github.com/bbc/gst-ttml-subtitles.git
 
 ##### Build the subtitling code
 
-In order to build the subtitling code, you will need to ensure that pkg-config can find the installed GStreamer modules built from the git masters. This requires that the directory containing the \*.pc files for these modules is listed in the PKG_CONFIG_PATH environment variable. If the GStreamer modules were installed in a non-system location by passing a --prefix parameter to their configure scripts, their \*.pc files will usually be in &lt;prefix&gt;/lib/pkgconfig, which should be added to PKG_CONFIG_PATH, as follows:
+In order to build the subtitling code, you will need to ensure that pkg-config (which is used in the build process) can find the installed GStreamer modules built from the git masters. This requires that the directory containing the \*.pc files for these modules is listed in the PKG_CONFIG_PATH environment variable. If the GStreamer modules were installed in a non-system location by passing a --prefix parameter to their configure scripts, their \*.pc files will usually be in &lt;prefix&gt;/lib/pkgconfig, which should be added to PKG_CONFIG_PATH, as follows:
 
 ```
 $ export PKG_CONFIG_PATH=<prefix>/lib/pkgconfig
@@ -134,8 +134,8 @@ This code contains a library that defines different types that can be used to de
 Type | Description
 -----|------------
 GstSubtitleElement|Describes an inline text element resulting from a `span` or `br`.
-GstSubtitleBlock|Describes a block of text resulting from a `div` or `p` element. Contains one or more GstSubtitleElements.
-GstSubtitleRegion|Describes an on-screen region into which subtitles may be rendered. Contans zero or more GstSubtitleBlocks.
+GstSubtitleBlock|Describes a block of text resulting from a `p` element. Contains one or more GstSubtitleElements.
+GstSubtitleRegion|Describes an on-screen region into which subtitles may be rendered, corresponding to a TTML `region` element. Contans zero or more GstSubtitleBlocks.
 GstSubtitleStyleSet|Describes the styling options that should be applied to an element. All three of the types above have a GstSubtitleStyleSet associated with them.
 
 For each scene, the parser creates objects of the above types to describe the layout of its components and attaches them as metadata (using a metadata type, GstSubtitleMeta, also defined in the library) to the GstBuffer that holds the text from that scene. Within the GstBuffer, the text associated with each GstSubtitleElement sits within its own GstMemory and is indexed by a field in the corresponding GstSubtitleElement structure.
@@ -158,6 +158,44 @@ The code in this package provides reasonably complete support for EBU-TT-D. Howe
 * As noted above, ttmlparse currently only works when each buffer passed to it contains a complete XML document; this will always be the case when subtitles are in-band within a DASH stream, but might not be the case when they are passed as an out-of-band XML file. (What ttmlparse probably needs is something like a [GstAdapter](http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstAdapter.html) attached to its sink pad so that it can accumulate input data and process it only when a complete XML file has been received.)
 
 Finally, it should be stressed again that this code currently supports only those TTML features that are included in EBU-TT-D specification; it does not currently handle the full range of features available in TTML.
+
+---
+
+### Building GStreamer modules
+If building GStreamer modules from source, they should be built in the following order:
+* gstreamer
+* gst-plugins-base
+* gst-plugins-good
+* gst-plugins-bad
+* gst-libav
+
+It is suggested that these modules, once built, are installed under a different directory than that used for system packages (e.g., not under /usr on a Linux system); this avoids files from installed system GStreamer packages being overwritten by files from the modules built from source. Files associated with built modules will be installed under a non-system directory if its path is passed as a --prefix option to the configure script for each module, as shown below.
+
+If a prefix is being used in this way, the PKG_CONFIG_PATH environment variable should be updated as follows to ensure that the build system can find headers and libraries associated with these installed modules:
+
+```
+$ export PKG_CONFIG_PATH=<install directory>/lib/pkgconfig
+```
+
+The process for building each module is the same:
+
+1. Obtain the source code.
+```
+git clone git://anongit.freedesktop.org/gstreamer/<module name>
+```
+
+2. Configure and build the module.
+```
+cd <module name>
+./autogen.sh
+./configure --prefix=<install directory>
+make
+```
+
+3. Install the module.
+```
+make install
+```
 
 ---
 
