@@ -179,12 +179,12 @@ $ export PKG_CONFIG_PATH=<install directory>/lib/pkgconfig
 
 The process for building each module is the same:
 
-1. Obtain the source code.
+_Obtain the source code:_
 ```
 git clone git://anongit.freedesktop.org/gstreamer/<module name>
 ```
 
-2. Configure and build the module.
+_Configure and build the module:_
 ```
 cd <module name>
 ./autogen.sh
@@ -192,7 +192,7 @@ cd <module name>
 make
 ```
 
-3. Install the module.
+_Install the module:_
 ```
 make install
 ```
