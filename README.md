@@ -162,6 +162,8 @@ Finally, it should be stressed again that this code currently supports only thos
 ---
 
 ### Building GStreamer modules
+Note: What follows is a guide only; for accurate, up-to-date instructions on building these modules, consult the [GStreamer](http://gstreamer.freedesktop.org/) documention.
+
 If building GStreamer modules from source, they should be built in the following order:
 * gstreamer
 * gst-plugins-base
@@ -169,7 +171,7 @@ If building GStreamer modules from source, they should be built in the following
 * gst-plugins-bad
 * gst-libav
 
-It is suggested that these modules, once built, are installed under a different directory than that used for system packages (e.g., not under /usr on a Linux system); this avoids files from installed system GStreamer packages being overwritten by files from the modules built from source. Files associated with built modules will be installed under a non-system directory if its path is passed as a --prefix option to the configure script for each module, as shown below.
+It is recommended that these modules, once built, are installed under a different directory than that used for system packages (e.g., not under /usr on a Linux system); this avoids files from installed system GStreamer packages being overwritten by files from the modules built from source. Files associated with built modules will be installed under a non-system directory if its path is passed as a --prefix option to the configure script for each module, as shown below.
 
 If a prefix is being used in this way, the PKG_CONFIG_PATH environment variable should be updated as follows to ensure that the build system can find headers and libraries associated with these installed modules:
 
