@@ -428,8 +428,6 @@ ttml_parse_element (const xmlNode * node)
   } else if ((g_strcmp0 ((const char*) node->name, "br") == 0)) {
     type = TTML_ELEMENT_TYPE_BR;
   } else {
-    GST_CAT_ERROR (ttmlparse, "illegal element type: %s",
-        (const char*) node->name);
     return NULL;
   }
 
@@ -503,7 +501,10 @@ ttml_parse_body (const xmlNode * node)
 
   GST_CAT_LOG (ttmlparse, "parsing node %s", node->name);
   element = ttml_parse_element (node);
-  ret = g_node_new (element);
+  if (element)
+    ret = g_node_new (element);
+  else
+    return NULL;
 
   for (node = node->children; node != NULL; node = node->next) {
     GNode *descendants = NULL;
