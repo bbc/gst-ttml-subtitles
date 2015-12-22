@@ -160,7 +160,7 @@ gst_subtitle_block_new (GstSubtitleStyleSet * style_set)
 /**
  * gst_subtitle_block_add_element:
  * @block: A #GstSubtitleBlock.
- * @element: A #GstSubtitleElement to add.
+ * @element: (transfer full): A #GstSubtitleElement to add.
  *
  * Adds a #GstSubtitleElement to @block.
  */
@@ -199,9 +199,9 @@ gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
  * Returns: (transfer none): The #GstSubtitleElement at @index in the array of
  * elements held by @block, or %NULL if @index is out-of-bounds. The
  * function does not return a reference; the caller should obtain a reference
- * using gst_subtitle_block_ref(), if needed.
+ * using gst_subtitle_element_ref(), if needed.
  */
-GstSubtitleElement *
+const GstSubtitleElement *
 gst_subtitle_block_get_element (const GstSubtitleBlock * block, guint index)
 {
   g_return_val_if_fail (block != NULL, NULL);
@@ -296,9 +296,9 @@ gst_subtitle_region_get_block_count (const GstSubtitleRegion * region)
  * Returns: (transfer none): The #GstSubtitleBlock at @index in the array of
  * blocks held by @region, or %NULL if @index is out-of-bounds. The
  * function does not return a reference; the caller should obtain a reference
- * using gst_subtitle_region_ref(), if needed.
+ * using gst_subtitle_block_ref(), if needed.
  */
-GstSubtitleBlock *
+const GstSubtitleBlock *
 gst_subtitle_region_get_block (const GstSubtitleRegion * region, guint index)
 {
   g_return_val_if_fail (region != NULL, NULL);

@@ -2342,10 +2342,11 @@ _text_range_free (TextRange * range)
  * marked-up using pango-markup. Also, store the ranges of characters belonging
  * to the text of each element in @text_ranges. */
 static gchar *
-gst_ttml_render_generate_marked_up_string (GstTtmlRender * render, GstSubtitleBlock * block,
-    GstBuffer * text_buf, GPtrArray ** text_ranges)
+gst_ttml_render_generate_marked_up_string (GstTtmlRender * render,
+    const GstSubtitleBlock * block, GstBuffer * text_buf,
+    GPtrArray ** text_ranges)
 {
-  GstSubtitleElement *element;
+  const GstSubtitleElement *element;
   GstMemory *mem;
   GstMapInfo map;
   gchar *buf_text, *joined_text, *old_text;
@@ -2801,7 +2802,7 @@ gst_ttml_render_color_is_transparent (GstSubtitleColor * color)
 
 /* Render the background rectangles to be placed behind each element. */
 static GstTtmlRenderRenderedImage *
-gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block,
+gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
     GPtrArray * char_ranges, PangoLayout * layout, guint origin_x,
     guint origin_y, guint line_height, guint line_padding, guint horiz_offset)
 {
@@ -2810,7 +2811,7 @@ gst_ttml_render_render_element_backgrounds (GstSubtitleBlock * block,
   PangoLayoutLine *line;
   PangoRectangle first_char_pos, last_char_pos, line_extents;
   TextRange *range;
-  GstSubtitleElement *element;
+  const GstSubtitleElement *element;
   guint rect_width;
   GstBuffer *rectangle;
   guint first_char_start, last_char_end;
@@ -2995,7 +2996,7 @@ gst_ttml_render_rendered_text_free (GstTtmlRenderRenderedText * text)
 
 static GstTtmlRenderRenderedImage *
 gst_ttml_render_render_text_block (GstTtmlRender * render,
-    GstSubtitleBlock * block, GstBuffer * text_buf, guint width,
+    const GstSubtitleBlock * block, GstBuffer * text_buf, guint width,
     gboolean overflow)
 {
   GPtrArray *char_ranges = NULL;
@@ -3155,7 +3156,7 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
 
   /* Render each block and append to list. */
   for (i = 0; i < gst_subtitle_region_get_block_count (region); ++i) {
-    GstSubtitleBlock *block;
+    const GstSubtitleBlock *block;
     GstTtmlRenderRenderedImage *rendered_block;
 
     block = gst_subtitle_region_get_block (region, i);

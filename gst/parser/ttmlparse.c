@@ -1544,9 +1544,9 @@ static void
 ttml_add_element (GstSubtitleBlock * block, TtmlElement * element,
     GstBuffer * buf, guint cellres_x, guint cellres_y)
 {
-  GstSubtitleStyleSet *element_style;
+  GstSubtitleStyleSet *element_style = NULL;
   guint buffer_index;
-  GstSubtitleElement *sub_element;
+  GstSubtitleElement *sub_element = NULL;
 
   element_style = gst_subtitle_style_set_new ();
   ttml_update_style_set (element_style, element->style_set,
@@ -1597,12 +1597,13 @@ ttml_blend_colors (GstSubtitleColor color1, GstSubtitleColor color2)
 
 
 /* Create the subtitle region and its child blocks and elements for @tree,
- * inserting element text in @buf. */
+ * inserting element text in @buf. Ownership of created region is transferred
+ * to caller. */
 static GstSubtitleRegion *
 ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
     guint cellres_y)
 {
-  GstSubtitleRegion *region;
+  GstSubtitleRegion *region = NULL;
   GstSubtitleStyleSet *region_style;
   GstSubtitleColor block_color;
   TtmlElement *element;
@@ -1635,7 +1636,7 @@ ttml_create_subtitle_region (GNode * tree, GstBuffer * buf, guint cellres_x,
     block_color = ttml_blend_colors (block_color, div_color);
 
     for (p_node = node->children; p_node; p_node = p_node->next) {
-      GstSubtitleBlock *block;
+      GstSubtitleBlock *block = NULL;
       GstSubtitleStyleSet *block_style;
       GNode *content_node;
       GstSubtitleColor p_color;
@@ -1701,8 +1702,9 @@ ttml_attach_scene_metadata (GList * scenes, guint cellres_x, guint cellres_y)
   for (scene_entry = g_list_first (scenes); scene_entry;
       scene_entry = scene_entry->next) {
     TtmlScene * scene = scene_entry->data;
-    GPtrArray *regions = g_ptr_array_new ();
     GList *region_tree;
+    GPtrArray *regions = g_ptr_array_new_with_free_func (
+      (GDestroyNotify) gst_subtitle_region_unref);
 
     scene->buf = gst_buffer_new ();
     GST_BUFFER_PTS (scene->buf) = scene->begin;
@@ -1719,7 +1721,6 @@ ttml_attach_scene_metadata (GList * scenes, guint cellres_x, guint cellres_y)
     }
 
     gst_buffer_add_subtitle_meta (scene->buf, regions);
-    g_ptr_array_unref (regions);
   }
 }
 

@@ -76,9 +76,9 @@ gst_subtitle_meta_get_info (void)
 
 /**
  * gst_buffer_add_subtitle_meta:
- * @buffer: #GstBuffer holding subtitle text, to which subtitle metadata
- * should be added.
- * @regions: A #GPtrArray of #GstSubtitleRegions.
+ * @buffer: (transfer none): #GstBuffer holding subtitle text, to which
+ * subtitle metadata should be added.
+ * @regions: (transfer full): A #GPtrArray of #GstSubtitleRegions.
  *
  * Attaches subtitle metadata to a #GstBuffer.
  *
@@ -96,6 +96,6 @@ gst_buffer_add_subtitle_meta (GstBuffer * buffer, GPtrArray * regions)
   meta = (GstSubtitleMeta *) gst_buffer_add_meta (buffer,
       GST_SUBTITLE_META_INFO, NULL);
 
-  meta->regions = g_ptr_array_ref (regions);
+  meta->regions = regions;
   return meta;
 }

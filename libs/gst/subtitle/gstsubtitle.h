@@ -489,7 +489,7 @@ void gst_subtitle_block_add_element (
 
 guint gst_subtitle_block_get_element_count (const GstSubtitleBlock * block);
 
-GstSubtitleElement * gst_subtitle_block_get_element (
+const GstSubtitleElement * gst_subtitle_block_get_element (
     const GstSubtitleBlock * block, guint index);
 
 /**
@@ -556,7 +556,7 @@ void gst_subtitle_region_add_block (
 
 guint gst_subtitle_region_get_block_count (const GstSubtitleRegion * region);
 
-GstSubtitleBlock * gst_subtitle_region_get_block (
+const GstSubtitleBlock * gst_subtitle_region_get_block (
     const GstSubtitleRegion * region, guint index);
 
 /**
