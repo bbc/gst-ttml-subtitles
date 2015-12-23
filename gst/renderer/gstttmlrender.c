@@ -2977,8 +2977,10 @@ gst_ttml_render_stitch_blocks (GList * blocks)
     if (tmp) gst_ttml_render_rendered_image_free (tmp);
   }
 
-  GST_CAT_LOG (ttmlrender, "Height of stitched image: %u", ret->height);
-  ret->image = gst_buffer_make_writable (ret->image);
+  if (ret) {
+    GST_CAT_LOG (ttmlrender, "Height of stitched image: %u", ret->height);
+    ret->image = gst_buffer_make_writable (ret->image);
+  }
   return ret;
 }
 
