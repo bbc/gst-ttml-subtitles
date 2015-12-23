@@ -26,12 +26,14 @@ GstSubtitleBlock
 gst_subtitle_block_new
 gst_subtitle_block_ref
 gst_subtitle_block_unref
+gst_subtitle_block_add_element
 gst_subtitle_block_get_element
 gst_subtitle_block_get_element_count
 GstSubtitleRegion
 gst_subtitle_region_new
 gst_subtitle_region_ref
 gst_subtitle_region_unref
+gst_subtitle_region_add_block
 gst_subtitle_region_get_block
 gst_subtitle_region_get_block_count
 </SECTION>
