@@ -3099,6 +3099,7 @@ gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage * image)
       GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
 
   ret = gst_video_overlay_composition_new (rectangle);
+  gst_video_overlay_rectangle_unref (rectangle);
   return ret;
 }
 
