@@ -3089,14 +3089,13 @@ static GstVideoOverlayComposition *
 gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage * image)
 {
   GstVideoOverlayRectangle *rectangle;
-  GstBuffer *buf = gst_buffer_copy (image->image);
   GstVideoOverlayComposition *ret = NULL;
 
-  gst_buffer_add_video_meta (buf, GST_VIDEO_FRAME_FLAG_NONE,
+  gst_buffer_add_video_meta (image->image, GST_VIDEO_FRAME_FLAG_NONE,
       GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB, image->width, image->height);
 
-  rectangle = gst_video_overlay_rectangle_new_raw (buf, image->x, image->y,
-      image->width, image->height,
+  rectangle = gst_video_overlay_rectangle_new_raw (image->image, image->x,
+      image->y, image->width, image->height,
       GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
 
   ret = gst_video_overlay_composition_new (rectangle);
