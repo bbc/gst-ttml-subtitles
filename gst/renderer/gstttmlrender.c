@@ -91,7 +91,6 @@
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
-#define DEFAULT_PROP_TEXT 	""
 #define DEFAULT_PROP_SHADING	FALSE
 #define DEFAULT_PROP_VALIGNMENT	GST_TTML_RENDER_VALIGN_BASELINE
 #define DEFAULT_PROP_HALIGNMENT	GST_TTML_RENDER_HALIGN_CENTER
@@ -327,13 +326,6 @@ gst_ttml_render_get_type (void)
   return type;
 }
 
-static gchar *
-gst_ttml_render_get_text (GstTtmlRender * render,
-    GstBuffer * video_frame)
-{
-  return g_strdup (render->default_text);
-}
-
 static void
 gst_ttml_render_base_init (gpointer g_class)
 {
@@ -383,16 +375,12 @@ gst_ttml_render_class_init (GstTtmlRenderClass * klass)
 
   klass->pango_lock = g_slice_new (GMutex);
   g_mutex_init (klass->pango_lock);
-
-  klass->get_text = gst_ttml_render_get_text;
 }
 
 static void
 gst_ttml_render_finalize (GObject * object)
 {
   GstTtmlRender *render = GST_TTML_RENDER (object);
-
-  g_free (render->default_text);
 
   if (render->composition) {
     gst_video_overlay_composition_unref (render->composition);
@@ -503,7 +491,6 @@ gst_ttml_render_init (GstTtmlRender * render,
   render->wait_text = DEFAULT_PROP_WAIT_TEXT;
   render->auto_adjust_size = DEFAULT_PROP_AUTO_ADJUST_SIZE;
 
-  render->default_text = g_strdup (DEFAULT_PROP_TEXT);
   render->need_render = TRUE;
   render->text_image = NULL;
   render->use_vertical_render = DEFAULT_PROP_VERTICAL_RENDER;
@@ -2952,27 +2939,11 @@ wait_for_text_buf:
     return ret;
   }
 
-  /* Text pad not linked, rendering internal text */
+  /* Text pad not linked; push input video frame */
   if (!render->text_linked) {
-    if (klass->get_text) {
-      text = klass->get_text (render, buffer);
-    } else {
-      text = g_strdup (render->default_text);
-    }
-
-    GST_LOG_OBJECT (render, "Text pad not linked, rendering default "
-        "text: '%s'", GST_STR_NULL (text));
-
+    GST_LOG_OBJECT (render, "Text pad not linked");
     GST_TTML_RENDER_UNLOCK (render);
-
-    if (text != NULL && *text != '\0') {
-      /* Render and push */
-      gst_ttml_render_render_text (render, text, -1);
-      ret = gst_ttml_render_push_frame (render, buffer);
-    } else {
-      /* Invalid or empty string */
-      ret = gst_pad_push (render->srcpad, buffer);
-    }
+    ret = gst_pad_push (render->srcpad, buffer);
   } else {
     /* Text pad linked, check if we have a text buffer queued */
     if (render->text_buffer) {

@@ -185,7 +185,6 @@ struct _GstTtmlRender {
     gint                     deltay;
     gdouble                  xpos;
     gdouble                  ypos;
-    gchar                   *default_text;
     gboolean                 want_shading;
     gboolean                 want_background;
     gboolean                 silent;
