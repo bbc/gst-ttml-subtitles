@@ -23,8 +23,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef __GST_BASE_TEXT_OVERLAY_H__
-#define __GST_BASE_TEXT_OVERLAY_H__
+#ifndef __GST_TTML_RENDER_H__
+#define __GST_TTML_RENDER_H__
 
 #include <gst/gst.h>
 #include <gst/video/video.h>
@@ -126,4 +126,4 @@ GType gst_ttml_render_get_type(void) G_GNUC_CONST;
 
 G_END_DECLS
 
-#endif /* __GST_BASE_TEXT_OVERLAY_H */
+#endif /* __GST_TTML_RENDER_H */
