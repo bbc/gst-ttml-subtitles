@@ -91,8 +91,6 @@
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
-#define DEFAULT_PROP_VALIGNMENT	GST_TTML_RENDER_VALIGN_BASELINE
-#define DEFAULT_PROP_HALIGNMENT	GST_TTML_RENDER_HALIGN_CENTER
 #define DEFAULT_PROP_XPAD	25
 #define DEFAULT_PROP_YPAD	25
 #define DEFAULT_PROP_DELTAX	0
@@ -144,50 +142,6 @@ GST_STATIC_PAD_TEMPLATE ("text_sink",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
     );
-
-
-#define GST_TYPE_TTML_RENDER_VALIGN (gst_ttml_render_valign_get_type())
-static GType
-gst_ttml_render_valign_get_type (void)
-{
-  static GType ttml_render_valign_type = 0;
-  static const GEnumValue ttml_render_valign[] = {
-    {GST_TTML_RENDER_VALIGN_BASELINE, "baseline", "baseline"},
-    {GST_TTML_RENDER_VALIGN_BOTTOM, "bottom", "bottom"},
-    {GST_TTML_RENDER_VALIGN_TOP, "top", "top"},
-    {GST_TTML_RENDER_VALIGN_POS, "position", "position"},
-    {GST_TTML_RENDER_VALIGN_CENTER, "center", "center"},
-    {0, NULL, NULL},
-  };
-
-  if (!ttml_render_valign_type) {
-    ttml_render_valign_type =
-        g_enum_register_static ("GstTtmlRenderVAlign",
-        ttml_render_valign);
-  }
-  return ttml_render_valign_type;
-}
-
-#define GST_TYPE_TTML_RENDER_HALIGN (gst_ttml_render_halign_get_type())
-static GType
-gst_ttml_render_halign_get_type (void)
-{
-  static GType ttml_render_halign_type = 0;
-  static const GEnumValue ttml_render_halign[] = {
-    {GST_TTML_RENDER_HALIGN_LEFT, "left", "left"},
-    {GST_TTML_RENDER_HALIGN_CENTER, "center", "center"},
-    {GST_TTML_RENDER_HALIGN_RIGHT, "right", "right"},
-    {GST_TTML_RENDER_HALIGN_POS, "position", "position"},
-    {0, NULL, NULL},
-  };
-
-  if (!ttml_render_halign_type) {
-    ttml_render_halign_type =
-        g_enum_register_static ("GstTtmlRenderHAlign",
-        ttml_render_halign);
-  }
-  return ttml_render_halign_type;
-}
 
 
 #define GST_TYPE_TTML_RENDER_WRAP_MODE (gst_ttml_render_wrap_mode_get_type())
@@ -473,8 +427,6 @@ gst_ttml_render_init (GstTtmlRender * render,
 
   render->color = DEFAULT_PROP_COLOR;
   render->outline_color = DEFAULT_PROP_OUTLINE_COLOR;
-  render->halign = DEFAULT_PROP_HALIGNMENT;
-  render->valign = DEFAULT_PROP_VALIGNMENT;
   render->xpad = DEFAULT_PROP_XPAD;
   render->ypad = DEFAULT_PROP_YPAD;
   render->deltax = DEFAULT_PROP_DELTAX;
@@ -999,99 +951,6 @@ gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * render,
     render->outline_offset = MINIMUM_OUTLINE_OFFSET;
 }
 
-static void
-gst_ttml_render_get_pos (GstTtmlRender * render,
-    gint * xpos, gint * ypos)
-{
-  gint width, height;
-  GstTtmlRenderVAlign valign;
-  GstTtmlRenderHAlign halign;
-
-  width = render->image_width;
-  height = render->image_height;
-
-  if (render->use_vertical_render)
-    halign = GST_TTML_RENDER_HALIGN_RIGHT;
-  else
-    halign = render->halign;
-
-  switch (halign) {
-    case GST_TTML_RENDER_HALIGN_LEFT:
-      *xpos = render->xpad;
-      break;
-    case GST_TTML_RENDER_HALIGN_CENTER:
-      *xpos = (render->width - width) / 2;
-      break;
-    case GST_TTML_RENDER_HALIGN_RIGHT:
-      *xpos = render->width - width - render->xpad;
-      break;
-    case GST_TTML_RENDER_HALIGN_POS:
-      *xpos = (gint) (render->width * render->xpos) - width / 2;
-      *xpos = CLAMP (*xpos, 0, render->width - width);
-      if (*xpos < 0)
-        *xpos = 0;
-      break;
-    default:
-      *xpos = 0;
-  }
-  *xpos += render->deltax;
-
-  if (render->use_vertical_render)
-    valign = GST_TTML_RENDER_VALIGN_TOP;
-  else
-    valign = render->valign;
-
-  switch (valign) {
-    case GST_TTML_RENDER_VALIGN_BOTTOM:
-      *ypos = render->height - height - render->ypad;
-      break;
-    case GST_TTML_RENDER_VALIGN_BASELINE:
-      *ypos = render->height - (height + render->ypad);
-      break;
-    case GST_TTML_RENDER_VALIGN_TOP:
-      *ypos = render->ypad;
-      break;
-    case GST_TTML_RENDER_VALIGN_POS:
-      *ypos = (gint) (render->height * render->ypos) - height / 2;
-      *ypos = CLAMP (*ypos, 0, render->height - height);
-      break;
-    case GST_TTML_RENDER_VALIGN_CENTER:
-      *ypos = (render->height - height) / 2;
-      break;
-    default:
-      *ypos = render->ypad;
-      break;
-  }
-  *ypos += render->deltay;
-}
-
-static inline void
-gst_ttml_render_set_composition (GstTtmlRender * render)
-{
-  gint xpos, ypos;
-  GstVideoOverlayRectangle *rectangle;
-
-  gst_ttml_render_get_pos (render, &xpos, &ypos);
-
-  if (render->text_image) {
-    g_assert (gst_buffer_is_writable (render->text_image));
-    gst_buffer_add_video_meta (render->text_image, GST_VIDEO_FRAME_FLAG_NONE,
-        GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB,
-        render->image_width, render->image_height);
-    rectangle = gst_video_overlay_rectangle_new_raw (render->text_image,
-        xpos, ypos, render->image_width, render->image_height,
-        GST_VIDEO_OVERLAY_FORMAT_FLAG_PREMULTIPLIED_ALPHA);
-
-    if (render->composition)
-      gst_video_overlay_composition_unref (render->composition);
-
-    render->composition = gst_video_overlay_composition_new (rectangle);
-  } else if (render->composition) {
-    gst_video_overlay_composition_unref (render->composition);
-    render->composition = NULL;
-  }
-}
-
 
 static gboolean
 gst_text_overlay_filter_foreground_attr (PangoAttribute * attr, gpointer data)
@@ -1244,8 +1103,6 @@ gst_ttml_render_render_pangocairo (GstTtmlRender * render,
   render->image_height = height;
   render->baseline_y = ink_rect.y;
   g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
-
-  gst_ttml_render_set_composition (render);
 }
 
 

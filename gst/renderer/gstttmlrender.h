@@ -76,42 +76,6 @@ struct _GstTtmlRenderRenderedText {
 
 
 /**
- * GstTtmlRenderVAlign:
- * @GST_TTML_RENDER_VALIGN_BASELINE: draw text on the baseline
- * @GST_TTML_RENDER_VALIGN_BOTTOM: draw text on the bottom
- * @GST_TTML_RENDER_VALIGN_TOP: draw text on top
- * @GST_TTML_RENDER_VALIGN_POS: draw text according to the #GstTtmlRender:ypos property
- * @GST_TTML_RENDER_VALIGN_CENTER: draw text vertically centered
- *
- * Vertical alignment of the text.
- */
-typedef enum {
-    GST_TTML_RENDER_VALIGN_BASELINE,
-    GST_TTML_RENDER_VALIGN_BOTTOM,
-    GST_TTML_RENDER_VALIGN_TOP,
-    GST_TTML_RENDER_VALIGN_POS,
-    GST_TTML_RENDER_VALIGN_CENTER
-} GstTtmlRenderVAlign;
-
-/**
- * GstTtmlRenderHAlign:
- * @GST_TTML_RENDER_HALIGN_LEFT: align text left
- * @GST_TTML_RENDER_HALIGN_CENTER: align text center
- * @GST_TTML_RENDER_HALIGN_RIGHT: align text right
- * @GST_TTML_RENDER_HALIGN_POS: position text according to the #GstTtmlRender:xpos property
- *
- * Horizontal alignment of the text.
- */
-/* FIXME 0.11: remove GST_TTML_RENDER_HALIGN_UNUSED */
-typedef enum {
-    GST_TTML_RENDER_HALIGN_LEFT,
-    GST_TTML_RENDER_HALIGN_CENTER,
-    GST_TTML_RENDER_HALIGN_RIGHT,
-    GST_TTML_RENDER_HALIGN_UNUSED,
-    GST_TTML_RENDER_HALIGN_POS
-} GstTtmlRenderHAlign;
-
-/**
  * GstTtmlRenderWrapMode:
  * @GST_TTML_RENDER_WRAP_MODE_NONE: no wrapping
  * @GST_TTML_RENDER_WRAP_MODE_WORD: do word wrapping
@@ -174,8 +138,6 @@ struct _GstTtmlRender {
     gint                     width;
     gint                     height;
 
-    GstTtmlRenderVAlign     valign;
-    GstTtmlRenderHAlign     halign;
     GstTtmlRenderWrapMode   wrap_mode;
     GstTtmlRenderLineAlign  line_align;
 
