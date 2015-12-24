@@ -91,7 +91,6 @@
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
-#define DEFAULT_PROP_SHADING	FALSE
 #define DEFAULT_PROP_VALIGNMENT	GST_TTML_RENDER_VALIGN_BASELINE
 #define DEFAULT_PROP_HALIGNMENT	GST_TTML_RENDER_HALIGN_CENTER
 #define DEFAULT_PROP_XPAD	25
@@ -485,7 +484,6 @@ gst_ttml_render_init (GstTtmlRender * render,
 
   render->wrap_mode = DEFAULT_PROP_WRAP_MODE;
 
-  render->want_shading = DEFAULT_PROP_SHADING;
   render->shading_value = DEFAULT_PROP_SHADING_VALUE;
   render->silent = DEFAULT_PROP_SILENT;
   render->wait_text = DEFAULT_PROP_WAIT_TEXT;
@@ -1538,7 +1536,6 @@ gst_ttml_render_push_frame (GstTtmlRender * render,
     GST_DEBUG_OBJECT (render, "Attaching text render images to video buffer");
     gst_buffer_add_video_overlay_composition_meta (video_frame,
         render->composition);
-    /* FIXME: emulate shaded background box if want_shading=true */
     goto done;
   }
 
