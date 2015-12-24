@@ -109,24 +109,17 @@ struct _GstTtmlRender {
 
     gboolean                 want_background;
     gboolean                 wait_text;
-    guint                    color, outline_color;
 
     PangoLayout             *layout;
-    gdouble                  shadow_offset;
-    gdouble                  outline_offset;
     GstBuffer               *text_image;
     gint                     image_width;
     gint                     image_height;
     gint                     baseline_y;
     gint                     text_height_px;
 
-    gboolean                 auto_adjust_size;
     gboolean                 need_render;
 
-    gint                     shading_value;  /* for timeoverlay subclass */
-
     gboolean                 have_pango_markup;
-    gboolean                 use_vertical_render;
 
     gboolean                 attach_compo_to_buffer;
 

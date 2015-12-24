@@ -92,15 +92,6 @@
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
 #define DEFAULT_PROP_WAIT_TEXT	TRUE
-#define DEFAULT_PROP_AUTO_ADJUST_SIZE TRUE
-#define DEFAULT_PROP_VERTICAL_RENDER  FALSE
-#define DEFAULT_PROP_COLOR      0xffffffff
-#define DEFAULT_PROP_OUTLINE_COLOR 0xff000000
-
-#define DEFAULT_PROP_SHADING_VALUE    80
-
-#define MINIMUM_OUTLINE_OFFSET 1.0
-#define DEFAULT_SCALE_BASIS    640
 
 #define VIDEO_FORMATS GST_VIDEO_OVERLAY_COMPOSITION_BLEND_FORMATS
 
@@ -371,18 +362,11 @@ gst_ttml_render_init (GstTtmlRender * render,
   desc =
       pango_context_get_font_description (GST_TTML_RENDER_GET_CLASS
       (render)->pango_context);
-  gst_ttml_render_adjust_values_with_fontdesc (render, desc);
 
-  render->color = DEFAULT_PROP_COLOR;
-  render->outline_color = DEFAULT_PROP_OUTLINE_COLOR;
-
-  render->shading_value = DEFAULT_PROP_SHADING_VALUE;
   render->wait_text = DEFAULT_PROP_WAIT_TEXT;
-  render->auto_adjust_size = DEFAULT_PROP_AUTO_ADJUST_SIZE;
 
   render->need_render = TRUE;
   render->text_image = NULL;
-  render->use_vertical_render = DEFAULT_PROP_VERTICAL_RENDER;
   gst_ttml_render_update_render_mode (render);
 
   render->text_buffer = NULL;
@@ -403,15 +387,8 @@ gst_ttml_render_update_render_mode (GstTtmlRender * render)
   PangoMatrix matrix = PANGO_MATRIX_INIT;
   PangoContext *context = pango_layout_get_context (render->layout);
 
-  if (render->use_vertical_render) {
-    pango_matrix_rotate (&matrix, -90);
-    pango_context_set_base_gravity (context, PANGO_GRAVITY_AUTO);
-    pango_context_set_matrix (context, &matrix);
-    pango_layout_set_alignment (render->layout, PANGO_ALIGN_LEFT);
-  } else {
-    pango_context_set_base_gravity (context, PANGO_GRAVITY_SOUTH);
-    pango_context_set_matrix (context, &matrix);
-  }
+  pango_context_set_base_gravity (context, PANGO_GRAVITY_SOUTH);
+  pango_context_set_matrix (context, &matrix);
 }
 
 static gboolean
@@ -849,17 +826,6 @@ gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
   return caps;
 }
 
-static void
-gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * render,
-    PangoFontDescription * desc)
-{
-  gint font_size = pango_font_description_get_size (desc) / PANGO_SCALE;
-  render->shadow_offset = (double) (font_size) / 13.0;
-  render->outline_offset = (double) (font_size) / 15.0;
-  if (render->outline_offset < MINIMUM_OUTLINE_OFFSET)
-    render->outline_offset = MINIMUM_OUTLINE_OFFSET;
-}
-
 
 static gboolean
 gst_text_overlay_filter_foreground_attr (PangoAttribute * attr, gpointer data)
@@ -871,238 +837,6 @@ gst_text_overlay_filter_foreground_attr (PangoAttribute * attr, gpointer data)
   }
 }
 
-
-static inline void
-gst_ttml_render_shade_planar_Y (GstTtmlRender * render,
-    GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
-{
-  gint i, j, dest_stride;
-  guint8 *dest_ptr;
-
-  dest_stride = dest->info.stride[0];
-  dest_ptr = dest->data[0];
-
-  for (i = y0; i < y1; ++i) {
-    for (j = x0; j < x1; ++j) {
-      gint y = dest_ptr[(i * dest_stride) + j] - render->shading_value;
-
-      dest_ptr[(i * dest_stride) + j] = CLAMP (y, 0, 255);
-    }
-  }
-}
-
-static inline void
-gst_ttml_render_shade_packed_Y (GstTtmlRender * render,
-    GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
-{
-  gint i, j;
-  guint dest_stride, pixel_stride;
-  guint8 *dest_ptr;
-
-  dest_stride = GST_VIDEO_FRAME_COMP_STRIDE (dest, 0);
-  dest_ptr = GST_VIDEO_FRAME_COMP_DATA (dest, 0);
-  pixel_stride = GST_VIDEO_FRAME_COMP_PSTRIDE (dest, 0);
-
-  if (x0 != 0)
-    x0 = GST_VIDEO_FORMAT_INFO_SCALE_WIDTH (dest->info.finfo, 0, x0);
-  if (x1 != 0)
-    x1 = GST_VIDEO_FORMAT_INFO_SCALE_WIDTH (dest->info.finfo, 0, x1);
-
-  if (y0 != 0)
-    y0 = GST_VIDEO_FORMAT_INFO_SCALE_HEIGHT (dest->info.finfo, 0, y0);
-  if (y1 != 0)
-    y1 = GST_VIDEO_FORMAT_INFO_SCALE_HEIGHT (dest->info.finfo, 0, y1);
-
-  for (i = y0; i < y1; i++) {
-    for (j = x0; j < x1; j++) {
-      gint y;
-      gint y_pos;
-
-      y_pos = (i * dest_stride) + j * pixel_stride;
-      y = dest_ptr[y_pos] - render->shading_value;
-
-      dest_ptr[y_pos] = CLAMP (y, 0, 255);
-    }
-  }
-}
-
-#define gst_ttml_render_shade_BGRx gst_ttml_render_shade_xRGB
-#define gst_ttml_render_shade_RGBx gst_ttml_render_shade_xRGB
-#define gst_ttml_render_shade_xBGR gst_ttml_render_shade_xRGB
-static inline void
-gst_ttml_render_shade_xRGB (GstTtmlRender * render,
-    GstVideoFrame * dest, gint x0, gint x1, gint y0, gint y1)
-{
-  gint i, j;
-  guint8 *dest_ptr;
-
-  dest_ptr = dest->data[0];
-
-  for (i = y0; i < y1; i++) {
-    for (j = x0; j < x1; j++) {
-      gint y, y_pos, k;
-
-      y_pos = (i * 4 * render->width) + j * 4;
-      for (k = 0; k < 4; k++) {
-        y = dest_ptr[y_pos + k] - render->shading_value;
-        dest_ptr[y_pos + k] = CLAMP (y, 0, 255);
-      }
-    }
-  }
-}
-
-/* FIXME: orcify */
-static void
-gst_ttml_render_shade_rgb24 (GstTtmlRender * render,
-    GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
-{
-  const int pstride = 3;
-  gint y, x, stride, shading_val, tmp;
-  guint8 *p;
-
-  shading_val = -render->shading_value;
-  stride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 0);
-
-  for (y = y0; y < y1; ++y) {
-    p = GST_VIDEO_FRAME_PLANE_DATA (frame, 0);
-    p += (y * stride) + (x0 * pstride);
-    for (x = x0; x < x1; ++x) {
-      tmp = *p + shading_val;
-      *p++ = CLAMP (tmp, 0, 255);
-      tmp = *p + shading_val;
-      *p++ = CLAMP (tmp, 0, 255);
-      tmp = *p + shading_val;
-      *p++ = CLAMP (tmp, 0, 255);
-    }
-  }
-}
-
-static void
-gst_ttml_render_shade_IYU1 (GstTtmlRender * render,
-    GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
-{
-  gint y, x, stride, shading_val, tmp;
-  guint8 *p;
-
-  shading_val = -render->shading_value;
-  stride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 0);
-
-  /* IYU1: packed 4:1:1 YUV (Cb-Y0-Y1-Cr-Y2-Y3 ...) */
-  for (y = y0; y < y1; ++y) {
-    p = GST_VIDEO_FRAME_PLANE_DATA (frame, 0);
-    /* move to Y0 or Y1 (we pretend the chroma is the last of the 3 bytes) */
-    /* FIXME: we're not pixel-exact here if x0 is an odd number, but it's
-     * unlikely anyone will notice.. */
-    p += (y * stride) + ((x0 / 2) * 3) + 1;
-    for (x = x0; x < x1; x += 2) {
-      tmp = *p + shading_val;
-      *p++ = CLAMP (tmp, 0, 255);
-      tmp = *p + shading_val;
-      *p++ = CLAMP (tmp, 0, 255);
-      /* skip chroma */
-      p++;
-    }
-  }
-}
-
-#define ARGB_SHADE_FUNCTION(name, OFFSET)	\
-static inline void \
-gst_ttml_render_shade_##name (GstTtmlRender * render, GstVideoFrame * dest, \
-gint x0, gint x1, gint y0, gint y1) \
-{ \
-  gint i, j;\
-  guint8 *dest_ptr;\
-  \
-  dest_ptr = dest->data[0];\
-  \
-  for (i = y0; i < y1; i++) {\
-    for (j = x0; j < x1; j++) {\
-      gint y, y_pos, k;\
-      y_pos = (i * 4 * render->width) + j * 4;\
-      for (k = OFFSET; k < 3+OFFSET; k++) {\
-        y = dest_ptr[y_pos + k] - render->shading_value;\
-        dest_ptr[y_pos + k] = CLAMP (y, 0, 255);\
-      }\
-    }\
-  }\
-}
-ARGB_SHADE_FUNCTION (ARGB, 1);
-ARGB_SHADE_FUNCTION (ABGR, 1);
-ARGB_SHADE_FUNCTION (RGBA, 0);
-ARGB_SHADE_FUNCTION (BGRA, 0);
-
-
-/* FIXME: should probably be relative to width/height (adjusted for PAR) */
-#define BOX_XPAD  6
-#define BOX_YPAD  6
-
-static void
-gst_ttml_render_shade_background (GstTtmlRender * render,
-    GstVideoFrame * frame, gint x0, gint x1, gint y0, gint y1)
-{
-  x0 = CLAMP (x0 - BOX_XPAD, 0, render->width);
-  x1 = CLAMP (x1 + BOX_XPAD, 0, render->width);
-
-  y0 = CLAMP (y0 - BOX_YPAD, 0, render->height);
-  y1 = CLAMP (y1 + BOX_YPAD, 0, render->height);
-
-  switch (render->format) {
-    case GST_VIDEO_FORMAT_I420:
-    case GST_VIDEO_FORMAT_YV12:
-    case GST_VIDEO_FORMAT_NV12:
-    case GST_VIDEO_FORMAT_NV21:
-    case GST_VIDEO_FORMAT_Y41B:
-    case GST_VIDEO_FORMAT_Y42B:
-    case GST_VIDEO_FORMAT_Y444:
-    case GST_VIDEO_FORMAT_YUV9:
-    case GST_VIDEO_FORMAT_YVU9:
-    case GST_VIDEO_FORMAT_GRAY8:
-    case GST_VIDEO_FORMAT_A420:
-      gst_ttml_render_shade_planar_Y (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_AYUV:
-    case GST_VIDEO_FORMAT_UYVY:
-    case GST_VIDEO_FORMAT_YUY2:
-    case GST_VIDEO_FORMAT_v308:
-      gst_ttml_render_shade_packed_Y (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_xRGB:
-      gst_ttml_render_shade_xRGB (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_xBGR:
-      gst_ttml_render_shade_xBGR (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_BGRx:
-      gst_ttml_render_shade_BGRx (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_RGBx:
-      gst_ttml_render_shade_RGBx (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_ARGB:
-      gst_ttml_render_shade_ARGB (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_ABGR:
-      gst_ttml_render_shade_ABGR (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_RGBA:
-      gst_ttml_render_shade_RGBA (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_BGRA:
-      gst_ttml_render_shade_BGRA (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_BGR:
-    case GST_VIDEO_FORMAT_RGB:
-      gst_ttml_render_shade_rgb24 (render, frame, x0, x1, y0, y1);
-      break;
-    case GST_VIDEO_FORMAT_IYU1:
-      gst_ttml_render_shade_IYU1 (render, frame, x0, x1, y0, y1);
-      break;
-    default:
-      GST_FIXME_OBJECT (render, "implement background shading for format %s",
-          gst_video_format_to_string (GST_VIDEO_FRAME_FORMAT (frame)));
-      break;
-  }
-}
 
 static GstFlowReturn
 gst_ttml_render_push_frame (GstTtmlRender * render,
