@@ -83,8 +83,6 @@
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
-#define DEFAULT_PROP_WAIT_TEXT	TRUE
-
 #define VIDEO_FORMATS GST_VIDEO_OVERLAY_COMPOSITION_BLEND_FORMATS
 
 #define TTML_RENDER_CAPS GST_VIDEO_CAPS_MAKE (VIDEO_FORMATS)
@@ -335,8 +333,8 @@ gst_ttml_render_init (GstTtmlRender * render,
       pango_context_get_font_description (GST_TTML_RENDER_GET_CLASS
       (render)->pango_context);
 
-  render->wait_text = DEFAULT_PROP_WAIT_TEXT;
 
+  render->wait_text = TRUE;
   render->need_render = TRUE;
 
   render->text_buffer = NULL;
