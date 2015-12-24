@@ -24,7 +24,7 @@
  */
 
 /**
- * SECTION:element-textoverlay
+ * SECTION:element-ttmlrender
  * @see_also: #GstTextRender, #GstClockOverlay, #GstTimeOverlay, #GstSubParse
  *
  * This plugin renders text on top of a video stream. This can be either
@@ -40,11 +40,11 @@
  * <refsect2>
  * <title>Example launch lines</title>
  * |[
- * gst-launch -v videotestsrc ! textoverlay text="Room A" valign=top halign=left ! xvimagesink
+ * gst-launch -v videotestsrc ! ttmlrender text="Room A" valign=top halign=left ! xvimagesink
  * ]| Here is a simple pipeline that displays a static text in the top left
  * corner of the video picture
  * |[
- * gst-launch -v filesrc location=subtitles.srt ! subparse ! txt.   videotestsrc ! timeoverlay ! textoverlay name=txt shaded-background=yes ! xvimagesink
+ * gst-launch -v filesrc location=subtitles.srt ! subparse ! txt.   videotestsrc ! timeoverlay ! ttmlrender name=txt shaded-background=yes ! xvimagesink
  * ]| Here is another pipeline that displays subtitles from an .srt subtitle
  * file, centered at the bottom of the picture and with a rectangular shading
  * around the text in the background:
@@ -80,7 +80,6 @@
 #include <gst/video/gstvideometa.h>
 
 #include "gstttmlrender.h"
-#include "gsttextoverlay.h"
 #include <string.h>
 #include <math.h>
 
@@ -167,6 +166,14 @@ GST_STATIC_PAD_TEMPLATE ("video_sink",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TTML_RENDER_ALL_CAPS)
     );
+
+static GstStaticPadTemplate text_sink_template_factory =
+GST_STATIC_PAD_TEMPLATE ("text_sink",
+    GST_PAD_SINK,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
+    );
+
 
 #define GST_TYPE_TTML_RENDER_VALIGN (gst_ttml_render_valign_get_type())
 static GType
@@ -395,6 +402,14 @@ gst_ttml_render_class_init (GstTtmlRenderClass * klass)
       gst_static_pad_template_get (&src_template_factory));
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&video_sink_template_factory));
+  gst_element_class_add_pad_template (gstelement_class,
+      gst_static_pad_template_get (&text_sink_template_factory));
+
+  gst_element_class_set_static_metadata (gstelement_class,
+      "TTML subtitle renderer", "Overlay/Subtitle",
+      "Render timed-text subtitles on top of video buffers",
+      "David Schleef <ds@schleef.org>, Zeeshan Ali <zeeshan.ali@nokia.com>, "
+      "Chris Bass <dash@rd.bbc.co.uk>");
 
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_ttml_render_change_state);
@@ -484,7 +499,7 @@ gst_ttml_render_class_init (GstTtmlRenderClass * klass)
           DEFAULT_PROP_COLOR,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
   /**
-   * GstTextOverlay:outline-color:
+   * GstTtmlRender:outline-color:
    *
    * Color of the outline of the rendered text.
    */
@@ -508,7 +523,7 @@ gst_ttml_render_class_init (GstTtmlRenderClass * klass)
    * GstTtmlRender:silent:
    *
    * If set, no text is rendered. Useful to switch off text rendering
-   * temporarily without removing the textoverlay element from the pipeline.
+   * temporarily without removing the ttmlrender element from the pipeline.
    */
   /* FIXME 0.11: rename to "visible" or "text-visible" or "render-text" */
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_SILENT,
@@ -3553,7 +3568,7 @@ plugin_init (GstPlugin * plugin)
   GST_DEBUG_CATEGORY_INIT (ttmlrender, "ttmlrender", 0, "TTML renderer");
 
   if (!gst_element_register (plugin, "ttmlrender", GST_RANK_PRIMARY,
-          GST_TYPE_TEXT_OVERLAY)) {
+          GST_TYPE_TTML_RENDER)) {
     return FALSE;
   }
 
@@ -3561,6 +3576,6 @@ plugin_init (GstPlugin * plugin)
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    ttmlrender, "Pango-based text rendering and render, supporting the "
-    "EBU-TT-D profile of TTML.", plugin_init,
+    ttmlrender, "Pango-based text rendering, supporting the EBU-TT-D profile"
+    " of TTML.", plugin_init,
     VERSION, "LGPL", "gst-ttml-render", "http://www.bbc.co.uk/rd")
