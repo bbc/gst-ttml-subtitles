@@ -76,22 +76,6 @@ struct _GstTtmlRenderRenderedText {
 
 
 /**
- * GstTtmlRenderWrapMode:
- * @GST_TTML_RENDER_WRAP_MODE_NONE: no wrapping
- * @GST_TTML_RENDER_WRAP_MODE_WORD: do word wrapping
- * @GST_TTML_RENDER_WRAP_MODE_CHAR: do char wrapping
- * @GST_TTML_RENDER_WRAP_MODE_WORD_CHAR: do word and char wrapping
- *
- * Whether to wrap the text and if so how.
- */
-typedef enum {
-    GST_TTML_RENDER_WRAP_MODE_NONE = -1,
-    GST_TTML_RENDER_WRAP_MODE_WORD = PANGO_WRAP_WORD,
-    GST_TTML_RENDER_WRAP_MODE_CHAR = PANGO_WRAP_CHAR,
-    GST_TTML_RENDER_WRAP_MODE_WORD_CHAR = PANGO_WRAP_WORD_CHAR
-} GstTtmlRenderWrapMode;
-
-/**
  * GstTtmlRenderLineAlign:
  * @GST_TTML_RENDER_LINE_ALIGN_LEFT: lines are left-aligned
  * @GST_TTML_RENDER_LINE_ALIGN_CENTER: lines are center-aligned
@@ -138,11 +122,8 @@ struct _GstTtmlRender {
     gint                     width;
     gint                     height;
 
-    GstTtmlRenderWrapMode   wrap_mode;
     GstTtmlRenderLineAlign  line_align;
 
-    gint                     xpad;
-    gint                     ypad;
     gint                     deltax;
     gint                     deltay;
     gdouble                  xpos;

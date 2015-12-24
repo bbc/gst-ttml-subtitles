@@ -91,13 +91,10 @@
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
-#define DEFAULT_PROP_XPAD	25
-#define DEFAULT_PROP_YPAD	25
 #define DEFAULT_PROP_DELTAX	0
 #define DEFAULT_PROP_DELTAY	0
 #define DEFAULT_PROP_XPOS       0.5
 #define DEFAULT_PROP_YPOS       0.5
-#define DEFAULT_PROP_WRAP_MODE  GST_TTML_RENDER_WRAP_MODE_WORD_CHAR
 #define DEFAULT_PROP_FONT_DESC	""
 #define DEFAULT_PROP_SILENT	FALSE
 #define DEFAULT_PROP_LINE_ALIGNMENT GST_TTML_RENDER_LINE_ALIGN_CENTER
@@ -143,27 +140,6 @@ GST_STATIC_PAD_TEMPLATE ("text_sink",
     GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
     );
 
-
-#define GST_TYPE_TTML_RENDER_WRAP_MODE (gst_ttml_render_wrap_mode_get_type())
-static GType
-gst_ttml_render_wrap_mode_get_type (void)
-{
-  static GType ttml_render_wrap_mode_type = 0;
-  static const GEnumValue ttml_render_wrap_mode[] = {
-    {GST_TTML_RENDER_WRAP_MODE_NONE, "none", "none"},
-    {GST_TTML_RENDER_WRAP_MODE_WORD, "word", "word"},
-    {GST_TTML_RENDER_WRAP_MODE_CHAR, "char", "char"},
-    {GST_TTML_RENDER_WRAP_MODE_WORD_CHAR, "wordchar", "wordchar"},
-    {0, NULL, NULL},
-  };
-
-  if (!ttml_render_wrap_mode_type) {
-    ttml_render_wrap_mode_type =
-        g_enum_register_static ("GstTtmlRenderWrapMode",
-        ttml_render_wrap_mode);
-  }
-  return ttml_render_wrap_mode_type;
-}
 
 #define GST_TYPE_TTML_RENDER_LINE_ALIGN (gst_ttml_render_line_align_get_type())
 static GType
@@ -427,14 +403,10 @@ gst_ttml_render_init (GstTtmlRender * render,
 
   render->color = DEFAULT_PROP_COLOR;
   render->outline_color = DEFAULT_PROP_OUTLINE_COLOR;
-  render->xpad = DEFAULT_PROP_XPAD;
-  render->ypad = DEFAULT_PROP_YPAD;
   render->deltax = DEFAULT_PROP_DELTAX;
   render->deltay = DEFAULT_PROP_DELTAY;
   render->xpos = DEFAULT_PROP_XPOS;
   render->ypos = DEFAULT_PROP_YPOS;
-
-  render->wrap_mode = DEFAULT_PROP_WRAP_MODE;
 
   render->shading_value = DEFAULT_PROP_SHADING_VALUE;
   render->silent = DEFAULT_PROP_SILENT;
@@ -457,33 +429,6 @@ gst_ttml_render_init (GstTtmlRender * render,
   g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
 }
 
-
-static void
-gst_ttml_render_update_wrap_mode (GstTtmlRender * render)
-{
-  if (render->wrap_mode == GST_TTML_RENDER_WRAP_MODE_NONE) {
-    GST_DEBUG_OBJECT (render, "Set wrap mode NONE");
-    pango_layout_set_width (render->layout, -1);
-  } else {
-    int width;
-
-    if (render->auto_adjust_size) {
-      width = DEFAULT_SCALE_BASIS * PANGO_SCALE;
-      if (render->use_vertical_render) {
-        width = width * (render->height - render->ypad * 2) / render->width;
-      }
-    } else {
-      width =
-          (render->use_vertical_render ? render->height : render->width) *
-          PANGO_SCALE;
-    }
-
-    GST_DEBUG_OBJECT (render, "Set layout width %d", render->width);
-    GST_DEBUG_OBJECT (render, "Set wrap mode    %d", render->wrap_mode);
-    pango_layout_set_width (render->layout, width);
-    pango_layout_set_wrap (render->layout, (PangoWrapMode) render->wrap_mode);
-  }
-}
 
 static void
 gst_ttml_render_update_render_mode (GstTtmlRender * render)
@@ -667,7 +612,6 @@ gst_ttml_render_setcaps (GstTtmlRender * render, GstCaps * caps)
     ret = FALSE;
   }
 
-  gst_ttml_render_update_wrap_mode (render);
   g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
   GST_TTML_RENDER_UNLOCK (render);
 
@@ -997,7 +941,6 @@ gst_ttml_render_render_pangocairo (GstTtmlRender * render,
      * subtitle image width is larger then render width
      * so rearrange render wrap mode.
      */
-    gst_ttml_render_update_wrap_mode (render);
     pango_layout_get_pixel_extents (render->layout, &ink_rect, &logical_rect);
     width = render->width;
   }
