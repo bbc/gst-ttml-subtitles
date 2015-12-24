@@ -138,8 +138,6 @@ static GstCaps *gst_ttml_render_get_src_caps (GstPad * pad,
     GstTtmlRender * render, GstCaps * filter);
 static gboolean gst_ttml_render_setcaps (GstTtmlRender * render,
     GstCaps * caps);
-static gboolean gst_ttml_render_setcaps_txt (GstTtmlRender * render,
-    GstCaps * caps);
 static gboolean gst_ttml_render_src_event (GstPad * pad,
     GstObject * parent, GstEvent * event);
 static gboolean gst_ttml_render_src_query (GstPad * pad,
@@ -164,14 +162,8 @@ static void gst_ttml_render_pop_text (GstTtmlRender * render);
 
 static void gst_ttml_render_finalize (GObject * object);
 
-static void
-gst_ttml_render_adjust_values_with_fontdesc (GstTtmlRender * render,
-    PangoFontDescription * desc);
 static gboolean gst_ttml_render_can_handle_caps (GstCaps * incaps);
 
-
-static gboolean gst_text_overlay_filter_foreground_attr (PangoAttribute * attr,
-    gpointer data);
 
 static GstTtmlRenderRenderedImage * gst_ttml_render_rendered_image_new (GstBuffer * image,
     gint x, gint y, guint width, guint height);
@@ -285,7 +277,6 @@ gst_ttml_render_init (GstTtmlRender * render,
     GstTtmlRenderClass * klass)
 {
   GstPadTemplate *template;
-  PangoFontDescription *desc;
 
   /* video sink */
   template = gst_static_pad_template_get (&video_sink_template_factory);
@@ -329,14 +320,9 @@ gst_ttml_render_init (GstTtmlRender * render,
   gst_element_add_pad (GST_ELEMENT (render), render->srcpad);
 
   g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
-  desc =
-      pango_context_get_font_description (GST_TTML_RENDER_GET_CLASS
-      (render)->pango_context);
-
 
   render->wait_text = TRUE;
   render->need_render = TRUE;
-
   render->text_buffer = NULL;
   render->text_linked = FALSE;
 
@@ -766,17 +752,6 @@ gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
   GST_DEBUG_OBJECT (render, "returning  %" GST_PTR_FORMAT, caps);
 
   return caps;
-}
-
-
-static gboolean
-gst_text_overlay_filter_foreground_attr (PangoAttribute * attr, gpointer data)
-{
-  if (attr->klass->type == PANGO_ATTR_FOREGROUND) {
-    return FALSE;
-  } else {
-    return TRUE;
-  }
 }
 
 
@@ -2103,7 +2078,6 @@ static GstFlowReturn
 gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer)
 {
-  GstTtmlRenderClass *klass;
   GstTtmlRender *render;
   GstFlowReturn ret = GST_FLOW_OK;
   gboolean in_seg = FALSE;
@@ -2111,7 +2085,6 @@ gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
   gchar *text = NULL;
 
   render = GST_TTML_RENDER (parent);
-  klass = GST_TTML_RENDER_GET_CLASS (render);
 
   if (!GST_BUFFER_TIMESTAMP_IS_VALID (buffer))
     goto missing_timestamp;

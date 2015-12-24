@@ -120,8 +120,6 @@ struct _GstTtmlRenderClass {
 
     PangoContext *pango_context;
     GMutex       *pango_lock;
-
-    gchar *     (*get_text) (GstTtmlRender *overlay, GstBuffer *video_frame);
 };
 
 GType gst_ttml_render_get_type(void) G_GNUC_CONST;
