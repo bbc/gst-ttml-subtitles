@@ -171,8 +171,6 @@ static GstPadLinkReturn gst_ttml_render_text_pad_link (GstPad * pad,
 static void gst_ttml_render_text_pad_unlink (GstPad * pad,
     GstObject * parent);
 static void gst_ttml_render_pop_text (GstTtmlRender * render);
-static void gst_ttml_render_update_render_mode (GstTtmlRender *
-    render);
 
 static void gst_ttml_render_finalize (GObject * object);
 
@@ -275,25 +273,10 @@ gst_ttml_render_finalize (GObject * object)
 {
   GstTtmlRender *render = GST_TTML_RENDER (object);
 
-  if (render->composition) {
-    gst_video_overlay_composition_unref (render->composition);
-    render->composition = NULL;
-  }
-
   if (render->compositions) {
     g_list_free_full (render->compositions,
         (GDestroyNotify) gst_video_overlay_composition_unref);
     render->compositions = NULL;
-  }
-
-  if (render->text_image) {
-    gst_buffer_unref (render->text_image);
-    render->text_image = NULL;
-  }
-
-  if (render->layout) {
-    g_object_unref (render->layout);
-    render->layout = NULL;
   }
 
   if (render->text_buffer) {
@@ -356,9 +339,6 @@ gst_ttml_render_init (GstTtmlRender * render,
   gst_element_add_pad (GST_ELEMENT (render), render->srcpad);
 
   g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
-  render->layout =
-      pango_layout_new (GST_TTML_RENDER_GET_CLASS
-      (render)->pango_context);
   desc =
       pango_context_get_font_description (GST_TTML_RENDER_GET_CLASS
       (render)->pango_context);
@@ -366,8 +346,6 @@ gst_ttml_render_init (GstTtmlRender * render,
   render->wait_text = DEFAULT_PROP_WAIT_TEXT;
 
   render->need_render = TRUE;
-  render->text_image = NULL;
-  gst_ttml_render_update_render_mode (render);
 
   render->text_buffer = NULL;
   render->text_linked = FALSE;
@@ -380,29 +358,6 @@ gst_ttml_render_init (GstTtmlRender * render,
   g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
 }
 
-
-static void
-gst_ttml_render_update_render_mode (GstTtmlRender * render)
-{
-  PangoMatrix matrix = PANGO_MATRIX_INIT;
-  PangoContext *context = pango_layout_get_context (render->layout);
-
-  pango_context_set_base_gravity (context, PANGO_GRAVITY_SOUTH);
-  pango_context_set_matrix (context, &matrix);
-}
-
-static gboolean
-gst_ttml_render_setcaps_txt (GstTtmlRender * render, GstCaps * caps)
-{
-  GstStructure *structure;
-  const gchar *format;
-
-  structure = gst_caps_get_structure (caps, 0);
-  format = gst_structure_get_string (structure, "format");
-  render->have_pango_markup = format && (strcmp (format, "pango-markup") == 0);
-
-  return TRUE;
-}
 
 /* only negotiate/query video render composition support for now */
 static gboolean
@@ -482,8 +437,6 @@ gst_ttml_render_negotiate (GstTtmlRender * render, GstCaps * caps)
     gst_query_unref (query);
   }
 
-  render->attach_compo_to_buffer = attach;
-
   if (!allocation_ret && render->video_flushing) {
     ret = FALSE;
   } else if (original_caps && !original_has_meta && !attach) {
@@ -548,8 +501,7 @@ gst_ttml_render_setcaps (GstTtmlRender * render, GstCaps * caps)
 
   GST_TTML_RENDER_LOCK (render);
   g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
-  if (!render->attach_compo_to_buffer &&
-      !gst_ttml_render_can_handle_caps (caps)) {
+  if (!gst_ttml_render_can_handle_caps (caps)) {
     GST_DEBUG_OBJECT (render, "unsupported caps %" GST_PTR_FORMAT, caps);
     ret = FALSE;
   }
@@ -855,13 +807,6 @@ gst_ttml_render_push_frame (GstTtmlRender * render,
 
   video_frame = gst_buffer_make_writable (video_frame);
 
-  if (render->attach_compo_to_buffer) {
-    GST_DEBUG_OBJECT (render, "Attaching text render images to video buffer");
-    gst_buffer_add_video_overlay_composition_meta (video_frame,
-        render->composition);
-    goto done;
-  }
-
   if (!gst_video_frame_map (&frame, &render->info, video_frame,
           GST_MAP_READWRITE))
     goto invalid_frame;
@@ -931,15 +876,6 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
   GST_LOG_OBJECT (pad, "received event %s", GST_EVENT_TYPE_NAME (event));
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
-
-      gst_event_parse_caps (event, &caps);
-      ret = gst_ttml_render_setcaps_txt (render, caps);
-      gst_event_unref (event);
-      break;
-    }
     case GST_EVENT_SEGMENT:
     {
       const GstSegment *segment;

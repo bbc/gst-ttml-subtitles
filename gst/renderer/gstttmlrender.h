@@ -110,20 +110,7 @@ struct _GstTtmlRender {
     gboolean                 want_background;
     gboolean                 wait_text;
 
-    PangoLayout             *layout;
-    GstBuffer               *text_image;
-    gint                     image_width;
-    gint                     image_height;
-    gint                     baseline_y;
-    gint                     text_height_px;
-
     gboolean                 need_render;
-
-    gboolean                 have_pango_markup;
-
-    gboolean                 attach_compo_to_buffer;
-
-    GstVideoOverlayComposition *composition;
 
     GList * compositions;
 };
