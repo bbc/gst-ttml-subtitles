@@ -70,8 +70,6 @@
  * </refsect2>
  */
 
-/* FIXME: alloc segment as part of instance struct */
-
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -82,12 +80,6 @@
 #include "gstttmlrender.h"
 #include <string.h>
 #include <math.h>
-
-/* FIXME:
- *  - use proper strides and offset for I420
- *  - if text is wider than the video picture, it does not get
- *    clipped properly during blitting (if wrapping is disabled)
- */
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
