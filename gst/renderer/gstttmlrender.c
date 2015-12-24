@@ -91,13 +91,6 @@
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
-#define DEFAULT_PROP_DELTAX	0
-#define DEFAULT_PROP_DELTAY	0
-#define DEFAULT_PROP_XPOS       0.5
-#define DEFAULT_PROP_YPOS       0.5
-#define DEFAULT_PROP_FONT_DESC	""
-#define DEFAULT_PROP_SILENT	FALSE
-#define DEFAULT_PROP_LINE_ALIGNMENT GST_TTML_RENDER_LINE_ALIGN_CENTER
 #define DEFAULT_PROP_WAIT_TEXT	TRUE
 #define DEFAULT_PROP_AUTO_ADJUST_SIZE TRUE
 #define DEFAULT_PROP_VERTICAL_RENDER  FALSE
@@ -140,26 +133,6 @@ GST_STATIC_PAD_TEMPLATE ("text_sink",
     GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
     );
 
-
-#define GST_TYPE_TTML_RENDER_LINE_ALIGN (gst_ttml_render_line_align_get_type())
-static GType
-gst_ttml_render_line_align_get_type (void)
-{
-  static GType ttml_render_line_align_type = 0;
-  static const GEnumValue ttml_render_line_align[] = {
-    {GST_TTML_RENDER_LINE_ALIGN_LEFT, "left", "left"},
-    {GST_TTML_RENDER_LINE_ALIGN_CENTER, "center", "center"},
-    {GST_TTML_RENDER_LINE_ALIGN_RIGHT, "right", "right"},
-    {0, NULL, NULL}
-  };
-
-  if (!ttml_render_line_align_type) {
-    ttml_render_line_align_type =
-        g_enum_register_static ("GstTtmlRenderLineAlign",
-        ttml_render_line_align);
-  }
-  return ttml_render_line_align_type;
-}
 
 #define GST_TTML_RENDER_GET_LOCK(ov) (&GST_TTML_RENDER (ov)->lock)
 #define GST_TTML_RENDER_GET_COND(ov) (&GST_TTML_RENDER (ov)->cond)
@@ -392,7 +365,6 @@ gst_ttml_render_init (GstTtmlRender * render,
   gst_element_add_pad (GST_ELEMENT (render), render->srcpad);
 
   g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
-  render->line_align = DEFAULT_PROP_LINE_ALIGNMENT;
   render->layout =
       pango_layout_new (GST_TTML_RENDER_GET_CLASS
       (render)->pango_context);
@@ -403,13 +375,8 @@ gst_ttml_render_init (GstTtmlRender * render,
 
   render->color = DEFAULT_PROP_COLOR;
   render->outline_color = DEFAULT_PROP_OUTLINE_COLOR;
-  render->deltax = DEFAULT_PROP_DELTAX;
-  render->deltay = DEFAULT_PROP_DELTAY;
-  render->xpos = DEFAULT_PROP_XPOS;
-  render->ypos = DEFAULT_PROP_YPOS;
 
   render->shading_value = DEFAULT_PROP_SHADING_VALUE;
-  render->silent = DEFAULT_PROP_SILENT;
   render->wait_text = DEFAULT_PROP_WAIT_TEXT;
   render->auto_adjust_size = DEFAULT_PROP_AUTO_ADJUST_SIZE;
 
@@ -444,8 +411,6 @@ gst_ttml_render_update_render_mode (GstTtmlRender * render)
   } else {
     pango_context_set_base_gravity (context, PANGO_GRAVITY_SOUTH);
     pango_context_set_matrix (context, &matrix);
-    pango_layout_set_alignment (render->layout,
-        (PangoAlignment) render->line_align);
   }
 }
 
@@ -906,148 +871,6 @@ gst_text_overlay_filter_foreground_attr (PangoAttribute * attr, gpointer data)
   }
 }
 
-static void
-gst_ttml_render_render_pangocairo (GstTtmlRender * render,
-    const gchar * string, gint textlen)
-{
-  cairo_t *cr;
-  cairo_surface_t *surface;
-  PangoRectangle ink_rect, logical_rect;
-  cairo_matrix_t cairo_matrix;
-  int width, height;
-  double scalef = 1.0;
-  double a, r, g, b;
-  GstBuffer *buffer;
-  GstMapInfo map;
-
-  GST_CAT_DEBUG (ttmlrender, "Input string: %s", string);
-  g_mutex_lock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
-
-  if (render->auto_adjust_size) {
-    /* 640 pixel is default */
-    scalef = (double) (render->width) / DEFAULT_SCALE_BASIS;
-  }
-  pango_layout_set_width (render->layout, -1);
-  /* set text on pango layout */
-  pango_layout_set_markup (render->layout, string, textlen);
-
-  /* get subtitle image size */
-  pango_layout_get_pixel_extents (render->layout, &ink_rect, &logical_rect);
-  width = (logical_rect.width + render->shadow_offset) * scalef;
-
-  if (width + render->deltax >
-      (render->use_vertical_render ? render->height : render->width)) {
-    /*
-     * subtitle image width is larger then render width
-     * so rearrange render wrap mode.
-     */
-    pango_layout_get_pixel_extents (render->layout, &ink_rect, &logical_rect);
-    width = render->width;
-  }
-
-  height =
-      (logical_rect.height + logical_rect.y + render->shadow_offset) * scalef;
-  if (height > render->height) {
-    height = render->height;
-  }
-  if (render->use_vertical_render) {
-    PangoRectangle rect;
-    PangoContext *context;
-    PangoMatrix matrix = PANGO_MATRIX_INIT;
-    int tmp;
-
-    context = pango_layout_get_context (render->layout);
-
-    pango_matrix_rotate (&matrix, -90);
-
-    rect.x = rect.y = 0;
-    rect.width = width;
-    rect.height = height;
-    pango_matrix_transform_pixel_rectangle (&matrix, &rect);
-    matrix.x0 = -rect.x;
-    matrix.y0 = -rect.y;
-
-    pango_context_set_matrix (context, &matrix);
-
-    cairo_matrix.xx = matrix.xx;
-    cairo_matrix.yx = matrix.yx;
-    cairo_matrix.xy = matrix.xy;
-    cairo_matrix.yy = matrix.yy;
-    cairo_matrix.x0 = matrix.x0;
-    cairo_matrix.y0 = matrix.y0;
-    cairo_matrix_scale (&cairo_matrix, scalef, scalef);
-
-    tmp = height;
-    height = width;
-    width = tmp;
-  } else {
-    cairo_matrix_init_scale (&cairo_matrix, scalef, scalef);
-  }
-
-  /* reallocate render buffer */
-  buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
-  gst_buffer_replace (&render->text_image, buffer);
-  gst_buffer_unref (buffer);
-
-  gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
-  surface = cairo_image_surface_create_for_data (map.data,
-      CAIRO_FORMAT_ARGB32, width, height, width * 4);
-  cr = cairo_create (surface);
-
-  /* clear surface */
-  cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
-  cairo_paint (cr);
-
-  cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
-
-  /* apply transformations */
-  cairo_set_matrix (cr, &cairo_matrix);
-
-  /* FIXME: We use show_layout everywhere except for the surface
-   * because it's really faster and internally does all kinds of
-   * caching. Unfortunately we have to paint to a cairo path for
-   * the outline and this is slow. Once Pango supports user fonts
-   * we should use them, see
-   * https://bugzilla.gnome.org/show_bug.cgi?id=598695
-   *
-   * Idea would the be, to create a cairo user font that
-   * does shadow, outline, text painting in the
-   * render_glyph function.
-   */
-
-  a = (render->outline_color >> 24) & 0xff;
-  r = (render->outline_color >> 16) & 0xff;
-  g = (render->outline_color >> 8) & 0xff;
-  b = (render->outline_color >> 0) & 0xff;
-
-  /* draw outline text */
-  cairo_save (cr);
-  cairo_set_source_rgba (cr, r / 255.0, g / 255.0, b / 255.0, a / 255.0);
-  cairo_set_line_width (cr, render->outline_offset);
-  pango_cairo_layout_path (cr, render->layout);
-  cairo_stroke (cr);
-  cairo_restore (cr);
-
-  a = (render->color >> 24) & 0xff;
-  r = (render->color >> 16) & 0xff;
-  g = (render->color >> 8) & 0xff;
-  b = (render->color >> 0) & 0xff;
-
-  /* draw text */
-  cairo_save (cr);
-  cairo_set_source_rgba (cr, r / 255.0, g / 255.0, b / 255.0, a / 255.0);
-  pango_cairo_show_layout (cr, render->layout);
-  cairo_restore (cr);
-
-  cairo_destroy (cr);
-  cairo_surface_destroy (surface);
-  gst_buffer_unmap (buffer, &map);
-  render->image_width = width;
-  render->image_height = height;
-  render->baseline_y = ink_rect.y;
-  g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
-}
-
 
 static inline void
 gst_ttml_render_shade_planar_Y (GstTtmlRender * render,
@@ -1207,40 +1030,6 @@ ARGB_SHADE_FUNCTION (ARGB, 1);
 ARGB_SHADE_FUNCTION (ABGR, 1);
 ARGB_SHADE_FUNCTION (RGBA, 0);
 ARGB_SHADE_FUNCTION (BGRA, 0);
-
-static void
-gst_ttml_render_render_text (GstTtmlRender * render,
-    const gchar * text, gint textlen)
-{
-  gchar *string;
-
-  if (!render->need_render) {
-    GST_DEBUG ("Using previously rendered text.");
-    return;
-  }
-
-  /* -1 is the whole string */
-  if (text != NULL && textlen < 0) {
-    textlen = strlen (text);
-  }
-
-  if (text != NULL) {
-    string = g_strndup (text, textlen);
-  } else {                      /* empty string */
-    string = g_strdup (" ");
-  }
-  g_strdelimit (string, "\r\t", ' ');
-  textlen = strlen (string);
-
-  /* FIXME: should we check for UTF-8 here? */
-
-  GST_DEBUG ("Rendering '%s'", string);
-  gst_ttml_render_render_pangocairo (render, string, textlen);
-
-  g_free (string);
-
-  render->need_render = FALSE;
-}
 
 
 /* FIXME: should probably be relative to width/height (adjusted for PAR) */
@@ -2725,16 +2514,6 @@ wait_for_text_buf:
 
   if (render->video_eos)
     goto have_eos;
-
-  if (render->silent) {
-    GST_TTML_RENDER_UNLOCK (render);
-    ret = gst_pad_push (render->srcpad, buffer);
-
-    /* Update position */
-    render->segment.position = clip_start;
-
-    return ret;
-  }
 
   /* Text pad not linked; push input video frame */
   if (!render->text_linked) {

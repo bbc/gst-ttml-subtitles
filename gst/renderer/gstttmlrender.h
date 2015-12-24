@@ -76,21 +76,6 @@ struct _GstTtmlRenderRenderedText {
 
 
 /**
- * GstTtmlRenderLineAlign:
- * @GST_TTML_RENDER_LINE_ALIGN_LEFT: lines are left-aligned
- * @GST_TTML_RENDER_LINE_ALIGN_CENTER: lines are center-aligned
- * @GST_TTML_RENDER_LINE_ALIGN_RIGHT: lines are right-aligned
- *
- * Alignment of text lines relative to each other
- */
-typedef enum {
-    GST_TTML_RENDER_LINE_ALIGN_LEFT = PANGO_ALIGN_LEFT,
-    GST_TTML_RENDER_LINE_ALIGN_CENTER = PANGO_ALIGN_CENTER,
-    GST_TTML_RENDER_LINE_ALIGN_RIGHT = PANGO_ALIGN_RIGHT
-} GstTtmlRenderLineAlign;
-
-
-/**
  * GstTtmlRender:
  *
  * Opaque textoverlay object structure
@@ -122,14 +107,7 @@ struct _GstTtmlRender {
     gint                     width;
     gint                     height;
 
-    GstTtmlRenderLineAlign  line_align;
-
-    gint                     deltax;
-    gint                     deltay;
-    gdouble                  xpos;
-    gdouble                  ypos;
     gboolean                 want_background;
-    gboolean                 silent;
     gboolean                 wait_text;
     guint                    color, outline_color;
 
