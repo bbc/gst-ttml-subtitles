@@ -24,9 +24,6 @@
 #define _TTML_PARSE_H_
 
 #include "gstttmlparse.h"
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-
 
 G_BEGIN_DECLS
 
