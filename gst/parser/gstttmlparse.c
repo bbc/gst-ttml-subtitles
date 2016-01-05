@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <glib.h>
 
-#include "gstsubparse.h"
+#include "gstttmlparse.h"
 #include "samiparse.h"
 #include "tmplayerparse.h"
 #include "mpl2parse.h"

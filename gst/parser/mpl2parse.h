@@ -20,7 +20,7 @@
 #ifndef _MPL2_PARSE_H_
 #define _MPL2_PARSE_H_
 
-#include "gstsubparse.h"
+#include "gstttmlparse.h"
 
 G_BEGIN_DECLS
 

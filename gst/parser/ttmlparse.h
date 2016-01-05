@@ -23,7 +23,7 @@
 #ifndef _TTML_PARSE_H_
 #define _TTML_PARSE_H_
 
-#include "gstsubparse.h"
+#include "gstttmlparse.h"
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 

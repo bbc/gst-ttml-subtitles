@@ -2,8 +2,8 @@ plugin_LTLIBRARIES = libgstttmlparse.la
 
 # sources used to compile this plug-in
 libgstttmlparse_la_SOURCES = \
-	gstsubparse.c \
-	gstsubparse.h \
+	gstttmlparse.c \
+	gstttmlparse.h \
 	samiparse.c \
 	samiparse.h \
 	tmplayerparse.c \
@@ -30,6 +30,7 @@ libgstttmlparse_la_LIBTOOLFLAGS = $(GST_PLUGIN_LIBTOOLFLAGS)
 
 # headers we need but don't want installed
 noinst_HEADERS = \
+	gstttmlparse.h \
 	samiparse.h \
 	tmplayerparse.h \
 	mpl2parse.h \

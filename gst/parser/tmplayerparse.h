@@ -20,7 +20,7 @@
 #ifndef _TMPLAYER_PARSE_H_
 #define _TMPLAYER_PARSE_H_
 
-#include "gstsubparse.h"
+#include "gstttmlparse.h"
 
 G_BEGIN_DECLS
 
