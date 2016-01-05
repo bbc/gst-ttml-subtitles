@@ -90,6 +90,8 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
  * and layout associated with this inline text element.
  * @text_index: The index within a #GstBuffer of the #GstMemory that contains
  * the text of this inline text element.
+ * @suppress_whitespace: Whether or not a renderer should suppress whitespace
+ * in this element's text.
  *
  * Allocates a new #GstSubtitleElement.
  *
