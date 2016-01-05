@@ -93,52 +93,6 @@ ttml_parse_colorstring (const gchar * color)
 
 
 static void
-ttml_print_element (TtmlElement * element)
-{
-  if (element->id)
-    GST_CAT_DEBUG (ttmlparse, "Element ID: %s", element->id);
-  switch (element->type) {
-    case TTML_ELEMENT_TYPE_STYLE:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <style>");
-      break;
-    case TTML_ELEMENT_TYPE_REGION:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <region>");
-      break;
-    case TTML_ELEMENT_TYPE_BODY:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <body>");
-      break;
-    case TTML_ELEMENT_TYPE_DIV:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <div>");
-      break;
-    case TTML_ELEMENT_TYPE_P:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <p>");
-      break;
-    case TTML_ELEMENT_TYPE_SPAN:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <span>");
-      break;
-    case TTML_ELEMENT_TYPE_ANON_SPAN:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <anon-span>");
-      break;
-    case TTML_ELEMENT_TYPE_BR:
-      GST_CAT_DEBUG (ttmlparse, "Element type: <br>");
-      break;
-  }
-  if (element->region)
-    GST_CAT_DEBUG (ttmlparse, "Element region: %s", element->region);
-  if (element->begin != GST_CLOCK_TIME_NONE)
-    GST_CAT_DEBUG (ttmlparse, "Element begin: %" GST_TIME_FORMAT,
-        GST_TIME_ARGS (element->begin));
-  if (element->end != GST_CLOCK_TIME_NONE)
-    GST_CAT_DEBUG (ttmlparse, "Element end: %" GST_TIME_FORMAT,
-        GST_TIME_ARGS (element->end));
-  if (element->text) {
-    GST_CAT_DEBUG (ttmlparse, "Element text: %s", element->text);
-    GST_CAT_DEBUG (ttmlparse, "Element text index: %u", element->text_index);
-  }
-}
-
-
-static void
 ttml_print_style_set (TtmlStyleSet * set)
 {
   if (!set) {
