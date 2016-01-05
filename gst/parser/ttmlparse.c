@@ -44,7 +44,7 @@
 
 GST_DEBUG_CATEGORY_STATIC (ttmlparse);
 
-gchar * ttml_get_xml_property (const xmlNode * node, const char * name);
+static gchar * ttml_get_xml_property (const xmlNode * node, const char * name);
 
 
 static guint8
@@ -335,7 +335,7 @@ ttml_delete_element (TtmlElement * element)
 }
 
 
-gchar *
+static gchar *
 ttml_get_xml_property (const xmlNode * node, const char *name)
 {
   xmlChar *xml_string = NULL;
