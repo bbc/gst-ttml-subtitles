@@ -19,6 +19,10 @@
     <xi:include href="xml/gstsubtitle.xml"/>
     <xi:include href="xml/gstsubtitlemeta.xml"/>
   </chapter>
+  <chapter>
+    <title>TTML subtitling elements</title>
+    <xi:include href="xml/element-ttmlrender.xml"/>
+  </chapter>
   <chapter id="object-tree">
     <title>Object Hierarchy</title>
     <xi:include href="xml/tree_index.sgml"/>

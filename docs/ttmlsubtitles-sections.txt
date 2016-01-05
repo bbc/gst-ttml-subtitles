@@ -48,3 +48,13 @@ GST_SUBTITLE_META_API_TYPE
 GST_SUBTITLE_META_INFO
 gst_subtitle_meta_get_info
 </SECTION>
+
+<SECTION>
+<FILE>element-ttmlrender</FILE>
+<TITLE>ttmlrender</TITLE>
+GstTtmlRender
+<SUBSECTION Standard>
+GstTtmlRenderClass
+GST_TYPE_TTML_RENDER
+gst_ttml_render_get_type
+</SECTION>
