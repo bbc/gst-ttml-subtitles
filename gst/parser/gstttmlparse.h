@@ -26,7 +26,6 @@
 #include <gst/base/gstadapter.h>
 
 GST_DEBUG_CATEGORY_EXTERN (ttml_parse_debug);
-GST_DEBUG_CATEGORY_EXTERN (ttml_parse_debug_ebutt);
 #define GST_CAT_DEFAULT ttml_parse_debug
 
 G_BEGIN_DECLS
