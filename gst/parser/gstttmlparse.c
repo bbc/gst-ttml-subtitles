@@ -20,6 +20,29 @@
  * Boston, MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:element-ttmlparse
+ *
+ * Parses timed text subtitle files described using Timed Text Markup Language
+ * (TTML). Currently, only the EBU-TT-D profile of TTML, designed for
+ * distribution of subtitles over IP, is supported.
+ *
+ * The parser outputs a #GstBuffer for each scene in the input TTML file, a
+ * scene being a period of time during which a static set of subtitles should
+ * be visible. The parser places each text element within a scene into its own
+ * #GstMemory within the scene's buffer, and attaches metadata to the buffer
+ * describing the styling and layout associated with all the contained text
+ * elements. A downstream renderer element uses this information to correctly
+ * render the text on top of video frames.
+ *
+ * <refsect2>
+ * <title>Example launch lines</title>
+ * |[
+ * gst-launch-1.0 filesrc location=<media file location> ! video/quicktime ! qtdemux name=q ttmlrender name=r q. ! queue ! h264parse ! avdec_h264 ! autovideoconvert ! r.video_sink filesrc location=<subtitle file location> blocksize=16777216 ! queue ! ttmlparse ! r.text_sink r. ! ximagesink q. ! queue ! aacparse ! avdec_aac ! audioconvert ! alsasink
+ * ]| Parse and render TTML subtitles contained in a single XML file over an
+ * MP4 stream containing H.264 video and AAC audio.
+ * </refsect2>
+ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

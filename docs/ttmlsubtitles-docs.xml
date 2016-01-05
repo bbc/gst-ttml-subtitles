@@ -21,6 +21,7 @@
   </chapter>
   <chapter>
     <title>TTML subtitling elements</title>
+    <xi:include href="xml/element-ttmlparse.xml"/>
     <xi:include href="xml/element-ttmlrender.xml"/>
   </chapter>
   <chapter id="object-tree">

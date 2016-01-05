@@ -50,6 +50,16 @@ gst_subtitle_meta_get_info
 </SECTION>
 
 <SECTION>
+<FILE>element-ttmlparse</FILE>
+<TITLE>ttmlparse</TITLE>
+GstTtmlRender
+<SUBSECTION Standard>
+GstTtmlRenderClass
+GST_TYPE_TTML_PARSE
+gst_ttml_parse_get_type
+</SECTION>
+
+<SECTION>
 <FILE>element-ttmlrender</FILE>
 <TITLE>ttmlrender</TITLE>
 GstTtmlRender
