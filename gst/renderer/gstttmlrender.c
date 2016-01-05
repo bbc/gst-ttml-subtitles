@@ -46,10 +46,13 @@
 
 #include <gst/video/video.h>
 #include <gst/video/gstvideometa.h>
+#include <gst/video/video-overlay-composition.h>
 
-#include "gstttmlrender.h"
 #include <string.h>
 #include <math.h>
+
+#include "gstttmlrender.h"
+#include <gst/subtitle/subtitle.h>
 
 GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 

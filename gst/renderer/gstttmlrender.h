@@ -28,8 +28,6 @@
 
 #include <gst/gst.h>
 #include <gst/video/video.h>
-#include <gst/video/video-overlay-composition.h>
-#include <gst/subtitle/subtitle.h>
 #include <pango/pangocairo.h>
 
 G_BEGIN_DECLS
