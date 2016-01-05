@@ -19,15 +19,6 @@
  * Boston, MA 02110-1301, USA.
  */
 
-/**
- * P. TAYLOUR CHANGE LOG
- * ----------------------
- *
- * Added in GST_TTML_PARSE_FORMAT_TTML = 11 to the enum
- * in the .c file, added in support for GST_TTML_PARSE_FORMAT_TTML.
- *
- */
-
 #ifndef __GST_TTMLPARSE_H__
 #define __GST_TTMLPARSE_H__
 
