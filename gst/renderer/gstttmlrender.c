@@ -1697,9 +1697,7 @@ gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
 
       rect_width = (area_end - area_start);
 
-      if (rect_width > 0    /* <br>s will result in zero-width rectangle */
-          && !gst_ttml_render_color_is_transparent (
-            &element->style_set->background_color)) {
+      if (rect_width > 0) {     /* <br>s will result in zero-width rectangle */
         GstTtmlRenderRenderedImage *image, *tmp;
         rectangle = gst_ttml_render_draw_rectangle (rect_width, line_height,
             element->style_set->background_color);
