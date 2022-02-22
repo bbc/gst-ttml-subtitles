@@ -2,7 +2,7 @@ plugin_LTLIBRARIES = libgstttmlrender.la
 
 # sources used to compile this plug-in
 libgstttmlrender_la_SOURCES = \
-	gstttmlrender.c
+	gstttmlrender.cpp
 
 # compiler and linker flags used to compile this plugin, set in configure.ac
 libgstttmlrender_la_CFLAGS = \

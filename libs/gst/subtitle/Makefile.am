@@ -1,8 +1,8 @@
 lib_LTLIBRARIES = libgstsubtitle-@GST_API_VERSION@.la
 
 libgstsubtitle_@GST_API_VERSION@_la_SOURCES = \
-	gstsubtitle.c \
-	gstsubtitlemeta.c
+	gstsubtitle.cpp \
+	gstsubtitlemeta.cpp
 
 libgstsubtitle_@GST_API_VERSION@includedir = \
 	$(includedir)/gstreamer-@GST_API_VERSION@/gst/subtitle
