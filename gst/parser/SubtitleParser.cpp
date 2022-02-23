@@ -12,6 +12,5 @@ clc_Result Parser::Parse(const clc::String& doc, timedText::SubtitlesFormat form
 	this->pool.setCurrentTrackIndex(defaultTrackId);
 	this->scenesHandler = std::make_unique<SubtitleParserUtils::ScenesHandler>(pool);
 	
-	auto ret = this->scenesHandler->createScenes();
-	return ret;
+	return this->scenesHandler->createScenes();
 }

@@ -31,7 +31,7 @@ namespace {
 				return color2;
 		}
 
-		void StyleUtils::updateRegionStyleSet(GstSubtitleStyleSet* style_set, const timedText::RegionStyle& tt_style_set)
+		void updateRegionStyleSet(GstSubtitleStyleSet* style_set, const timedText::RegionStyle& tt_style_set)
 		{
 			if(tt_style_set.backgroundColorARGB != 0)
 				style_set->background_color = StyleUtils::ARGBColorToGstSubtileColor(tt_style_set.backgroundColorARGB);
@@ -106,7 +106,7 @@ namespace {
 				style_set->overflow = GST_SUBTITLE_OVERFLOW_MODE_VISIBLE;
 		}
 
-		void StyleUtils::updateBlockStyleSet(GstSubtitleStyleSet* style_set, const timedText::PStyle& tt_style_set,
+		void updateBlockStyleSet(GstSubtitleStyleSet* style_set, const timedText::PStyle& tt_style_set,
 			uint64_t cellColumns, uint64_t cellRows)
 		{
 			style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;
@@ -149,7 +149,7 @@ namespace {
 				style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_START;
 		}
 
-		void StyleUtils::updateElementStyleSet(GstSubtitleStyleSet* style_set, const timedText::SpanStyle& tt_style_set,
+		void updateElementStyleSet(GstSubtitleStyleSet* style_set, const timedText::SpanStyle& tt_style_set,
 			uint64_t cellColumns, uint64_t cellRows)
 		{
 			//hardcode			

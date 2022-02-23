@@ -3,8 +3,6 @@
 #include "SubtitleParserUtils.h"
 #include <gst/subtitle/subtitle.h>
 
-GST_DEBUG_CATEGORY_STATIC(ttmlparse);
-
 namespace SubtitleParser
 {
 	static const size_t defaultTrackId = 0;
