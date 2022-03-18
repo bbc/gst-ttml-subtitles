@@ -28,11 +28,10 @@
 
 #include "gstsubtitlemeta.h"
 
-GType
-gst_subtitle_meta_api_get_type (void)
+GType gst_subtitle_meta_api_get_type (void)
 {
   static volatile GType type;
-  static const gchar *tags[] = { "memory", NULL };
+  static const gchar* tags[] = { "memory", NULL };
 
   if (g_once_init_enter (&type)) {
     GType _type = gst_meta_api_type_register ("GstSubtitleMetaAPI", tags);
@@ -42,33 +41,32 @@ gst_subtitle_meta_api_get_type (void)
 }
 
 gboolean
-gst_subtitle_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
+gst_subtitle_meta_init (GstMeta* meta, gpointer params, GstBuffer* buffer)
 {
-  GstSubtitleMeta *subtitle_meta = (GstSubtitleMeta *) meta;
+  GstSubtitleMeta* subtitle_meta = (GstSubtitleMeta*) meta;
 
   subtitle_meta->regions = NULL;
   return TRUE;
 }
 
-void
-gst_subtitle_meta_free (GstMeta * meta, GstBuffer * buffer)
+void gst_subtitle_meta_free (GstMeta* meta, GstBuffer* buffer)
 {
-  GstSubtitleMeta *subtitle_meta = (GstSubtitleMeta *) meta;
+  GstSubtitleMeta* subtitle_meta = (GstSubtitleMeta*) meta;
 
   if (subtitle_meta->regions)
     g_ptr_array_unref (subtitle_meta->regions);
 }
 
-const GstMetaInfo *
+const GstMetaInfo*
 gst_subtitle_meta_get_info (void)
 {
-  static const GstMetaInfo *subtitle_meta_info = NULL;
+  static const GstMetaInfo* subtitle_meta_info = NULL;
 
   if (g_once_init_enter (&subtitle_meta_info)) {
-    const GstMetaInfo *meta =
+    const GstMetaInfo* meta =
         gst_meta_register (GST_SUBTITLE_META_API_TYPE, "GstSubtitleMeta",
-          sizeof (GstSubtitleMeta), gst_subtitle_meta_init,
-          gst_subtitle_meta_free, (GstMetaTransformFunction) NULL);
+            sizeof (GstSubtitleMeta), gst_subtitle_meta_init,
+            gst_subtitle_meta_free, (GstMetaTransformFunction) NULL);
     g_once_init_leave (&subtitle_meta_info, meta);
   }
   return subtitle_meta_info;
@@ -85,15 +83,15 @@ gst_subtitle_meta_get_info (void)
  * Returns: A pointer to the added #GstSubtitleMeta if successful; %NULL if
  * unsuccessful.
  */
-GstSubtitleMeta *
-gst_buffer_add_subtitle_meta (GstBuffer * buffer, GPtrArray * regions)
+GstSubtitleMeta*
+gst_buffer_add_subtitle_meta (GstBuffer* buffer, GPtrArray* regions)
 {
-  GstSubtitleMeta *meta;
+  GstSubtitleMeta* meta;
 
   g_return_val_if_fail (GST_IS_BUFFER (buffer), NULL);
   g_return_val_if_fail (regions != NULL, NULL);
 
-  meta = (GstSubtitleMeta *) gst_buffer_add_meta (buffer,
+  meta = (GstSubtitleMeta*) gst_buffer_add_meta (buffer,
       GST_SUBTITLE_META_INFO, NULL);
 
   meta->regions = regions;

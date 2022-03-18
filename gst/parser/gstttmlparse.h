@@ -47,7 +47,7 @@ typedef struct _GstTtmlParseClass GstTtmlParseClass;
 /* format enum */
 typedef enum
 {
-  GST_TTML_PARSE_FORMAT_UNKNOWN   = 0,
+  GST_TTML_PARSE_FORMAT_UNKNOWN = 0,
   //GST_TTML_PARSE_FORMAT_MDVDSUB   = 1,
   //GST_TTML_PARSE_FORMAT_SUBRIP    = 2,
   //GST_TTML_PARSE_FORMAT_MPSUB     = 3,
@@ -58,36 +58,36 @@ typedef enum
   //GST_TTML_PARSE_FORMAT_DKS       = 8,
   //GST_TTML_PARSE_FORMAT_QTTEXT    = 9,
   //GST_TTML_PARSE_FORMAT_LRC       = 10,
-  GST_TTML_PARSE_FORMAT_TTML     = 11
+  GST_TTML_PARSE_FORMAT_TTML = 11
 } GstTtmlParseFormat;
 
 typedef struct {
-  int      state;
-  GString *buf;
-  guint64  start_time;
-  guint64  duration;
-  guint64  max_duration; /* to clamp duration, 0 = no limit (used by tmplayer parser) */
-  GstSegment *segment;
+  int state;
+  GString* buf;
+  guint64 start_time;
+  guint64 duration;
+  guint64 max_duration; /* to clamp duration, 0 = no limit (used by tmplayer parser) */
+  GstSegment* segment;
   gpointer user_data;
   gboolean have_internal_fps; /* If TRUE don't overwrite fps by property */
-  gint fps_n, fps_d;     /* used by frame based parsers */
+  gint fps_n, fps_d;          /* used by frame based parsers */
 } ParserState;
 
-typedef gchar* (*Parser) (ParserState *state, const gchar *line);
+typedef gchar* (*Parser) (ParserState* state, const gchar* line);
 
 struct _GstTtmlParse {
   GstElement element;
 
-  GstPad *sinkpad,*srcpad;
+  GstPad *sinkpad, *srcpad;
 
   /* contains the input in the input encoding */
-  GstAdapter *adapter;
+  GstAdapter* adapter;
   /* contains the UTF-8 decoded input */
-  GString *textbuf;
+  GString* textbuf;
 
   GstTtmlParseFormat parser_type;
   gboolean parser_detected;
-  const gchar *subtitle_codec;
+  const gchar* subtitle_codec;
 
   Parser parse_line;
   ParserState state;
@@ -96,13 +96,13 @@ struct _GstTtmlParse {
   guint64 offset;
 
   /* Segment */
-  GstSegment    segment;
-  gboolean      need_segment;
+  GstSegment segment;
+  gboolean need_segment;
 
   gboolean flushing;
   gboolean valid_utf8;
-  gchar   *detected_encoding;
-  gchar   *encoding;
+  gchar* detected_encoding;
+  gchar* encoding;
 
   gboolean first_buffer;
 

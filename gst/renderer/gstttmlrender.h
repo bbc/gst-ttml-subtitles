@@ -32,19 +32,19 @@
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_TTML_RENDER            (gst_ttml_render_get_type())
-#define GST_TTML_RENDER(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj),\
-                                         GST_TYPE_TTML_RENDER, GstTtmlRender))
-#define GST_TTML_RENDER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass),\
-                                         GST_TYPE_TTML_RENDER, \
-                                         GstTtmlRenderClass))
-#define GST_TTML_RENDER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),\
-                                         GST_TYPE_TTML_RENDER, \
-                                         GstTtmlRenderClass))
-#define GST_IS_TTML_RENDER(obj)         (G_TYPE_CHECK_INSTANCE_TYPE((obj),\
-                                         GST_TYPE_TTML_RENDER))
-#define GST_IS_TTML_RENDER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass),\
-                                         GST_TYPE_TTML_RENDER))
+#define GST_TYPE_TTML_RENDER (gst_ttml_render_get_type ())
+#define GST_TTML_RENDER(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), \
+    GST_TYPE_TTML_RENDER, GstTtmlRender))
+#define GST_TTML_RENDER_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), \
+    GST_TYPE_TTML_RENDER,                                               \
+    GstTtmlRenderClass))
+#define GST_TTML_RENDER_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), \
+    GST_TYPE_TTML_RENDER,                                                 \
+    GstTtmlRenderClass))
+#define GST_IS_TTML_RENDER(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), \
+    GST_TYPE_TTML_RENDER))
+#define GST_IS_TTML_RENDER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), \
+    GST_TYPE_TTML_RENDER))
 
 typedef struct _GstTtmlRender GstTtmlRender;
 typedef struct _GstTtmlRenderClass GstTtmlRenderClass;
@@ -52,7 +52,7 @@ typedef struct _GstTtmlRenderRenderedImage GstTtmlRenderRenderedImage;
 typedef struct _GstTtmlRenderRenderedText GstTtmlRenderRenderedText;
 
 struct _GstTtmlRenderRenderedImage {
-  GstBuffer *image;
+  GstBuffer* image;
   gint x;
   gint y;
   guint width;
@@ -60,12 +60,12 @@ struct _GstTtmlRenderRenderedImage {
 };
 
 struct _GstTtmlRenderRenderedText {
-  GstTtmlRenderRenderedImage *text_image;
+  GstTtmlRenderRenderedImage* text_image;
 
   /* In order to get the positions of characters within a paragraph rendered by
    * pango we need to retain a reference to the PangoLayout object that was
    * used to render that paragraph. */
-  PangoLayout *layout;
+  PangoLayout* layout;
 
   /* The coordinates in @layout will be offset horizontally with respect to the
    * position of those characters in @text_image. Store that offset here so
@@ -74,50 +74,50 @@ struct _GstTtmlRenderRenderedText {
   guint horiz_offset;
 };
 
-
 struct _GstTtmlRender {
-    GstElement               element;
 
-    GstPad                  *video_sinkpad;
-    GstPad                  *text_sinkpad;
-    GstPad                  *srcpad;
+  GstElement element;
 
-    GstSegment               segment;
-    GstSegment               text_segment;
-    GstBuffer               *text_buffer;
-    gboolean                text_linked;
-    gboolean                video_flushing;
-    gboolean                video_eos;
-    gboolean                text_flushing;
-    gboolean                text_eos;
+  GstPad* video_sinkpad;
+  GstPad* text_sinkpad;
+  GstPad* srcpad;
 
-    GMutex                   lock;
-    GCond                    cond;  /* to signal removal of a queued text
+  GstSegment segment;
+  GstSegment text_segment;
+  GstBuffer* text_buffer;
+  gboolean text_linked;
+  gboolean video_flushing;
+  gboolean video_eos;
+  gboolean text_flushing;
+  gboolean text_eos;
+
+  GMutex lock;
+  GCond cond; /* to signal removal of a queued text
                                      * buffer, arrival of a text buffer,
                                      * a text segment update, or a change
                                      * in status (e.g. shutdown, flushing) */
 
-    GstVideoInfo             info;
-    GstVideoFormat           format;
-    gint                     width;
-    gint                     height;
+  GstVideoInfo info;
+  GstVideoFormat format;
+  gint width;
+  gint height;
 
-    gboolean                 want_background;
-    gboolean                 wait_text;
+  gboolean want_background;
+  gboolean wait_text;
 
-    gboolean                 need_render;
+  gboolean need_render;
 
-    GList * compositions;
+  GList* compositions;
 };
 
 struct _GstTtmlRenderClass {
-    GstElementClass parent_class;
+  GstElementClass parent_class;
 
-    PangoContext *pango_context;
-    GMutex       *pango_lock;
+  PangoContext* pango_context;
+  GMutex* pango_lock;
 };
 
-GType gst_ttml_render_get_type(void) G_GNUC_CONST;
+GType gst_ttml_render_get_type (void) G_GNUC_CONST;
 
 G_END_DECLS
 

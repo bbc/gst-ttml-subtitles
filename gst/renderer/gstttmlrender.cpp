@@ -63,98 +63,91 @@ GST_DEBUG_CATEGORY_STATIC (ttmlrender);
 
 #define TTML_RENDER_CAPS GST_VIDEO_CAPS_MAKE (VIDEO_FORMATS)
 
-#define TTML_RENDER_ALL_CAPS TTML_RENDER_CAPS ";" \
-    GST_VIDEO_CAPS_MAKE_WITH_FEATURES ("ANY", GST_VIDEO_FORMATS_ALL)
+#define TTML_RENDER_ALL_CAPS TTML_RENDER_CAPS ";" GST_VIDEO_CAPS_MAKE_WITH_FEATURES ("ANY", GST_VIDEO_FORMATS_ALL)
 
 static GstStaticCaps sw_template_caps =
-GST_STATIC_CAPS (TTML_RENDER_CAPS);
+    GST_STATIC_CAPS (TTML_RENDER_CAPS);
 
 static GstStaticPadTemplate src_template_factory =
-GST_STATIC_PAD_TEMPLATE ("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TTML_RENDER_ALL_CAPS)
-    );
+    GST_STATIC_PAD_TEMPLATE ("src",
+        GST_PAD_SRC,
+        GST_PAD_ALWAYS,
+        GST_STATIC_CAPS (TTML_RENDER_ALL_CAPS));
 
 static GstStaticPadTemplate video_sink_template_factory =
-GST_STATIC_PAD_TEMPLATE ("video_sink",
-    GST_PAD_SINK,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TTML_RENDER_ALL_CAPS)
-    );
+    GST_STATIC_PAD_TEMPLATE ("video_sink",
+        GST_PAD_SINK,
+        GST_PAD_ALWAYS,
+        GST_STATIC_CAPS (TTML_RENDER_ALL_CAPS));
 
 static GstStaticPadTemplate text_sink_template_factory =
-GST_STATIC_PAD_TEMPLATE ("text_sink",
-    GST_PAD_SINK,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)")
-    );
-
+    GST_STATIC_PAD_TEMPLATE ("text_sink",
+        GST_PAD_SINK,
+        GST_PAD_ALWAYS,
+        GST_STATIC_CAPS ("text/x-raw(meta:GstSubtitleMeta)"));
 
 #define GST_TTML_RENDER_GET_LOCK(ov) (&GST_TTML_RENDER (ov)->lock)
 #define GST_TTML_RENDER_GET_COND(ov) (&GST_TTML_RENDER (ov)->cond)
-#define GST_TTML_RENDER_LOCK(ov)     (g_mutex_lock (GST_TTML_RENDER_GET_LOCK (ov)))
-#define GST_TTML_RENDER_UNLOCK(ov)   (g_mutex_unlock (GST_TTML_RENDER_GET_LOCK (ov)))
-#define GST_TTML_RENDER_WAIT(ov)     (g_cond_wait (GST_TTML_RENDER_GET_COND (ov), GST_TTML_RENDER_GET_LOCK (ov)))
-#define GST_TTML_RENDER_SIGNAL(ov)   (g_cond_signal (GST_TTML_RENDER_GET_COND (ov)))
-#define GST_TTML_RENDER_BROADCAST(ov)(g_cond_broadcast (GST_TTML_RENDER_GET_COND (ov)))
+#define GST_TTML_RENDER_LOCK(ov) (g_mutex_lock (GST_TTML_RENDER_GET_LOCK (ov)))
+#define GST_TTML_RENDER_UNLOCK(ov) (g_mutex_unlock (GST_TTML_RENDER_GET_LOCK (ov)))
+#define GST_TTML_RENDER_WAIT(ov) (g_cond_wait (GST_TTML_RENDER_GET_COND (ov), GST_TTML_RENDER_GET_LOCK (ov)))
+#define GST_TTML_RENDER_SIGNAL(ov) (g_cond_signal (GST_TTML_RENDER_GET_COND (ov)))
+#define GST_TTML_RENDER_BROADCAST(ov) (g_cond_broadcast (GST_TTML_RENDER_GET_COND (ov)))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass* parent_class = NULL;
 static void gst_ttml_render_base_init (gpointer g_class);
-static void gst_ttml_render_class_init (GstTtmlRenderClass * klass);
-static void gst_ttml_render_init (GstTtmlRender * render,
-    GstTtmlRenderClass * klass);
+static void gst_ttml_render_class_init (GstTtmlRenderClass* klass);
+static void gst_ttml_render_init (GstTtmlRender* render,
+    GstTtmlRenderClass* klass);
 
-static GstStateChangeReturn gst_ttml_render_change_state (GstElement *
-    element, GstStateChange transition);
+static GstStateChangeReturn gst_ttml_render_change_state (GstElement*
+                                                              element,
+    GstStateChange transition);
 
-static GstCaps *gst_ttml_render_get_videosink_caps (GstPad * pad,
-    GstTtmlRender * render, GstCaps * filter);
-static GstCaps *gst_ttml_render_get_src_caps (GstPad * pad,
-    GstTtmlRender * render, GstCaps * filter);
-static gboolean gst_ttml_render_setcaps (GstTtmlRender * render,
-    GstCaps * caps);
-static gboolean gst_ttml_render_src_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
-static gboolean gst_ttml_render_src_query (GstPad * pad,
-    GstObject * parent, GstQuery * query);
+static GstCaps* gst_ttml_render_get_videosink_caps (GstPad* pad,
+    GstTtmlRender* render, GstCaps* filter);
+static GstCaps* gst_ttml_render_get_src_caps (GstPad* pad,
+    GstTtmlRender* render, GstCaps* filter);
+static gboolean gst_ttml_render_setcaps (GstTtmlRender* render,
+    GstCaps* caps);
+static gboolean gst_ttml_render_src_event (GstPad* pad,
+    GstObject* parent, GstEvent* event);
+static gboolean gst_ttml_render_src_query (GstPad* pad,
+    GstObject* parent, GstQuery* query);
 
-static gboolean gst_ttml_render_video_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
-static gboolean gst_ttml_render_video_query (GstPad * pad,
-    GstObject * parent, GstQuery * query);
-static GstFlowReturn gst_ttml_render_video_chain (GstPad * pad,
-    GstObject * parent, GstBuffer * buffer);
+static gboolean gst_ttml_render_video_event (GstPad* pad,
+    GstObject* parent, GstEvent* event);
+static gboolean gst_ttml_render_video_query (GstPad* pad,
+    GstObject* parent, GstQuery* query);
+static GstFlowReturn gst_ttml_render_video_chain (GstPad* pad,
+    GstObject* parent, GstBuffer* buffer);
 
-static gboolean gst_ttml_render_text_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
-static GstFlowReturn gst_ttml_render_text_chain (GstPad * pad,
-    GstObject * parent, GstBuffer * buffer);
-static GstPadLinkReturn gst_ttml_render_text_pad_link (GstPad * pad,
-    GstObject * parent, GstPad * peer);
-static void gst_ttml_render_text_pad_unlink (GstPad * pad,
-    GstObject * parent);
-static void gst_ttml_render_pop_text (GstTtmlRender * render);
+static gboolean gst_ttml_render_text_event (GstPad* pad,
+    GstObject* parent, GstEvent* event);
+static GstFlowReturn gst_ttml_render_text_chain (GstPad* pad,
+    GstObject* parent, GstBuffer* buffer);
+static GstPadLinkReturn gst_ttml_render_text_pad_link (GstPad* pad,
+    GstObject* parent, GstPad* peer);
+static void gst_ttml_render_text_pad_unlink (GstPad* pad,
+    GstObject* parent);
+static void gst_ttml_render_pop_text (GstTtmlRender* render);
 
-static void gst_ttml_render_finalize (GObject * object);
+static void gst_ttml_render_finalize (GObject* object);
 
-static gboolean gst_ttml_render_can_handle_caps (GstCaps * incaps);
+static gboolean gst_ttml_render_can_handle_caps (GstCaps* incaps);
 
-
-static GstTtmlRenderRenderedImage * gst_ttml_render_rendered_image_new (GstBuffer * image,
+static GstTtmlRenderRenderedImage* gst_ttml_render_rendered_image_new (GstBuffer* image,
     gint x, gint y, guint width, guint height);
-static GstTtmlRenderRenderedImage * gst_ttml_render_rendered_image_new_empty ();
-static GstTtmlRenderRenderedImage * gst_ttml_render_rendered_image_copy
-(GstTtmlRenderRenderedImage * image);
+static GstTtmlRenderRenderedImage* gst_ttml_render_rendered_image_new_empty ();
+static GstTtmlRenderRenderedImage* gst_ttml_render_rendered_image_copy (GstTtmlRenderRenderedImage* image);
 static void gst_ttml_render_rendered_image_free (
-    GstTtmlRenderRenderedImage * image);
+    GstTtmlRenderRenderedImage* image);
 
-GType
-gst_ttml_render_get_type (void)
+GType gst_ttml_render_get_type (void)
 {
   static GType type = 0;
 
-  if (g_once_init_enter ((gsize *) & type)) {
+  if (g_once_init_enter ((gsize*) &type)) {
     static const GTypeInfo info = {
       sizeof (GstTtmlRenderClass),
       (GBaseInitFunc) gst_ttml_render_base_init,
@@ -167,9 +160,9 @@ gst_ttml_render_get_type (void)
       (GInstanceInitFunc) gst_ttml_render_init,
     };
 
-    g_once_init_leave ((gsize *) & type,
+    g_once_init_leave ((gsize*) &type,
         g_type_register_static (GST_TYPE_ELEMENT, "GstTtmlRender", &info,
-            (GTypeFlags)0));
+            (GTypeFlags) 0));
   }
 
   return type;
@@ -178,8 +171,8 @@ gst_ttml_render_get_type (void)
 static void
 gst_ttml_render_base_init (gpointer g_class)
 {
-  GstTtmlRenderClass *klass = GST_TTML_RENDER_CLASS (g_class);
-  PangoFontMap *fontmap;
+  GstTtmlRenderClass* klass = GST_TTML_RENDER_CLASS (g_class);
+  PangoFontMap* fontmap;
 
   /* Only lock for the subclasses here, the base class
    * doesn't have this mutex yet and it's not necessary
@@ -194,15 +187,15 @@ gst_ttml_render_base_init (gpointer g_class)
 }
 
 static void
-gst_ttml_render_class_init (GstTtmlRenderClass * klass)
+gst_ttml_render_class_init (GstTtmlRenderClass* klass)
 {
-  GObjectClass *gobject_class;
-  GstElementClass *gstelement_class;
+  GObjectClass* gobject_class;
+  GstElementClass* gstelement_class;
 
-  gobject_class = (GObjectClass *) klass;
-  gstelement_class = (GstElementClass *) klass;
+  gobject_class = (GObjectClass*) klass;
+  gstelement_class = (GstElementClass*) klass;
 
-  parent_class = (GstElementClass*)g_type_class_peek_parent (klass);
+  parent_class = (GstElementClass*) g_type_class_peek_parent (klass);
 
   gobject_class->finalize = gst_ttml_render_finalize;
 
@@ -227,9 +220,9 @@ gst_ttml_render_class_init (GstTtmlRenderClass * klass)
 }
 
 static void
-gst_ttml_render_finalize (GObject * object)
+gst_ttml_render_finalize (GObject* object)
 {
-  GstTtmlRender *render = GST_TTML_RENDER (object);
+  GstTtmlRender* render = GST_TTML_RENDER (object);
 
   if (render->compositions) {
     g_list_free_full (render->compositions,
@@ -249,10 +242,10 @@ gst_ttml_render_finalize (GObject * object)
 }
 
 static void
-gst_ttml_render_init (GstTtmlRender * render,
-    GstTtmlRenderClass * klass)
+gst_ttml_render_init (GstTtmlRender* render,
+    GstTtmlRenderClass* klass)
 {
-  GstPadTemplate *gstTemplate;
+  GstPadTemplate* gstTemplate;
 
   /* video sink */
   gstTemplate = gst_static_pad_template_get (&video_sink_template_factory);
@@ -269,7 +262,7 @@ gst_ttml_render_init (GstTtmlRender * render,
 
   gstTemplate =
       gst_element_class_get_pad_template (GST_ELEMENT_CLASS (klass),
-      "text_sink");
+          "text_sink");
   if (gstTemplate) {
     /* text sink */
     render->text_sinkpad = gst_pad_new_from_template (gstTemplate, "text_sink");
@@ -310,17 +303,16 @@ gst_ttml_render_init (GstTtmlRender * render,
   g_mutex_unlock (GST_TTML_RENDER_GET_CLASS (render)->pango_lock);
 }
 
-
 /* only negotiate/query video render composition support for now */
 static gboolean
-gst_ttml_render_negotiate (GstTtmlRender * render, GstCaps * caps)
+gst_ttml_render_negotiate (GstTtmlRender* render, GstCaps* caps)
 {
-  GstQuery *query;
+  GstQuery* query;
   gboolean attach = FALSE;
   gboolean caps_has_meta = TRUE;
   gboolean ret;
-  GstCapsFeatures *f;
-  GstCaps *original_caps;
+  GstCapsFeatures* f;
+  GstCaps* original_caps;
   gboolean original_has_meta = FALSE;
   gboolean allocation_ret = TRUE;
 
@@ -342,10 +334,9 @@ gst_ttml_render_negotiate (GstTtmlRender * render, GstCaps * caps)
   /* if the caps doesn't have the render meta, we query if downstream
    * accepts it before trying the version without the meta
    * If upstream already is using the meta then we can only use it */
-  if (!f
-      || !gst_caps_features_contains (f,
-          GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION)) {
-    GstCaps *overlay_caps;
+  if (!f || !gst_caps_features_contains (f,
+                GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION)) {
+    GstCaps* overlay_caps;
 
     /* In this case we added the meta, but we can work without it
      * so preserve the original caps so we can use it as a fallback */
@@ -383,7 +374,7 @@ gst_ttml_render_negotiate (GstTtmlRender * render, GstCaps * caps)
     }
 
     if (caps_has_meta && gst_query_find_allocation_meta (query,
-            GST_VIDEO_OVERLAY_COMPOSITION_META_API_TYPE, NULL))
+                             GST_VIDEO_OVERLAY_COMPOSITION_META_API_TYPE, NULL))
       attach = TRUE;
 
     gst_query_unref (query);
@@ -413,19 +404,18 @@ gst_ttml_render_negotiate (GstTtmlRender * render, GstCaps * caps)
 
   return ret;
 
-no_format:
-  {
-    if (caps)
-      gst_caps_unref (caps);
-    return FALSE;
-  }
+no_format : {
+  if (caps)
+    gst_caps_unref (caps);
+  return FALSE;
+}
 }
 
 static gboolean
-gst_ttml_render_can_handle_caps (GstCaps * incaps)
+gst_ttml_render_can_handle_caps (GstCaps* incaps)
 {
   gboolean ret;
-  GstCaps *caps;
+  GstCaps* caps;
   static GstStaticCaps static_caps = GST_STATIC_CAPS (TTML_RENDER_CAPS);
 
   caps = gst_static_caps_get (&static_caps);
@@ -436,7 +426,7 @@ gst_ttml_render_can_handle_caps (GstCaps * incaps)
 }
 
 static gboolean
-gst_ttml_render_setcaps (GstTtmlRender * render, GstCaps * caps)
+gst_ttml_render_setcaps (GstTtmlRender* render, GstCaps* caps)
 {
   GstVideoInfo info;
   gboolean ret = FALSE;
@@ -464,26 +454,23 @@ gst_ttml_render_setcaps (GstTtmlRender * render, GstCaps * caps)
   return ret;
 
   /* ERRORS */
-invalid_caps:
-  {
-    GST_DEBUG_OBJECT (render, "could not parse caps");
-    return FALSE;
-  }
+invalid_caps : {
+  GST_DEBUG_OBJECT (render, "could not parse caps");
+  return FALSE;
+}
 }
 
-
 static gboolean
-gst_ttml_render_src_query (GstPad * pad, GstObject * parent,
-    GstQuery * query)
+gst_ttml_render_src_query (GstPad* pad, GstObject* parent,
+    GstQuery* query)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *render;
+  GstTtmlRender* render;
 
   render = GST_TTML_RENDER (parent);
 
   switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CAPS:
-    {
+    case GST_QUERY_CAPS: {
       GstCaps *filter, *caps;
 
       gst_query_parse_caps (query, &filter);
@@ -502,10 +489,10 @@ gst_ttml_render_src_query (GstPad * pad, GstObject * parent,
 }
 
 static gboolean
-gst_ttml_render_src_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_ttml_render_src_event (GstPad* pad, GstObject* parent,
+    GstEvent* event)
 {
-  GstTtmlRender *render;
+  GstTtmlRender* render;
   gboolean ret;
 
   render = GST_TTML_RENDER (parent);
@@ -530,18 +517,18 @@ gst_ttml_render_src_event (GstPad * pad, GstObject * parent,
  *
  * Returns: the new #GstCaps
  */
-static GstCaps *
-gst_ttml_render_add_feature_and_intersect (GstCaps * caps,
-    const gchar * feature, GstCaps * filter)
+static GstCaps*
+gst_ttml_render_add_feature_and_intersect (GstCaps* caps,
+    const gchar* feature, GstCaps* filter)
 {
   int i, caps_size;
-  GstCaps *new_caps;
+  GstCaps* new_caps;
 
   new_caps = gst_caps_copy (caps);
 
   caps_size = gst_caps_get_size (new_caps);
   for (i = 0; i < caps_size; i++) {
-    GstCapsFeatures *features = gst_caps_get_features (new_caps, i);
+    GstCapsFeatures* features = gst_caps_get_features (new_caps, i);
 
     if (!gst_caps_features_is_any (features)) {
       gst_caps_features_add (features, feature);
@@ -549,7 +536,7 @@ gst_ttml_render_add_feature_and_intersect (GstCaps * caps,
   }
 
   gst_caps_append (new_caps, gst_caps_intersect_full (caps,
-          filter, GST_CAPS_INTERSECT_FIRST));
+                                 filter, GST_CAPS_INTERSECT_FIRST));
 
   return new_caps;
 }
@@ -566,22 +553,22 @@ gst_ttml_render_add_feature_and_intersect (GstCaps * caps,
  *
  * Returns: the new #GstCaps
  */
-static GstCaps *
-gst_ttml_render_intersect_by_feature (GstCaps * caps,
-    const gchar * feature, GstCaps * filter)
+static GstCaps*
+gst_ttml_render_intersect_by_feature (GstCaps* caps,
+    const gchar* feature, GstCaps* filter)
 {
   int i, caps_size;
-  GstCaps *new_caps;
+  GstCaps* new_caps;
 
   new_caps = gst_caps_new_empty ();
 
   caps_size = gst_caps_get_size (caps);
   for (i = 0; i < caps_size; i++) {
-    GstStructure *caps_structure = gst_caps_get_structure (caps, i);
-    GstCapsFeatures *caps_features =
+    GstStructure* caps_structure = gst_caps_get_structure (caps, i);
+    GstCapsFeatures* caps_features =
         gst_caps_features_copy (gst_caps_get_features (caps, i));
-    GstCaps *filtered_caps;
-    GstCaps *simple_caps =
+    GstCaps* filtered_caps;
+    GstCaps* simple_caps =
         gst_caps_new_full (gst_structure_copy (caps_structure), NULL);
     gst_caps_set_features (simple_caps, 0, caps_features);
 
@@ -602,11 +589,11 @@ gst_ttml_render_intersect_by_feature (GstCaps * caps,
   return new_caps;
 }
 
-static GstCaps *
-gst_ttml_render_get_videosink_caps (GstPad * pad,
-    GstTtmlRender * render, GstCaps * filter)
+static GstCaps*
+gst_ttml_render_get_videosink_caps (GstPad* pad,
+    GstTtmlRender* render, GstCaps* filter)
 {
-  GstPad *srcpad = render->srcpad;
+  GstPad* srcpad = render->srcpad;
   GstCaps *peer_caps = NULL, *caps = NULL, *overlay_filter = NULL;
 
   if (G_UNLIKELY (!render))
@@ -615,7 +602,7 @@ gst_ttml_render_get_videosink_caps (GstPad * pad,
   if (filter) {
     /* filter caps + composition feature + filter caps
      * filtered by the software caps. */
-    GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
+    GstCaps* sw_caps = gst_static_caps_get (&sw_template_caps);
     overlay_filter = gst_ttml_render_add_feature_and_intersect (filter,
         GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
     gst_caps_unref (sw_caps);
@@ -640,7 +627,7 @@ gst_ttml_render_get_videosink_caps (GstPad * pad,
 
       /* duplicate caps which contains the composition into one version with
        * the meta and one without. Filter the other caps by the software caps */
-      GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
+      GstCaps* sw_caps = gst_static_caps_get (&sw_template_caps);
       caps = gst_ttml_render_intersect_by_feature (peer_caps,
           GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
       gst_caps_unref (sw_caps);
@@ -654,7 +641,7 @@ gst_ttml_render_get_videosink_caps (GstPad * pad,
   }
 
   if (filter) {
-    GstCaps *intersection = gst_caps_intersect_full (filter, caps,
+    GstCaps* intersection = gst_caps_intersect_full (filter, caps,
         GST_CAPS_INTERSECT_FIRST);
     gst_caps_unref (caps);
     caps = intersection;
@@ -665,11 +652,11 @@ gst_ttml_render_get_videosink_caps (GstPad * pad,
   return caps;
 }
 
-static GstCaps *
-gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
-    GstCaps * filter)
+static GstCaps*
+gst_ttml_render_get_src_caps (GstPad* pad, GstTtmlRender* render,
+    GstCaps* filter)
 {
-  GstPad *sinkpad = render->video_sinkpad;
+  GstPad* sinkpad = render->video_sinkpad;
   GstCaps *peer_caps = NULL, *caps = NULL, *overlay_filter = NULL;
 
   if (G_UNLIKELY (!render))
@@ -679,10 +666,10 @@ gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
     /* duplicate filter caps which contains the composition into one version
      * with the meta and one without. Filter the other caps by the software
      * caps */
-    GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
+    GstCaps* sw_caps = gst_static_caps_get (&sw_template_caps);
     overlay_filter =
         gst_ttml_render_intersect_by_feature (filter,
-        GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
+            GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
     gst_caps_unref (sw_caps);
   }
 
@@ -704,7 +691,7 @@ gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
 
       /* return upstream caps + composition feature + upstream caps
        * filtered by the software caps. */
-      GstCaps *sw_caps = gst_static_caps_get (&sw_template_caps);
+      GstCaps* sw_caps = gst_static_caps_get (&sw_template_caps);
       caps = gst_ttml_render_add_feature_and_intersect (peer_caps,
           GST_CAPS_FEATURE_META_GST_VIDEO_OVERLAY_COMPOSITION, sw_caps);
       gst_caps_unref (sw_caps);
@@ -718,7 +705,7 @@ gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
   }
 
   if (filter) {
-    GstCaps *intersection;
+    GstCaps* intersection;
 
     intersection =
         gst_caps_intersect_full (filter, caps, GST_CAPS_INTERSECT_FIRST);
@@ -730,13 +717,12 @@ gst_ttml_render_get_src_caps (GstPad * pad, GstTtmlRender * render,
   return caps;
 }
 
-
 static GstFlowReturn
-gst_ttml_render_push_frame (GstTtmlRender * render,
-    GstBuffer * video_frame)
+gst_ttml_render_push_frame (GstTtmlRender* render,
+    GstBuffer* video_frame)
 {
   GstVideoFrame frame;
-  GList *compositions = render->compositions;
+  GList* compositions = render->compositions;
 
   if (compositions == NULL) {
     GST_CAT_DEBUG (ttmlrender, "No compositions.");
@@ -753,7 +739,7 @@ gst_ttml_render_push_frame (GstTtmlRender * render,
     goto invalid_frame;
 
   while (compositions) {
-    GstVideoOverlayComposition *composition = (GstVideoOverlayComposition*)compositions->data;
+    GstVideoOverlayComposition* composition = (GstVideoOverlayComposition*) compositions->data;
     gst_video_overlay_composition_blend (composition, &frame);
     compositions = compositions->next;
   }
@@ -765,19 +751,18 @@ done:
   return gst_pad_push (render->srcpad, video_frame);
 
   /* ERRORS */
-invalid_frame:
-  {
-    gst_buffer_unref (video_frame);
-    GST_DEBUG_OBJECT (render, "received invalid buffer");
-    return GST_FLOW_OK;
-  }
+invalid_frame : {
+  gst_buffer_unref (video_frame);
+  GST_DEBUG_OBJECT (render, "received invalid buffer");
+  return GST_FLOW_OK;
+}
 }
 
 static GstPadLinkReturn
-gst_ttml_render_text_pad_link (GstPad * pad, GstObject * parent,
-    GstPad * peer)
+gst_ttml_render_text_pad_link (GstPad* pad, GstObject* parent,
+    GstPad* peer)
 {
-  GstTtmlRender *render;
+  GstTtmlRender* render;
 
   render = GST_TTML_RENDER (parent);
   if (G_UNLIKELY (!render))
@@ -791,9 +776,9 @@ gst_ttml_render_text_pad_link (GstPad * pad, GstObject * parent,
 }
 
 static void
-gst_ttml_render_text_pad_unlink (GstPad * pad, GstObject * parent)
+gst_ttml_render_text_pad_unlink (GstPad* pad, GstObject* parent)
 {
-  GstTtmlRender *render;
+  GstTtmlRender* render;
 
   /* don't use gst_pad_get_parent() here, will deadlock */
   render = GST_TTML_RENDER (parent);
@@ -806,20 +791,19 @@ gst_ttml_render_text_pad_unlink (GstPad * pad, GstObject * parent)
 }
 
 static gboolean
-gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_ttml_render_text_event (GstPad* pad, GstObject* parent,
+    GstEvent* event)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *render = NULL;
+  GstTtmlRender* render = NULL;
 
   render = GST_TTML_RENDER (parent);
 
   GST_LOG_OBJECT (pad, "received event %s", GST_EVENT_TYPE_NAME (event));
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_SEGMENT:
-    {
-      const GstSegment *segment;
+    case GST_EVENT_SEGMENT: {
+      const GstSegment* segment;
 
       render->text_eos = FALSE;
 
@@ -846,8 +830,7 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
       GST_TTML_RENDER_UNLOCK (render);
       break;
     }
-    case GST_EVENT_GAP:
-    {
+    case GST_EVENT_GAP: {
       GstClockTime start, duration;
 
       gst_event_parse_gap (event, &start, &duration);
@@ -907,20 +890,19 @@ gst_ttml_render_text_event (GstPad * pad, GstObject * parent,
 }
 
 static gboolean
-gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_ttml_render_video_event (GstPad* pad, GstObject* parent,
+    GstEvent* event)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *render = NULL;
+  GstTtmlRender* render = NULL;
 
   render = GST_TTML_RENDER (parent);
 
   GST_DEBUG_OBJECT (pad, "received event %s", GST_EVENT_TYPE_NAME (event));
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
+    case GST_EVENT_CAPS: {
+      GstCaps* caps;
       gint prev_width = render->width;
       gint prev_height = render->height;
 
@@ -931,9 +913,8 @@ gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
       gst_event_unref (event);
       break;
     }
-    case GST_EVENT_SEGMENT:
-    {
-      const GstSegment *segment;
+    case GST_EVENT_SEGMENT: {
+      const GstSegment* segment;
 
       GST_DEBUG_OBJECT (render, "received new segment");
 
@@ -985,17 +966,16 @@ gst_ttml_render_video_event (GstPad * pad, GstObject * parent,
 }
 
 static gboolean
-gst_ttml_render_video_query (GstPad * pad, GstObject * parent,
-    GstQuery * query)
+gst_ttml_render_video_query (GstPad* pad, GstObject* parent,
+    GstQuery* query)
 {
   gboolean ret = FALSE;
-  GstTtmlRender *render;
+  GstTtmlRender* render;
 
   render = GST_TTML_RENDER (parent);
 
   switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CAPS:
-    {
+    case GST_QUERY_CAPS: {
       GstCaps *filter, *caps;
 
       gst_query_parse_caps (query, &filter);
@@ -1015,7 +995,7 @@ gst_ttml_render_video_query (GstPad * pad, GstObject * parent,
 
 /* Called with lock held */
 static void
-gst_ttml_render_pop_text (GstTtmlRender * render)
+gst_ttml_render_pop_text (GstTtmlRender* render)
 {
   g_return_if_fail (GST_IS_TTML_RENDER (render));
 
@@ -1034,11 +1014,11 @@ gst_ttml_render_pop_text (GstTtmlRender * render)
    If the buffer is in our segment we keep it internally except if another one
    is already waiting here, in that case we wait that it gets kicked out */
 static GstFlowReturn
-gst_ttml_render_text_chain (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer)
+gst_ttml_render_text_chain (GstPad* pad, GstObject* parent,
+    GstBuffer* buffer)
 {
   GstFlowReturn ret = GST_FLOW_OK;
-  GstTtmlRender *render = NULL;
+  GstTtmlRender* render = NULL;
   gboolean in_seg = FALSE;
   guint64 clip_start = 0, clip_stop = 0;
 
@@ -1060,11 +1040,10 @@ gst_ttml_render_text_chain (GstPad * pad, GstObject * parent,
     goto beach;
   }
 
-  GST_LOG_OBJECT (render, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%"
-      GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &render->segment,
+  GST_LOG_OBJECT (render, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%" GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &render->segment,
       GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer)),
       GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer) +
-          GST_BUFFER_DURATION (buffer)));
+                     GST_BUFFER_DURATION (buffer)));
 
   if (G_LIKELY (GST_BUFFER_TIMESTAMP_IS_VALID (buffer))) {
     GstClockTime stop;
@@ -1117,12 +1096,11 @@ beach:
   return ret;
 }
 
-
 /* Free returned string after use. */
-static gchar *
+static gchar*
 gst_ttml_render_color_to_string (GstSubtitleColor color)
 {
-#if PANGO_VERSION_CHECK (1,38,0)
+#if PANGO_VERSION_CHECK(1, 38, 0)
   return g_strdup_printf ("#%02x%02x%02x%02x",
       color.r, color.g, color.b, color.a);
 #else
@@ -1130,14 +1108,13 @@ gst_ttml_render_color_to_string (GstSubtitleColor color)
 #endif
 }
 
-
-static GstBuffer *
+static GstBuffer*
 gst_ttml_render_draw_rectangle (guint width, guint height, GstSubtitleColor color)
 {
   GstMapInfo map;
-  cairo_surface_t *surface;
-  cairo_t *cairo_state;
-  GstBuffer *buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
+  cairo_surface_t* surface;
+  cairo_t* cairo_state;
+  GstBuffer* buffer = gst_buffer_new_allocate (NULL, 4 * width * height, NULL);
 
   gst_buffer_map (buffer, &map, GST_MAP_READWRITE);
   surface = cairo_image_surface_create_for_data (map.data,
@@ -1150,8 +1127,8 @@ gst_ttml_render_draw_rectangle (guint width, guint height, GstSubtitleColor colo
   cairo_set_operator (cairo_state, CAIRO_OPERATOR_OVER);
 
   cairo_save (cairo_state);
-  cairo_set_source_rgba (cairo_state, color.r/255.0, color.g/255.0,
-      color.b/255.0, color.a/255.0);
+  cairo_set_source_rgba (cairo_state, color.r / 255.0, color.g / 255.0,
+      color.b / 255.0, color.a / 255.0);
   cairo_paint (cairo_state);
   cairo_restore (cairo_state);
   cairo_destroy (cairo_state);
@@ -1161,44 +1138,43 @@ gst_ttml_render_draw_rectangle (guint width, guint height, GstSubtitleColor colo
   return buffer;
 }
 
-
 typedef struct {
   guint first_char;
   guint last_char;
 } TextRange;
 
 static void
-_text_range_free (TextRange * range)
+_text_range_free (TextRange* range)
 {
   g_slice_free (TextRange, range);
 }
 
-bool textOutlineIsEquel(const timedText::TextOutline& left, const timedText::TextOutline& right)
+bool textOutlineIsEquel (const timedText::TextOutline& left, const timedText::TextOutline& right)
 {
-    return left.blurRadius == right.blurRadius &&
-        left.colorARGB == right.colorARGB &&
-        left.thickness == right.thickness;
+  return left.blurRadius == right.blurRadius &&
+         left.colorARGB == right.colorARGB &&
+         left.thickness == right.thickness;
 }
 
-bool textOutlineIsDefault(const timedText::TextOutline& value)
+bool textOutlineIsDefault (const timedText::TextOutline& value)
 {
-    return textOutlineIsEquel(value, timedText::TextOutline());
+  return textOutlineIsEquel (value, timedText::TextOutline ());
 }
 
 /* From the elements within @block, generate a string of the subtitle text
  * marked-up using pango-markup. Also, store the ranges of characters belonging
  * to the text of each element in @text_ranges. */
-static gchar *
-gst_ttml_render_generate_marked_up_string (GstTtmlRender * render,
-    const GstSubtitleBlock * block, gdouble opacity, timedText::TextOutline& block_text_outline, GstBuffer * text_buf,
-    GPtrArray ** text_ranges)
+static gchar*
+gst_ttml_render_generate_marked_up_string (GstTtmlRender* render,
+    const GstSubtitleBlock* block, gdouble opacity, timedText::TextOutline& block_text_outline, GstBuffer* text_buf,
+    GPtrArray** text_ranges)
 {
-  const GstSubtitleElement *element;
-  GstMemory *mem;
+  const GstSubtitleElement* element;
+  GstMemory* mem;
   GstMapInfo map;
   gchar *buf_text, *joined_text, *old_text;
   gchar *fgcolor, *font_size, *font_family, *font_style, *font_weight,
-        *underline, *overline, *strikethrough;
+      *underline, *overline, *strikethrough;
 
   guint total_text_length = 0U;
   guint i;
@@ -1208,12 +1184,12 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender * render,
   if (*text_ranges != NULL)
     g_ptr_array_unref (*text_ranges);
   *text_ranges =
-    g_ptr_array_new_full (gst_subtitle_block_get_element_count (block),
-      (GDestroyNotify) _text_range_free);
-  
+      g_ptr_array_new_full (gst_subtitle_block_get_element_count (block),
+          (GDestroyNotify) _text_range_free);
+
   bool no_text_outline = false;
   for (i = 0; i < gst_subtitle_block_get_element_count (block); ++i) {
-    TextRange *range = g_slice_new0 (TextRange);
+    TextRange* range = g_slice_new0 (TextRange);
     element = gst_subtitle_block_get_element (block, i);
     mem = gst_buffer_get_memory (text_buf, element->text_index);
     if (!mem || !gst_memory_map (mem, &map, GST_MAP_READ)) {
@@ -1222,7 +1198,7 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender * render,
       continue;
     }
 
-    buf_text = g_strndup ((const gchar *)map.data, map.size);
+    buf_text = g_strndup ((const gchar*) map.data, map.size);
     if (!g_utf8_validate (buf_text, -1, NULL)) {
       GST_CAT_ERROR (ttmlrender, "Text in buffer us not valid UTF-8");
       gst_memory_unmap (mem, &map);
@@ -1233,73 +1209,71 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender * render,
     range->first_char = total_text_length;
 
     //set only if each element(a.k.a <span>) has the same non-default value of text outline
-    if(textOutlineIsDefault(element->style_set->text_outline))
-    {
-        block_text_outline = timedText::TextOutline();
-        no_text_outline = true;        
+    if (textOutlineIsDefault (element->style_set->text_outline)) {
+      block_text_outline = timedText::TextOutline ();
+      no_text_outline = true;
     }
 
-    if(!no_text_outline)
-    {
-        if(textOutlineIsDefault(block_text_outline))
-            block_text_outline = element->style_set->text_outline;
-        else if(!textOutlineIsEquel(block_text_outline, element->style_set->text_outline))
-        {
-            block_text_outline = timedText::TextOutline();
-            no_text_outline = true;
-        }
+    if (!no_text_outline) {
+      if (textOutlineIsDefault (block_text_outline))
+        block_text_outline = element->style_set->text_outline;
+      else if (!textOutlineIsEquel (block_text_outline, element->style_set->text_outline)) {
+        block_text_outline = timedText::TextOutline ();
+        no_text_outline = true;
+      }
     }
 
     //composition with region opacity
     element->style_set->color.a *= opacity;
     fgcolor = gst_ttml_render_color_to_string (element->style_set->color);
-   
-    timedText::PointPx screenSize(render->width, render->height);
+
+    timedText::PointPx screenSize (render->width, render->height);
 
     //ignore font width
-    font_size = g_strdup_printf ("%u",        
-        (gulong)(element->style_set->font_size.vertical.toPixel(screenSize)));
+    font_size = g_strdup_printf ("%u",
+        (gulong) (element->style_set->font_size.vertical.toPixel (screenSize)));
     font_family =
-      (g_strcmp0 (element->style_set->font_family, "default") == 0) ?
-      "Monospace" : element->style_set->font_family;
+        (g_strcmp0 (element->style_set->font_family, "default") == 0) ? "Monospace" : element->style_set->font_family;
 
-    if(element->style_set->font_style == GST_SUBTITLE_FONT_STYLE_ITALIC)
-        font_style = "italic"; 
-    else if(element->style_set->font_style == GST_SUBTITLE_FONT_STYLE_OBLIQUE)
-        font_style = "oblique"; 
+    if (element->style_set->font_style == GST_SUBTITLE_FONT_STYLE_ITALIC)
+      font_style = "italic";
+    else if (element->style_set->font_style == GST_SUBTITLE_FONT_STYLE_OBLIQUE)
+      font_style = "oblique";
     else
-        font_style = "normal";
+      font_style = "normal";
 
     font_weight =
-      (element->style_set->font_weight == GST_SUBTITLE_FONT_WEIGHT_NORMAL) ?
-      "normal" : "bold";
+        (element->style_set->font_weight == GST_SUBTITLE_FONT_WEIGHT_NORMAL) ? "normal" : "bold";
 
     underline = (element->style_set->text_decoration.isUnderline ? "single" : "none");
 
     //not supported yet
     //since pango 1.46
     //overline = (element->style_set->text_decoration.isOverline ? "single" : "none");
-    
+
     strikethrough = (element->style_set->text_decoration.isLineThrough ? "true" : "false");
- 
+
     old_text = joined_text;
     joined_text = g_strconcat (joined_text,
         "<span "
-          "fgcolor=\"", fgcolor, "\" ",
-          "font=\"", font_size, "px\" ",
-          "font_family=\"", font_family, "\" ",
-          "font_style=\"", font_style, "\" ",
-          "font_weight=\"", font_weight, "\" ",
-          "underline=\"", underline, "\" ",
-          //"overline=\"", overline, "\" ",
-          "strikethrough=\"", strikethrough, "\" ",
+        "fgcolor=\"",
+        fgcolor, "\" ",
+        "font=\"", font_size, "px\" ",
+        "font_family=\"", font_family, "\" ",
+        "font_style=\"", font_style, "\" ",
+        "font_weight=\"", font_weight, "\" ",
+        "underline=\"", underline, "\" ",
+        //"overline=\"", overline, "\" ",
+        "strikethrough=\"", strikethrough, "\" ",
         ">", buf_text, "</span>", NULL);
     GST_CAT_DEBUG (ttmlrender, "Joined text is now: %s", joined_text);
 
     total_text_length += strlen (buf_text);
     range->last_char = total_text_length - 1;
-    GST_CAT_DEBUG (ttmlrender, "First character index: %u; last character  "
-        "index: %u", range->first_char, range->last_char);
+    GST_CAT_DEBUG (ttmlrender,
+        "First character index: %u; last character  "
+        "index: %u",
+        range->first_char, range->last_char);
     g_ptr_array_insert (*text_ranges, i, range);
 
     g_free (old_text);
@@ -1313,262 +1287,261 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender * render,
   return joined_text;
 }
 
-void blur_image_surface(cairo_surface_t* surface, int radius)
+void blur_image_surface (cairo_surface_t* surface, int radius)
 {
-    cairo_surface_t* tmp;
-    int width, height;
-    int src_stride, dst_stride;
-    int x, y, z, w;
-    uint8_t* src, * dst;
-    uint32_t* s, * d, a, p;
-    int i, j, k;
-    uint8_t kernel[17];
-    const int size = ARRAY_LENGTH(kernel);
-    const int half = size / 2;
+  cairo_surface_t* tmp;
+  int width, height;
+  int src_stride, dst_stride;
+  int x, y, z, w;
+  uint8_t *src, *dst;
+  uint32_t *s, *d, a, p;
+  int i, j, k;
+  uint8_t kernel[17];
+  const int size = ARRAY_LENGTH (kernel);
+  const int half = size / 2;
 
-    if(cairo_surface_status(surface))
-        return;
+  if (cairo_surface_status (surface))
+    return;
 
-    width = cairo_image_surface_get_width(surface);
-    height = cairo_image_surface_get_height(surface);
+  width = cairo_image_surface_get_width (surface);
+  height = cairo_image_surface_get_height (surface);
 
-    switch(cairo_image_surface_get_format(surface)) {
+  switch (cairo_image_surface_get_format (surface)) {
     case CAIRO_FORMAT_A1:
     default:
-        /* Don't even think about it! */
-        return;
+      /* Don't even think about it! */
+      return;
 
     case CAIRO_FORMAT_A8:
-        /* Handle a8 surfaces by effectively unrolling the loops by a
+      /* Handle a8 surfaces by effectively unrolling the loops by a
          * factor of 4 - this is safe since we know that stride has to be a
          * multiple of uint32_t. */
-        width /= 4;
-        break;
+      width /= 4;
+      break;
 
     case CAIRO_FORMAT_RGB24:
     case CAIRO_FORMAT_ARGB32:
-        break;
+      break;
+  }
+
+  tmp = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
+  if (cairo_surface_status (tmp))
+    return;
+
+  src = cairo_image_surface_get_data (surface);
+  src_stride = cairo_image_surface_get_stride (surface);
+
+  dst = cairo_image_surface_get_data (tmp);
+  dst_stride = cairo_image_surface_get_stride (tmp);
+
+  a = 0;
+  for (i = 0; i < size; i++) {
+    double f = i - half;
+    a += kernel[i] = exp (-f * f / 30.0) * 80;
+  }
+
+  /* Horizontally blur from surface -> tmp */
+  for (i = 0; i < height; i++) {
+    s = (uint32_t*) (src + i * src_stride);
+    d = (uint32_t*) (dst + i * dst_stride);
+    for (j = 0; j < width; j++) {
+      if (radius < j && j < width - radius) {
+        d[j] = s[j];
+        continue;
+      }
+
+      x = y = z = w = 0;
+      for (k = 0; k < size; k++) {
+        if (j - half + k < 0 || j - half + k >= width)
+          continue;
+
+        p = s[j - half + k];
+
+        x += ((p >> 24) & 0xff) * kernel[k];
+        y += ((p >> 16) & 0xff) * kernel[k];
+        z += ((p >> 8) & 0xff) * kernel[k];
+        w += ((p >> 0) & 0xff) * kernel[k];
+      }
+      d[j] = (x / a << 24) | (y / a << 16) | (z / a << 8) | w / a;
     }
+  }
 
-    tmp = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-    if(cairo_surface_status(tmp))
-        return;
+  /* Then vertically blur from tmp -> surface */
+  for (i = 0; i < height; i++) {
+    s = (uint32_t*) (dst + i * dst_stride);
+    d = (uint32_t*) (src + i * src_stride);
+    for (j = 0; j < width; j++) {
+      if (radius <= i && i < height - radius) {
+        d[j] = s[j];
+        continue;
+      }
 
-    src = cairo_image_surface_get_data(surface);
-    src_stride = cairo_image_surface_get_stride(surface);
+      x = y = z = w = 0;
+      for (k = 0; k < size; k++) {
+        if (i - half + k < 0 || i - half + k >= height)
+          continue;
 
-    dst = cairo_image_surface_get_data(tmp);
-    dst_stride = cairo_image_surface_get_stride(tmp);
+        s = (uint32_t*) (dst + (i - half + k) * dst_stride);
+        p = s[j];
 
-    a = 0;
-    for(i = 0; i < size; i++) {
-        double f = i - half;
-        a += kernel[i] = exp(-f * f / 30.0) * 80;
+        x += ((p >> 24) & 0xff) * kernel[k];
+        y += ((p >> 16) & 0xff) * kernel[k];
+        z += ((p >> 8) & 0xff) * kernel[k];
+        w += ((p >> 0) & 0xff) * kernel[k];
+      }
+      d[j] = (x / a << 24) | (y / a << 16) | (z / a << 8) | w / a;
     }
+  }
 
-    /* Horizontally blur from surface -> tmp */
-    for(i = 0; i < height; i++) {
-        s = (uint32_t*)(src + i * src_stride);
-        d = (uint32_t*)(dst + i * dst_stride);
-        for(j = 0; j < width; j++) {
-            if(radius < j && j < width - radius) {
-                d[j] = s[j];
-                continue;
-            }
-
-            x = y = z = w = 0;
-            for(k = 0; k < size; k++) {
-                if(j - half + k < 0 || j - half + k >= width)
-                    continue;
-
-                p = s[j - half + k];
-
-                x += ((p >> 24) & 0xff) * kernel[k];
-                y += ((p >> 16) & 0xff) * kernel[k];
-                z += ((p >> 8) & 0xff) * kernel[k];
-                w += ((p >> 0) & 0xff) * kernel[k];
-            }
-            d[j] = (x / a << 24) | (y / a << 16) | (z / a << 8) | w / a;
-        }
-    }
-
-    /* Then vertically blur from tmp -> surface */
-    for(i = 0; i < height; i++) {
-        s = (uint32_t*)(dst + i * dst_stride);
-        d = (uint32_t*)(src + i * src_stride);
-        for(j = 0; j < width; j++) {
-            if(radius <= i && i < height - radius) {
-                d[j] = s[j];
-                continue;
-            }
-
-            x = y = z = w = 0;
-            for(k = 0; k < size; k++) {
-                if(i - half + k < 0 || i - half + k >= height)
-                    continue;
-
-                s = (uint32_t*)(dst + (i - half + k) * dst_stride);
-                p = s[j];
-
-                x += ((p >> 24) & 0xff) * kernel[k];
-                y += ((p >> 16) & 0xff) * kernel[k];
-                z += ((p >> 8) & 0xff) * kernel[k];
-                w += ((p >> 0) & 0xff) * kernel[k];
-            }
-            d[j] = (x / a << 24) | (y / a << 16) | (z / a << 8) | w / a;
-        }
-    }
-
-    cairo_surface_destroy(tmp);
-    cairo_surface_mark_dirty(surface);
+  cairo_surface_destroy (tmp);
+  cairo_surface_mark_dirty (surface);
 }
 
 /* Render the text in a pango-markup string. */
-static GstTtmlRenderRenderedText *
-gst_ttml_render_draw_text(GstTtmlRender* render, const gchar* text,
+static GstTtmlRenderRenderedText*
+gst_ttml_render_draw_text (GstTtmlRender* render, const gchar* text,
     guint max_width, PangoAlignment alignment, guint line_height,
     guint max_font_size, gboolean wrap, timedText::TextOutline text_outline)
 {
-    GstTtmlRenderClass* renderClass;
-    GstTtmlRenderRenderedText* ret;
-    cairo_surface_t* surface, * cropped_surface;
-    cairo_t* cairo_state, * cropped_state;
-    GstMapInfo map;
-    PangoRectangle logical_rect;
-    gint spacing = 0;
-    guint buf_width, buf_height;
-    gint stride;
-    gint max_rendered_line_height = 0;
-    gint min_ascender_offset = G_MAXINT;
-    gint i;
+  GstTtmlRenderClass* renderClass;
+  GstTtmlRenderRenderedText* ret;
+  cairo_surface_t *surface, *cropped_surface;
+  cairo_t *cairo_state, *cropped_state;
+  GstMapInfo map;
+  PangoRectangle logical_rect;
+  gint spacing = 0;
+  guint buf_width, buf_height;
+  gint stride;
+  gint max_rendered_line_height = 0;
+  gint min_ascender_offset = G_MAXINT;
+  gint i;
 
-    ret = g_slice_new0(GstTtmlRenderRenderedText);
-    ret->text_image = gst_ttml_render_rendered_image_new_empty();
+  ret = g_slice_new0 (GstTtmlRenderRenderedText);
+  ret->text_image = gst_ttml_render_rendered_image_new_empty ();
 
-    renderClass = GST_TTML_RENDER_GET_CLASS(render);
-    ret->layout = pango_layout_new(renderClass->pango_context);
+  renderClass = GST_TTML_RENDER_GET_CLASS (render);
+  ret->layout = pango_layout_new (renderClass->pango_context);
 
-    pango_layout_set_markup(ret->layout, text, strlen(text));
-    GST_CAT_DEBUG(ttmlrender, "Layout text: %s",
-        pango_layout_get_text(ret->layout));
-    if(wrap) {
-        pango_layout_set_width(ret->layout, max_width * PANGO_SCALE);
-        pango_layout_set_wrap(ret->layout, PANGO_WRAP_WORD_CHAR);
-    }
-    else {
-        pango_layout_set_width(ret->layout, -1);
-    }
+  pango_layout_set_markup (ret->layout, text, strlen (text));
+  GST_CAT_DEBUG (ttmlrender, "Layout text: %s",
+      pango_layout_get_text (ret->layout));
+  if (wrap) {
+    pango_layout_set_width (ret->layout, max_width * PANGO_SCALE);
+    pango_layout_set_wrap (ret->layout, PANGO_WRAP_WORD_CHAR);
+  } else {
+    pango_layout_set_width (ret->layout, -1);
+  }
 
-    pango_layout_set_alignment(ret->layout, alignment);
-    pango_layout_get_pixel_extents(ret->layout, NULL, &logical_rect);
+  pango_layout_set_alignment (ret->layout, alignment);
+  pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
 
-    for(i = 0; i < pango_layout_get_line_count(ret->layout); ++i) {
-        PangoLayoutLine* line = pango_layout_get_line_readonly(ret->layout, i);
-        PangoRectangle r, ink;
-        pango_layout_line_get_pixel_extents(line, &ink, &r);
-        max_rendered_line_height = MAX(max_rendered_line_height, r.height);
-        min_ascender_offset = MIN(min_ascender_offset, ink.y - r.y);
-    }
+  for (i = 0; i < pango_layout_get_line_count (ret->layout); ++i) {
+    PangoLayoutLine* line = pango_layout_get_line_readonly (ret->layout, i);
+    PangoRectangle r, ink;
+    pango_layout_line_get_pixel_extents (line, &ink, &r);
+    max_rendered_line_height = MAX (max_rendered_line_height, r.height);
+    min_ascender_offset = MIN (min_ascender_offset, ink.y - r.y);
+  }
 
-    GST_CAT_LOG(ttmlrender, "Max. rendered line height: %d",
-        max_rendered_line_height);
-    GST_CAT_LOG(ttmlrender, "Min. ascender offset: %d", min_ascender_offset);
-    GST_CAT_LOG(ttmlrender, "Requested line_height: %u", line_height);
-    spacing = line_height - max_rendered_line_height;
-    pango_layout_set_spacing(ret->layout, PANGO_SCALE * spacing);
-    GST_CAT_LOG(ttmlrender, "Line spacing set to %d",
-        pango_layout_get_spacing(ret->layout) / PANGO_SCALE);
+  GST_CAT_LOG (ttmlrender, "Max. rendered line height: %d",
+      max_rendered_line_height);
+  GST_CAT_LOG (ttmlrender, "Min. ascender offset: %d", min_ascender_offset);
+  GST_CAT_LOG (ttmlrender, "Requested line_height: %u", line_height);
+  spacing = line_height - max_rendered_line_height;
+  pango_layout_set_spacing (ret->layout, PANGO_SCALE * spacing);
+  GST_CAT_LOG (ttmlrender, "Line spacing set to %d",
+      pango_layout_get_spacing (ret->layout) / PANGO_SCALE);
 
-    pango_layout_get_pixel_extents(ret->layout, NULL, &logical_rect);
-    GST_CAT_DEBUG(ttmlrender, "logical_rect.x: %d   logical_rect.y: %d   "
-        "logical_rect.width: %d   logical_rect.height: %d", logical_rect.x,
-        logical_rect.y, logical_rect.width, logical_rect.height);
+  pango_layout_get_pixel_extents (ret->layout, NULL, &logical_rect);
+  GST_CAT_DEBUG (ttmlrender,
+      "logical_rect.x: %d   logical_rect.y: %d   "
+      "logical_rect.width: %d   logical_rect.height: %d",
+      logical_rect.x,
+      logical_rect.y, logical_rect.width, logical_rect.height);
 
-    /* Create surface for pango layout to render into. */
-    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
-        (logical_rect.x + logical_rect.width),
-        (logical_rect.y + logical_rect.height));
-    cairo_state = cairo_create(surface);
-    cairo_set_operator(cairo_state, CAIRO_OPERATOR_CLEAR);
-    cairo_paint(cairo_state);
-    cairo_set_operator(cairo_state, CAIRO_OPERATOR_OVER);
+  /* Create surface for pango layout to render into. */
+  surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32,
+      (logical_rect.x + logical_rect.width),
+      (logical_rect.y + logical_rect.height));
+  cairo_state = cairo_create (surface);
+  cairo_set_operator (cairo_state, CAIRO_OPERATOR_CLEAR);
+  cairo_paint (cairo_state);
+  cairo_set_operator (cairo_state, CAIRO_OPERATOR_OVER);
 
-    /* Render layout. */    
-    
-    if(!textOutlineIsDefault(text_outline))
-    {
-        pango_cairo_layout_path(cairo_state, ret->layout);
+  /* Render layout. */
 
-        guint8 a = text_outline.colorARGB >> 24;
-        guint8 r = (text_outline.colorARGB >> 16) & 0xFF;
-        guint8 g = (text_outline.colorARGB >> 8) & 0xFF;
-        guint8 b = text_outline.colorARGB & 0xFF;
+  if (!textOutlineIsDefault (text_outline)) {
+    pango_cairo_layout_path (cairo_state, ret->layout);
 
-        timedText::PointPx screenSize(render->width, render->height);
-        cairo_set_source_rgba(cairo_state, r, g, b, a);
-        cairo_set_line_width(cairo_state, text_outline.thickness.toPixel(screenSize));
-        cairo_stroke(cairo_state);
-        pango_cairo_update_layout(cairo_state, ret->layout);
+    guint8 a = text_outline.colorARGB >> 24;
+    guint8 r = (text_outline.colorARGB >> 16) & 0xFF;
+    guint8 g = (text_outline.colorARGB >> 8) & 0xFF;
+    guint8 b = text_outline.colorARGB & 0xFF;
 
-        blur_image_surface(surface, text_outline.blurRadius.toPixel(screenSize));
-        cairo_fill(cairo_state);
-    }
+    timedText::PointPx screenSize (render->width, render->height);
+    cairo_set_source_rgba (cairo_state, r, g, b, a);
+    cairo_set_line_width (cairo_state, text_outline.thickness.toPixel (screenSize));
+    cairo_stroke (cairo_state);
+    pango_cairo_update_layout (cairo_state, ret->layout);
 
-    cairo_save(cairo_state);
-    //---------------------------------
+    blur_image_surface (surface, text_outline.blurRadius.toPixel (screenSize));
+    cairo_fill (cairo_state);
+  }
 
-    pango_cairo_show_layout (cairo_state, ret->layout);
-    cairo_restore (cairo_state);
+  cairo_save (cairo_state);
+  //---------------------------------
 
-    buf_width = logical_rect.width;
-    buf_height = logical_rect.height - min_ascender_offset;
-    GST_CAT_DEBUG (ttmlrender, "Output buffer width: %u  height: %u",
-        buf_width, buf_height);
+  pango_cairo_show_layout (cairo_state, ret->layout);
+  cairo_restore (cairo_state);
 
-    /* Depending on whether the text is wrapped and its alignment, the image
+  buf_width = logical_rect.width;
+  buf_height = logical_rect.height - min_ascender_offset;
+  GST_CAT_DEBUG (ttmlrender, "Output buffer width: %u  height: %u",
+      buf_width, buf_height);
+
+  /* Depending on whether the text is wrapped and its alignment, the image
     * created by rendering a PangoLayout will contain more than just the
     * rendered text: it may also contain blankspace around the rendered text.
     * The following code crops blankspace from around the rendered text,
     * returning only the rendered text itself in a GstBuffer. */
-    ret->text_image->image =
-    gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
-    gst_buffer_memset (ret->text_image->image, 0, 0U, 4 * buf_width * buf_height);
-    gst_buffer_map (ret->text_image->image, &map, GST_MAP_READWRITE);
+  ret->text_image->image =
+      gst_buffer_new_allocate (NULL, 4 * buf_width * buf_height, NULL);
+  gst_buffer_memset (ret->text_image->image, 0, 0U, 4 * buf_width * buf_height);
+  gst_buffer_map (ret->text_image->image, &map, GST_MAP_READWRITE);
 
-    stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
-    cropped_surface =
-    cairo_image_surface_create_for_data (
-        map.data, CAIRO_FORMAT_ARGB32, buf_width,
-        buf_height, stride);
-    cropped_state = cairo_create (cropped_surface);
-    cairo_set_source_surface (cropped_state, surface, -logical_rect.x,
-        -(logical_rect.y + min_ascender_offset));
-    cairo_rectangle (cropped_state, 0, 0, buf_width, buf_height);
-    cairo_fill (cropped_state);
+  stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, buf_width);
+  cropped_surface =
+      cairo_image_surface_create_for_data (
+          map.data, CAIRO_FORMAT_ARGB32, buf_width,
+          buf_height, stride);
+  cropped_state = cairo_create (cropped_surface);
+  cairo_set_source_surface (cropped_state, surface, -logical_rect.x,
+      -(logical_rect.y + min_ascender_offset));
+  cairo_rectangle (cropped_state, 0, 0, buf_width, buf_height);
+  cairo_fill (cropped_state);
 
-    cairo_destroy (cairo_state);
-    cairo_surface_destroy (surface);
-    cairo_destroy (cropped_state);
-    cairo_surface_destroy (cropped_surface);
-    gst_buffer_unmap (ret->text_image->image, &map);
+  cairo_destroy (cairo_state);
+  cairo_surface_destroy (surface);
+  cairo_destroy (cropped_state);
+  cairo_surface_destroy (cropped_surface);
+  gst_buffer_unmap (ret->text_image->image, &map);
 
-    ret->text_image->width = buf_width;
-    ret->text_image->height = buf_height;
-    ret->horiz_offset = logical_rect.x;
+  ret->text_image->width = buf_width;
+  ret->text_image->height = buf_height;
+  ret->horiz_offset = logical_rect.x;
 
-    return ret;
+  return ret;
 }
-
 
 /* If any of an array of elements has line wrapping enabled, return TRUE. */
 static gboolean
-gst_ttml_render_elements_are_wrapped (GPtrArray * elements)
+gst_ttml_render_elements_are_wrapped (GPtrArray* elements)
 {
-  GstSubtitleElement *element;
+  GstSubtitleElement* element;
   guint i;
 
   for (i = 0; i < elements->len; ++i) {
-    element = (GstSubtitleElement*)g_ptr_array_index (elements, i);
+    element = (GstSubtitleElement*) g_ptr_array_index (elements, i);
     if (element->style_set->wrap_option == GST_SUBTITLE_WRAPPING_ON)
       return TRUE;
   }
@@ -1576,33 +1549,31 @@ gst_ttml_render_elements_are_wrapped (GPtrArray * elements)
   return FALSE;
 }
 
-
 /* Return the maximum font size used in an array of elements. */
 static gulong
-gst_ttml_render_get_max_font_size (GPtrArray * elements, GstTtmlRender* render)
+gst_ttml_render_get_max_font_size (GPtrArray* elements, GstTtmlRender* render)
 {
-  GstSubtitleElement *element;
+  GstSubtitleElement* element;
   guint i;
   gulong max_size = 0;
 
   for (i = 0; i < elements->len; ++i) {
-    element = (GstSubtitleElement*)g_ptr_array_index (elements, i);
-    timedText::PointPx screenSize(render->width, render->height);
+    element = (GstSubtitleElement*) g_ptr_array_index (elements, i);
+    timedText::PointPx screenSize (render->width, render->height);
     //ignored font width
-    gulong curr_font_size = (gulong)(element->style_set->font_size.vertical.toPixel(screenSize));
-    if(curr_font_size > max_size)
-        max_size = curr_font_size;
+    gulong curr_font_size = (gulong) (element->style_set->font_size.vertical.toPixel (screenSize));
+    if (curr_font_size > max_size)
+      max_size = curr_font_size;
   }
 
   return max_size;
 }
 
-
-static GstTtmlRenderRenderedImage *
-gst_ttml_render_rendered_image_new (GstBuffer * image, gint x, gint y, guint width,
+static GstTtmlRenderRenderedImage*
+gst_ttml_render_rendered_image_new (GstBuffer* image, gint x, gint y, guint width,
     guint height)
 {
-  GstTtmlRenderRenderedImage *ret;
+  GstTtmlRenderRenderedImage* ret;
 
   ret = g_slice_new0 (GstTtmlRenderRenderedImage);
 
@@ -1615,18 +1586,16 @@ gst_ttml_render_rendered_image_new (GstBuffer * image, gint x, gint y, guint wid
   return ret;
 }
 
-static GstTtmlRenderRenderedImage *
+static GstTtmlRenderRenderedImage*
 gst_ttml_render_rendered_image_new_empty ()
 {
   return gst_ttml_render_rendered_image_new (NULL, 0, 0, 0, 0);
 }
 
-
-static GstTtmlRenderRenderedImage *
-gst_ttml_render_rendered_image_copy (GstTtmlRenderRenderedImage * image)
+static GstTtmlRenderRenderedImage*
+gst_ttml_render_rendered_image_copy (GstTtmlRenderRenderedImage* image)
 {
-  GstTtmlRenderRenderedImage *ret
-    = g_slice_new0 (GstTtmlRenderRenderedImage);
+  GstTtmlRenderRenderedImage* ret = g_slice_new0 (GstTtmlRenderRenderedImage);
 
   ret->image = gst_buffer_ref (image->image);
   ret->x = image->x;
@@ -1637,26 +1606,25 @@ gst_ttml_render_rendered_image_copy (GstTtmlRenderRenderedImage * image)
   return ret;
 }
 
-
 static void
-gst_ttml_render_rendered_image_free (GstTtmlRenderRenderedImage * image)
+gst_ttml_render_rendered_image_free (GstTtmlRenderRenderedImage* image)
 {
-  if (!image) return;
+  if (!image)
+    return;
   gst_buffer_unref (image->image);
   g_slice_free (GstTtmlRenderRenderedImage, image);
 }
 
-
 /* The order of arguments is significant: @image2 will be rendered on top of
  * @image1. */
-static GstTtmlRenderRenderedImage *
-gst_ttml_render_rendered_image_combine (GstTtmlRenderRenderedImage * image1,
-    GstTtmlRenderRenderedImage * image2)
+static GstTtmlRenderRenderedImage*
+gst_ttml_render_rendered_image_combine (GstTtmlRenderRenderedImage* image1,
+    GstTtmlRenderRenderedImage* image2)
 {
-  GstTtmlRenderRenderedImage *ret;
+  GstTtmlRenderRenderedImage* ret;
   GstMapInfo map1, map2, map_dest;
   cairo_surface_t *sfc1, *sfc2, *sfc_dest;
-  cairo_t *state_dest;
+  cairo_t* state_dest;
 
   if (image1 && !image2)
     return gst_ttml_render_rendered_image_copy (image1);
@@ -1668,13 +1636,13 @@ gst_ttml_render_rendered_image_combine (GstTtmlRenderRenderedImage * image1,
   /* Work out dimensions of combined image. */
   ret->x = MIN (image1->x, image2->x);
   ret->y = MIN (image1->y, image2->y);
-  ret->width = MAX (image1->x + image1->width, image2->x + image2->width)
-    - ret->x;
-  ret->height = MAX (image1->y + image1->height, image2->y + image2->height)
-    - ret->y;
+  ret->width = MAX (image1->x + image1->width, image2->x + image2->width) - ret->x;
+  ret->height = MAX (image1->y + image1->height, image2->y + image2->height) - ret->y;
 
-  GST_CAT_LOG (ttmlrender, "Dimensions of combined image:  x:%u  y:%u  "
-      "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
+  GST_CAT_LOG (ttmlrender,
+      "Dimensions of combined image:  x:%u  y:%u  "
+      "width:%u  height:%u",
+      ret->x, ret->y, ret->width, ret->height);
 
   /* Create cairo_surface from src images. */
   gst_buffer_map (image1->image, &map1, GST_MAP_READ);
@@ -1723,24 +1691,19 @@ gst_ttml_render_rendered_image_combine (GstTtmlRenderRenderedImage * image1,
   return ret;
 }
 
-
-static GstTtmlRenderRenderedImage *
-gst_ttml_render_rendered_image_crop (GstTtmlRenderRenderedImage * image,
+static GstTtmlRenderRenderedImage*
+gst_ttml_render_rendered_image_crop (GstTtmlRenderRenderedImage* image,
     gint x, gint y, guint width, guint height)
 {
-  GstTtmlRenderRenderedImage *ret;
+  GstTtmlRenderRenderedImage* ret;
   GstMapInfo map_src, map_dest;
   cairo_surface_t *sfc_src, *sfc_dest;
-  cairo_t *state_dest;
+  cairo_t* state_dest;
 
-  if ((x <= image->x) && (y <= image->y) && (width >= image->width)
-      && (height >= image->height))
+  if ((x <= image->x) && (y <= image->y) && (width >= image->width) && (height >= image->height))
     return gst_ttml_render_rendered_image_copy (image);
 
-  if (image->x >= (x + (gint)width)
-      || (image->x + (gint)image->width) <= x
-      || image->y >= (y + (gint)height)
-      || (image->y + (gint)image->height) <= y) {
+  if (image->x >= (x + (gint) width) || (image->x + (gint) image->width) <= x || image->y >= (y + (gint) height) || (image->y + (gint) image->height) <= y) {
     GST_CAT_WARNING (ttmlrender, "Crop rectangle doesn't intersect image.");
     return NULL;
   }
@@ -1753,8 +1716,10 @@ gst_ttml_render_rendered_image_crop (GstTtmlRenderRenderedImage * image,
   ret->height = MIN ((image->y + image->height) - ret->y,
       (y + height) - ret->y);
 
-  GST_CAT_LOG (ttmlrender, "Dimensions of cropped image:  x:%u  y:%u  "
-      "width:%u  height:%u", ret->x, ret->y, ret->width, ret->height);
+  GST_CAT_LOG (ttmlrender,
+      "Dimensions of cropped image:  x:%u  y:%u  "
+      "width:%u  height:%u",
+      ret->x, ret->y, ret->width, ret->height);
 
   /* Create cairo_surface from src image. */
   gst_buffer_map (image->image, &map_src, GST_MAP_READ);
@@ -1787,34 +1752,32 @@ gst_ttml_render_rendered_image_crop (GstTtmlRenderRenderedImage * image,
   return ret;
 }
 
-
 static gboolean
-gst_ttml_render_color_is_transparent (GstSubtitleColor * color)
+gst_ttml_render_color_is_transparent (GstSubtitleColor* color)
 {
   return (color->a == 0);
 }
 
-
 /* Render the background rectangles to be placed behind each element. */
-static GstTtmlRenderRenderedImage *
-gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
-    GPtrArray * char_ranges, PangoLayout * layout, guint origin_x,
+static GstTtmlRenderRenderedImage*
+gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock* block,
+    GPtrArray* char_ranges, PangoLayout* layout, guint origin_x,
     guint origin_y, guint line_height, guint line_padding, guint horiz_offset)
 {
   gint first_line, last_line, cur_line;
   guint padding;
-  PangoLayoutLine *line;
+  PangoLayoutLine* line;
   PangoRectangle first_char_pos, last_char_pos, line_extents;
-  TextRange *range;
-  const GstSubtitleElement *element;
+  TextRange* range;
+  const GstSubtitleElement* element;
   guint rect_width;
-  GstBuffer *rectangle;
+  GstBuffer* rectangle;
   guint first_char_start, last_char_end;
   guint i;
-  GstTtmlRenderRenderedImage *ret = NULL;
+  GstTtmlRenderRenderedImage* ret = NULL;
 
   for (i = 0; i < char_ranges->len; ++i) {
-    range = (TextRange*)g_ptr_array_index (char_ranges, i);
+    range = (TextRange*) g_ptr_array_index (char_ranges, i);
     element = gst_subtitle_block_get_element (block, i);
 
     GST_CAT_LOG (ttmlrender, "First char index: %u   Last char index: %u",
@@ -1827,8 +1790,7 @@ gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
         &last_line, NULL);
 
     first_char_start = PANGO_PIXELS (first_char_pos.x) - horiz_offset;
-    last_char_end = PANGO_PIXELS (last_char_pos.x + last_char_pos.width)
-      - horiz_offset;
+    last_char_end = PANGO_PIXELS (last_char_pos.x + last_char_pos.width) - horiz_offset;
 
     GST_CAT_LOG (ttmlrender, "First char start: %u  Last char end: %u",
         first_char_start, last_char_end);
@@ -1847,19 +1809,24 @@ gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
 
       pango_layout_line_x_to_index (line, 0, &first_char_index, NULL);
       pango_layout_index_to_pos (layout, first_char_index, &line_pos);
-      GST_CAT_LOG (ttmlrender, "First char index:%d  position_X:%d  "
-          "position_Y:%d", first_char_index, PANGO_PIXELS (line_pos.x),
+      GST_CAT_LOG (ttmlrender,
+          "First char index:%d  position_X:%d  "
+          "position_Y:%d",
+          first_char_index, PANGO_PIXELS (line_pos.x),
           PANGO_PIXELS (line_pos.y));
 
       line_start = PANGO_PIXELS (line_pos.x) - horiz_offset;
-      line_end = (PANGO_PIXELS (line_pos.x) + line_extents.width)
-        - horiz_offset;
+      line_end = (PANGO_PIXELS (line_pos.x) + line_extents.width) - horiz_offset;
 
-      GST_CAT_LOG (ttmlrender, "line_extents.x:%d  line_extents.y:%d  "
-          "line_extents.width:%d  line_extents.height:%d", line_extents.x,
+      GST_CAT_LOG (ttmlrender,
+          "line_extents.x:%d  line_extents.y:%d  "
+          "line_extents.width:%d  line_extents.height:%d",
+          line_extents.x,
           line_extents.y, line_extents.width, line_extents.height);
-      GST_CAT_LOG (ttmlrender, "cur_line:%u  line start:%u  line end:%u "
-          "first_char_start: %u  last_char_end: %u", cur_line, line_start,
+      GST_CAT_LOG (ttmlrender,
+          "cur_line:%u  line start:%u  line end:%u "
+          "first_char_start: %u  last_char_end: %u",
+          cur_line, line_start,
           line_end, first_char_start, last_char_end);
 
       if ((cur_line == first_line) && (first_char_start != line_start)) {
@@ -1886,7 +1853,7 @@ gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
 
       rect_width = (area_end - area_start);
 
-      if (rect_width > 0) {     /* <br>s will result in zero-width rectangle */
+      if (rect_width > 0) { /* <br>s will result in zero-width rectangle */
         GstTtmlRenderRenderedImage *image, *tmp;
         rectangle = gst_ttml_render_draw_rectangle (rect_width, line_height,
             element->style_set->background_color);
@@ -1896,7 +1863,8 @@ gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
             line_height);
         tmp = ret;
         ret = gst_ttml_render_rendered_image_combine (ret, image);
-        if (tmp) gst_ttml_render_rendered_image_free (tmp);
+        if (tmp)
+          gst_ttml_render_rendered_image_free (tmp);
         gst_ttml_render_rendered_image_free (image);
       }
     }
@@ -1905,9 +1873,8 @@ gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock * block,
   return ret;
 }
 
-
 static PangoAlignment
-gst_ttml_render_get_alignment (GstSubtitleStyleSet * style_set)
+gst_ttml_render_get_alignment (GstSubtitleStyleSet* style_set)
 {
   PangoAlignment align = PANGO_ALIGN_LEFT;
 
@@ -1948,18 +1915,17 @@ gst_ttml_render_get_alignment (GstSubtitleStyleSet * style_set)
   return align;
 }
 
-
-static GstTtmlRenderRenderedImage *
-gst_ttml_render_stitch_blocks (GList * blocks)
+static GstTtmlRenderRenderedImage*
+gst_ttml_render_stitch_blocks (GList* blocks)
 {
   guint vert_offset = 0;
-  GList *block_entry;
-  GstTtmlRenderRenderedImage *ret = NULL;
+  GList* block_entry;
+  GstTtmlRenderRenderedImage* ret = NULL;
 
   for (block_entry = g_list_first (blocks); block_entry;
-      block_entry = block_entry->next) {
+       block_entry = block_entry->next) {
     GstTtmlRenderRenderedImage *block, *tmp;
-    block = (GstTtmlRenderRenderedImage *)block_entry->data;
+    block = (GstTtmlRenderRenderedImage*) block_entry->data;
     tmp = ret;
 
     block->y += vert_offset;
@@ -1967,7 +1933,8 @@ gst_ttml_render_stitch_blocks (GList * blocks)
         vert_offset);
     vert_offset = block->y + block->height;
     ret = gst_ttml_render_rendered_image_combine (ret, block);
-    if (tmp) gst_ttml_render_rendered_image_free (tmp);
+    if (tmp)
+      gst_ttml_render_rendered_image_free (tmp);
   }
 
   if (ret) {
@@ -1977,9 +1944,8 @@ gst_ttml_render_stitch_blocks (GList * blocks)
   return ret;
 }
 
-
 static void
-gst_ttml_render_rendered_text_free (GstTtmlRenderRenderedText * text)
+gst_ttml_render_rendered_text_free (GstTtmlRenderRenderedText* text)
 {
   if (text->text_image)
     gst_ttml_render_rendered_image_free (text->text_image);
@@ -1988,22 +1954,21 @@ gst_ttml_render_rendered_text_free (GstTtmlRenderRenderedText * text)
   g_slice_free (GstTtmlRenderRenderedText, text);
 }
 
-
-static GstTtmlRenderRenderedImage *
-gst_ttml_render_render_text_block (GstTtmlRender * render,
-    const GstSubtitleBlock * block, gdouble opacity, GstBuffer * text_buf, guint width,
+static GstTtmlRenderRenderedImage*
+gst_ttml_render_render_text_block (GstTtmlRender* render,
+    const GstSubtitleBlock* block, gdouble opacity, GstBuffer* text_buf, guint width,
     gboolean overflow)
 {
-  GPtrArray *char_ranges = NULL;
-  gchar *marked_up_string;
+  GPtrArray* char_ranges = NULL;
+  gchar* marked_up_string;
   PangoAlignment alignment;
   guint max_font_size;
   guint line_height;
   guint line_padding;
   gint text_offset = 0;
-  GstTtmlRenderRenderedText *rendered_text;
-  GstTtmlRenderRenderedImage *backgrounds = NULL;
-  GstTtmlRenderRenderedImage *ret;
+  GstTtmlRenderRenderedText* rendered_text;
+  GstTtmlRenderRenderedImage* backgrounds = NULL;
+  GstTtmlRenderRenderedImage* ret;
 
   /* Join text from elements to form a single marked-up string. */
   timedText::TextOutline block_text_outline;
@@ -2014,8 +1979,8 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
   GST_CAT_DEBUG (ttmlrender, "Max font size: %u", max_font_size);
   //line_height = (guint) round(block->style_set->line_height * max_font_size);
   //ignored font width
-  timedText::PointPx maxFontSizePoint(max_font_size, max_font_size);
-  line_height = (guint)round(block->style_set->line_height.toPixel(maxFontSizePoint));
+  timedText::PointPx maxFontSizePoint (max_font_size, max_font_size);
+  line_height = (guint) round (block->style_set->line_height.toPixel (maxFontSizePoint));
   line_padding = (guint) (block->style_set->line_padding * render->width);
   alignment = gst_ttml_render_get_alignment (block->style_set);
 
@@ -2030,13 +1995,12 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
       text_offset = line_padding;
       break;
     case GST_SUBTITLE_TEXT_ALIGN_CENTER:
-      text_offset = ((gint)width - rendered_text->text_image->width);
+      text_offset = ((gint) width - rendered_text->text_image->width);
       text_offset /= 2;
       break;
     case GST_SUBTITLE_TEXT_ALIGN_END:
     case GST_SUBTITLE_TEXT_ALIGN_RIGHT:
-      text_offset = (gint)width
-        - (rendered_text->text_image->width + line_padding);
+      text_offset = (gint) width - (rendered_text->text_image->width + line_padding);
       break;
   }
 
@@ -2044,7 +2008,7 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
 
   //composition with region opacity
   block->style_set->background_color.a *= opacity;
-  /* Render background rectangles, if any. */    
+  /* Render background rectangles, if any. */
   backgrounds = gst_ttml_render_render_element_backgrounds (block, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
       //(guint) (block->style_set->line_height * max_font_size),
@@ -2053,11 +2017,11 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
 
   /* Render block background, if non-transparent. */
   if (!gst_ttml_render_color_is_transparent (
-        &block->style_set->background_color)) {
-    GstTtmlRenderRenderedImage *block_background;
-    GstTtmlRenderRenderedImage *tmp = backgrounds;
+          &block->style_set->background_color)) {
+    GstTtmlRenderRenderedImage* block_background;
+    GstTtmlRenderRenderedImage* tmp = backgrounds;
 
-    GstBuffer *block_bg_image = gst_ttml_render_draw_rectangle (width,
+    GstBuffer* block_bg_image = gst_ttml_render_draw_rectangle (width,
         backgrounds->height, block->style_set->background_color);
     block_background = gst_ttml_render_rendered_image_new (block_bg_image, 0,
         0, width, backgrounds->height);
@@ -2068,7 +2032,7 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
   }
 
   rendered_text->text_image->y +=
-    (gint) round ((line_height - max_font_size) / 2.0);
+      (gint) round ((line_height - max_font_size) / 2.0);
   rendered_text->text_image->y = MAX (rendered_text->text_image->y, 0);
 
   /* Combine text and background images. */
@@ -2084,12 +2048,11 @@ gst_ttml_render_render_text_block (GstTtmlRender * render,
   return ret;
 }
 
-
-static GstVideoOverlayComposition *
-gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage * image)
+static GstVideoOverlayComposition*
+gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage* image)
 {
-  GstVideoOverlayRectangle *rectangle;
-  GstVideoOverlayComposition *ret = NULL;
+  GstVideoOverlayRectangle* rectangle;
+  GstVideoOverlayComposition* ret = NULL;
 
   gst_buffer_add_video_meta (image->image, GST_VIDEO_FRAME_FLAG_NONE,
       GST_VIDEO_OVERLAY_COMPOSITION_FORMAT_RGB, image->width, image->height);
@@ -2103,32 +2066,31 @@ gst_ttml_render_compose_overlay (GstTtmlRenderRenderedImage * image)
   return ret;
 }
 
-
-static GstVideoOverlayComposition *
-gst_ttml_render_render_text_region (GstTtmlRender * render,
-    GstSubtitleRegion * region, GstBuffer * text_buf)
+static GstVideoOverlayComposition*
+gst_ttml_render_render_text_region (GstTtmlRender* render,
+    GstSubtitleRegion* region, GstBuffer* text_buf)
 {
-  GList *blocks = NULL;
+  GList* blocks = NULL;
   guint region_x, region_y, region_width, region_height;
   guint window_x, window_y, window_width, window_height;
   guint padding_start, padding_end, padding_before, padding_after;
-  GstTtmlRenderRenderedImage *region_image = NULL;
-  GstTtmlRenderRenderedImage *blocks_image;
-  GstVideoOverlayComposition *ret = NULL;
+  GstTtmlRenderRenderedImage* region_image = NULL;
+  GstTtmlRenderRenderedImage* blocks_image;
+  GstVideoOverlayComposition* ret = NULL;
   guint i;
 
-  timedText::PointPx screenSize(render->width, render->height);
-  region_x = (guint)(region->style_set->origin.x.toPixel(screenSize));
-  region_y = (guint)(region->style_set->origin.y.toPixel(screenSize));
+  timedText::PointPx screenSize (render->width, render->height);
+  region_x = (guint) (region->style_set->origin.x.toPixel (screenSize));
+  region_y = (guint) (region->style_set->origin.y.toPixel (screenSize));
 
-  region_width = (guint)(region->style_set->extent.x.toPixel(screenSize));
-  region_height = (guint)(region->style_set->extent.y.toPixel(screenSize));
+  region_width = (guint) (region->style_set->extent.x.toPixel (screenSize));
+  region_height = (guint) (region->style_set->extent.y.toPixel (screenSize));
 
-  if(region_x + region_width > render->width)
-      region_width = render->width - region_x;
+  if (region_x + region_width > render->width)
+    region_width = render->width - region_x;
 
-  if(region_y + region_height > render->height)
-      region_height = render->height - region_y;
+  if (region_y + region_height > render->height)
+    region_height = render->height - region_y;
 
   //region_width = (guint)(round(region->style_set->extent_w * render->width));
   //region_height =
@@ -2136,17 +2098,17 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
   //region_x = (guint) (round (region->style_set->origin_x * render->width));
   //region_y = (guint) (round (region->style_set->origin_y * render->height));
 
-  timedText::PointPx regionSize(region_width, region_height);
+  timedText::PointPx regionSize (region_width, region_height);
   //padding_start =
   //  (guint) (round (region->style_set->padding_start * render->width));
   padding_start =
-      (guint)(region->style_set->padding.left.toPixel(regionSize));
+      (guint) (region->style_set->padding.left.toPixel (regionSize));
   padding_end =
-      (guint)(region->style_set->padding.right.toPixel(regionSize));
+      (guint) (region->style_set->padding.right.toPixel (regionSize));
   padding_before =
-      (guint)(region->style_set->padding.top.toPixel(regionSize));
+      (guint) (region->style_set->padding.top.toPixel (regionSize));
   padding_after =
-      (guint)(region->style_set->padding.bottom.toPixel(regionSize));
+      (guint) (region->style_set->padding.bottom.toPixel (regionSize));
 
   /* "window" here refers to the section of the region that we're allowed to
    * render into, i.e., the region minus padding. */
@@ -2157,15 +2119,15 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
 
   //opacity composition
   region->style_set->background_color.a *= region->style_set->opacity;
-  
+
   GST_CAT_DEBUG (ttmlrender,
       "Padding: start: %u  end: %u  before: %u  after: %u",
       padding_start, padding_end, padding_before, padding_after);
 
   /* Render region background, if non-transparent. */
   if (!gst_ttml_render_color_is_transparent (
-        &region->style_set->background_color)) {
-    GstBuffer *bg_rect;
+          &region->style_set->background_color)) {
+    GstBuffer* bg_rect;
 
     bg_rect = gst_ttml_render_draw_rectangle (region_width, region_height,
         region->style_set->background_color);
@@ -2175,8 +2137,8 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
 
   /* Render each block and append to list. */
   for (i = 0; i < gst_subtitle_region_get_block_count (region); ++i) {
-    const GstSubtitleBlock *block;
-    GstTtmlRenderRenderedImage *rendered_block;
+    const GstSubtitleBlock* block;
+    GstTtmlRenderRenderedImage* rendered_block;
 
     block = gst_subtitle_region_get_block (region, i);
     rendered_block = gst_ttml_render_render_text_block (render, block, region->style_set->opacity, text_buf,
@@ -2186,7 +2148,7 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
   }
 
   if (blocks) {
-    GstTtmlRenderRenderedImage *tmp;
+    GstTtmlRenderRenderedImage* tmp;
 
     blocks_image = gst_ttml_render_stitch_blocks (blocks);
     g_list_free_full (blocks,
@@ -2198,19 +2160,15 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
         blocks_image->y = window_y;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_CENTER:
-        blocks_image->y = region_y + ((gint)((region_height + padding_before)
-              - (padding_after + blocks_image->height)))/2;
+        blocks_image->y = region_y + ((gint) ((region_height + padding_before) - (padding_after + blocks_image->height))) / 2;
         break;
       case GST_SUBTITLE_DISPLAY_ALIGN_AFTER:
-        blocks_image->y = (region_y + region_height)
-          - (padding_after + blocks_image->height);
+        blocks_image->y = (region_y + region_height) - (padding_after + blocks_image->height);
         break;
     }
 
-    if ((region->style_set->overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN)
-        && ((blocks_image->height > window_height)
-          || (blocks_image->width > window_width))) {
-      GstTtmlRenderRenderedImage *tmp = blocks_image;
+    if ((region->style_set->overflow == GST_SUBTITLE_OVERFLOW_MODE_HIDDEN) && ((blocks_image->height > window_height) || (blocks_image->width > window_width))) {
+      GstTtmlRenderRenderedImage* tmp = blocks_image;
       blocks_image = gst_ttml_render_rendered_image_crop (blocks_image,
           window_x, window_y, window_width, window_height);
       gst_ttml_render_rendered_image_free (tmp);
@@ -2219,7 +2177,8 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
     tmp = region_image;
     region_image = gst_ttml_render_rendered_image_combine (region_image,
         blocks_image);
-    if (tmp) gst_ttml_render_rendered_image_free (tmp);
+    if (tmp)
+      gst_ttml_render_rendered_image_free (tmp);
     gst_ttml_render_rendered_image_free (blocks_image);
   }
 
@@ -2231,16 +2190,15 @@ gst_ttml_render_render_text_region (GstTtmlRender * render,
   return ret;
 }
 
-
 static GstFlowReturn
-gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer)
+gst_ttml_render_video_chain (GstPad* pad, GstObject* parent,
+    GstBuffer* buffer)
 {
-  GstTtmlRender *render;
+  GstTtmlRender* render;
   GstFlowReturn ret = GST_FLOW_OK;
   gboolean in_seg = FALSE;
   guint64 start, stop, clip_start = 0, clip_stop = 0;
-  gchar *text = NULL;
+  gchar* text = NULL;
 
   render = GST_TTML_RENDER (parent);
 
@@ -2256,8 +2214,7 @@ gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
     stop = start + GST_BUFFER_DURATION (buffer);
   }
 
-  GST_LOG_OBJECT (render, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%"
-      GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &render->segment,
+  GST_LOG_OBJECT (render, "%" GST_SEGMENT_FORMAT "  BUFFER: ts=%" GST_TIME_FORMAT ", end=%" GST_TIME_FORMAT, &render->segment,
       GST_TIME_ARGS (start), GST_TIME_ARGS (stop));
 
   /* segment_clip() will adjust start unconditionally to segment_start if
@@ -2287,10 +2244,10 @@ gst_ttml_render_video_chain (GstPad * pad, GstObject * parent,
     if (render->info.fps_n && render->info.fps_d) {
       GST_DEBUG_OBJECT (render, "estimating duration based on framerate");
       stop = start + gst_util_uint64_scale_int (GST_SECOND,
-          render->info.fps_d, render->info.fps_n);
+                         render->info.fps_d, render->info.fps_n);
     } else {
       GST_LOG_OBJECT (render, "no duration, assuming minimal duration");
-      stop = start + 1;         /* we need to assume some interval */
+      stop = start + 1; /* we need to assume some interval */
     }
   }
 
@@ -2336,19 +2293,19 @@ wait_for_text_buf:
 
       vid_running_time =
           gst_segment_to_running_time (&render->segment, GST_FORMAT_TIME,
-          start);
+              start);
       vid_running_time_end =
           gst_segment_to_running_time (&render->segment, GST_FORMAT_TIME,
-          stop);
+              stop);
 
       /* If timestamp and duration are valid */
       if (valid_text_time) {
         text_running_time =
             gst_segment_to_running_time (&render->text_segment,
-            GST_FORMAT_TIME, text_start);
+                GST_FORMAT_TIME, text_start);
         text_running_time_end =
             gst_segment_to_running_time (&render->text_segment,
-            GST_FORMAT_TIME, text_end);
+                GST_FORMAT_TIME, text_end);
       }
 
       GST_LOG_OBJECT (render, "T: %" GST_TIME_FORMAT " - %" GST_TIME_FORMAT,
@@ -2373,8 +2330,8 @@ wait_for_text_buf:
         ret = gst_pad_push (render->srcpad, buffer);
       } else {
         if (render->need_render) {
-          GstSubtitleRegion *region = NULL;
-          GstSubtitleMeta *subtitle_meta = NULL;
+          GstSubtitleRegion* region = NULL;
+          GstSubtitleMeta* subtitle_meta = NULL;
           guint i;
 
           if (render->compositions) {
@@ -2387,8 +2344,8 @@ wait_for_text_buf:
           g_assert (subtitle_meta != NULL);
 
           for (i = 0; i < subtitle_meta->regions->len; ++i) {
-            GstVideoOverlayComposition *composition;
-            region = (GstSubtitleRegion*)g_ptr_array_index (subtitle_meta->regions, i);
+            GstVideoOverlayComposition* composition;
+            region = (GstSubtitleRegion*) g_ptr_array_index (subtitle_meta->regions, i);
             g_assert (region != NULL);
             composition = gst_ttml_render_render_text_region (render, region,
                 render->text_buffer);
@@ -2427,13 +2384,13 @@ wait_for_text_buf:
 
         vid_running_time =
             gst_segment_to_running_time (&render->segment, GST_FORMAT_TIME,
-            GST_BUFFER_TIMESTAMP (buffer));
+                GST_BUFFER_TIMESTAMP (buffer));
         text_start_running_time =
             gst_segment_to_running_time (&render->text_segment,
-            GST_FORMAT_TIME, render->text_segment.start);
+                GST_FORMAT_TIME, render->text_segment.start);
         text_position_running_time =
             gst_segment_to_running_time (&render->text_segment,
-            GST_FORMAT_TIME, render->text_segment.position);
+                GST_FORMAT_TIME, render->text_segment.position);
 
         if ((GST_CLOCK_TIME_IS_VALID (text_start_running_time) &&
                 vid_running_time < text_start_running_time) ||
@@ -2464,41 +2421,37 @@ wait_for_text_buf:
 
   return ret;
 
-missing_timestamp:
-  {
-    GST_WARNING_OBJECT (render, "buffer without timestamp, discarding");
-    gst_buffer_unref (buffer);
-    return GST_FLOW_OK;
-  }
+missing_timestamp : {
+  GST_WARNING_OBJECT (render, "buffer without timestamp, discarding");
+  gst_buffer_unref (buffer);
+  return GST_FLOW_OK;
+}
 
-flushing:
-  {
-    GST_TTML_RENDER_UNLOCK (render);
-    GST_DEBUG_OBJECT (render, "flushing, discarding buffer");
-    gst_buffer_unref (buffer);
-    return GST_FLOW_FLUSHING;
-  }
-have_eos:
-  {
-    GST_TTML_RENDER_UNLOCK (render);
-    GST_DEBUG_OBJECT (render, "eos, discarding buffer");
-    gst_buffer_unref (buffer);
-    return GST_FLOW_EOS;
-  }
-out_of_segment:
-  {
-    GST_DEBUG_OBJECT (render, "buffer out of segment, discarding");
-    gst_buffer_unref (buffer);
-    return GST_FLOW_OK;
-  }
+flushing : {
+  GST_TTML_RENDER_UNLOCK (render);
+  GST_DEBUG_OBJECT (render, "flushing, discarding buffer");
+  gst_buffer_unref (buffer);
+  return GST_FLOW_FLUSHING;
+}
+have_eos : {
+  GST_TTML_RENDER_UNLOCK (render);
+  GST_DEBUG_OBJECT (render, "eos, discarding buffer");
+  gst_buffer_unref (buffer);
+  return GST_FLOW_EOS;
+}
+out_of_segment : {
+  GST_DEBUG_OBJECT (render, "buffer out of segment, discarding");
+  gst_buffer_unref (buffer);
+  return GST_FLOW_OK;
+}
 }
 
 static GstStateChangeReturn
-gst_ttml_render_change_state (GstElement * element,
+gst_ttml_render_change_state (GstElement* element,
     GstStateChange transition)
 {
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-  GstTtmlRender *render = GST_TTML_RENDER (element);
+  GstTtmlRender* render = GST_TTML_RENDER (element);
 
   switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
@@ -2537,7 +2490,7 @@ gst_ttml_render_change_state (GstElement * element,
 }
 
 static gboolean
-plugin_init (GstPlugin * plugin)
+plugin_init (GstPlugin* plugin)
 {
   GST_DEBUG_CATEGORY_INIT (ttmlrender, "ttmlrender", 0, "TTML renderer");
 
@@ -2550,6 +2503,8 @@ plugin_init (GstPlugin * plugin)
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR,
-    ttmlrender, "Pango-based text rendering, supporting the EBU-TT-D profile"
-    " of TTML.", plugin_init,
+    ttmlrender,
+    "Pango-based text rendering, supporting the EBU-TT-D profile"
+    " of TTML.",
+    plugin_init,
     VERSION, "LGPL", "gst-ttml-render", "http://www.bbc.co.uk/rd")

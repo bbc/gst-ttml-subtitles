@@ -39,10 +39,10 @@
  *
  * Returns: (transfer full): A newly-allocated #GstSubtitleStyleSet.
  */
-GstSubtitleStyleSet *
+GstSubtitleStyleSet*
 gst_subtitle_style_set_new ()
 {
-  GstSubtitleStyleSet *ret = g_slice_new0 (GstSubtitleStyleSet);
+  GstSubtitleStyleSet* ret = g_slice_new0 (GstSubtitleStyleSet);
   GstSubtitleColor white = { 255, 255, 255, 255 };
   GstSubtitleColor transparent = { 0, 0, 0, 0 };
 
@@ -60,16 +60,15 @@ gst_subtitle_style_set_new ()
  *
  * Free @style_set and its associated memory.
  */
-void gst_subtitle_style_set_free (GstSubtitleStyleSet * style_set)
+void gst_subtitle_style_set_free (GstSubtitleStyleSet* style_set)
 {
   g_return_if_fail (style_set != NULL);
   g_free (style_set->font_family);
   g_slice_free (GstSubtitleStyleSet, style_set);
 }
 
-
 static void
-_gst_subtitle_element_free (GstSubtitleElement * element)
+_gst_subtitle_element_free (GstSubtitleElement* element)
 {
   g_return_if_fail (element != NULL);
   gst_subtitle_style_set_free (element->style_set);
@@ -92,11 +91,11 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleElement, gst_subtitle_element);
  * Returns: (transfer full): A newly-allocated #GstSubtitleElement. Unref
  * with gst_subtitle_element_unref() when no longer needed.
  */
-GstSubtitleElement *
-gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
+GstSubtitleElement*
+gst_subtitle_element_new (GstSubtitleStyleSet* style_set,
     guint text_index, gboolean suppress_whitespace)
 {
-  GstSubtitleElement *element;
+  GstSubtitleElement* element;
 
   g_return_val_if_fail (style_set != NULL, NULL);
 
@@ -113,7 +112,7 @@ gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
 }
 
 static void
-_gst_subtitle_block_free (GstSubtitleBlock * block)
+_gst_subtitle_block_free (GstSubtitleBlock* block)
 {
   g_return_if_fail (block != NULL);
   gst_subtitle_style_set_free (block->style_set);
@@ -122,7 +121,6 @@ _gst_subtitle_block_free (GstSubtitleBlock * block)
 }
 
 GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleBlock, gst_subtitle_block);
-
 
 /**
  * gst_subtitle_block_new:
@@ -134,10 +132,10 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleBlock, gst_subtitle_block);
  * Returns: (transfer full): A newly-allocated #GstSubtitleBlock. Unref
  * with gst_subtitle_block_unref() when no longer needed.
  */
-GstSubtitleBlock *
-gst_subtitle_block_new (GstSubtitleStyleSet * style_set)
+GstSubtitleBlock*
+gst_subtitle_block_new (GstSubtitleStyleSet* style_set)
 {
-  GstSubtitleBlock *block;
+  GstSubtitleBlock* block;
 
   g_return_val_if_fail (style_set != NULL, NULL);
 
@@ -160,9 +158,8 @@ gst_subtitle_block_new (GstSubtitleStyleSet * style_set)
  *
  * Adds a #GstSubtitleElement to @block.
  */
-void
-gst_subtitle_block_add_element (GstSubtitleBlock * block,
-    GstSubtitleElement * element)
+void gst_subtitle_block_add_element (GstSubtitleBlock* block,
+    GstSubtitleElement* element)
 {
   g_return_if_fail (block != NULL);
   g_return_if_fail (element != NULL);
@@ -176,8 +173,7 @@ gst_subtitle_block_add_element (GstSubtitleBlock * block,
  *
  * Returns: The number of #GstSubtitleElements in @block.
  */
-guint
-gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
+guint gst_subtitle_block_get_element_count (const GstSubtitleBlock* block)
 {
   g_return_val_if_fail (block != NULL, 0);
 
@@ -197,19 +193,19 @@ gst_subtitle_block_get_element_count (const GstSubtitleBlock * block)
  * function does not return a reference; the caller should obtain a reference
  * using gst_subtitle_element_ref(), if needed.
  */
-const GstSubtitleElement *
-gst_subtitle_block_get_element (const GstSubtitleBlock * block, guint index)
+const GstSubtitleElement*
+gst_subtitle_block_get_element (const GstSubtitleBlock* block, guint index)
 {
   g_return_val_if_fail (block != NULL, NULL);
 
   if (index >= block->elements->len)
     return NULL;
   else
-    return (const GstSubtitleElement*)(g_ptr_array_index (block->elements, index));
+    return (const GstSubtitleElement*) (g_ptr_array_index (block->elements, index));
 }
 
 static void
-_gst_subtitle_region_free (GstSubtitleRegion * region)
+_gst_subtitle_region_free (GstSubtitleRegion* region)
 {
   g_return_if_fail (region != NULL);
   gst_subtitle_style_set_free (region->style_set);
@@ -218,7 +214,6 @@ _gst_subtitle_region_free (GstSubtitleRegion * region)
 }
 
 GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleRegion, gst_subtitle_region);
-
 
 /**
  * gst_subtitle_region_new:
@@ -230,10 +225,10 @@ GST_DEFINE_MINI_OBJECT_TYPE (GstSubtitleRegion, gst_subtitle_region);
  * Returns: (transfer full): A newly-allocated #GstSubtitleRegion. Unref
  * with gst_subtitle_region_unref() when no longer needed.
  */
-GstSubtitleRegion *
-gst_subtitle_region_new (GstSubtitleStyleSet * style_set)
+GstSubtitleRegion*
+gst_subtitle_region_new (GstSubtitleStyleSet* style_set)
 {
-  GstSubtitleRegion *region;
+  GstSubtitleRegion* region;
 
   g_return_val_if_fail (style_set != NULL, NULL);
 
@@ -259,8 +254,7 @@ gst_subtitle_region_new (GstSubtitleStyleSet * style_set)
  * @region will take ownership of @block, and will unref it when @region
  * is freed.
  */
-void
-gst_subtitle_region_add_block (GstSubtitleRegion * region, GstSubtitleBlock * block)
+void gst_subtitle_region_add_block (GstSubtitleRegion* region, GstSubtitleBlock* block)
 {
   g_return_if_fail (region != NULL);
   g_return_if_fail (block != NULL);
@@ -274,8 +268,7 @@ gst_subtitle_region_add_block (GstSubtitleRegion * region, GstSubtitleBlock * bl
  *
  * Returns: The number of blocks in @region.
  */
-guint
-gst_subtitle_region_get_block_count (const GstSubtitleRegion * region)
+guint gst_subtitle_region_get_block_count (const GstSubtitleRegion* region)
 {
   g_return_val_if_fail (region != NULL, 0);
 
@@ -294,14 +287,13 @@ gst_subtitle_region_get_block_count (const GstSubtitleRegion * region)
  * function does not return a reference; the caller should obtain a reference
  * using gst_subtitle_block_ref(), if needed.
  */
-const GstSubtitleBlock *
-gst_subtitle_region_get_block (const GstSubtitleRegion * region, guint index)
+const GstSubtitleBlock*
+gst_subtitle_region_get_block (const GstSubtitleRegion* region, guint index)
 {
   g_return_val_if_fail (region != NULL, NULL);
 
   if (index >= region->blocks->len)
     return NULL;
   else
-    return (const GstSubtitleBlock*)(g_ptr_array_index (region->blocks, index));
+    return (const GstSubtitleBlock*) (g_ptr_array_index (region->blocks, index));
 }
-

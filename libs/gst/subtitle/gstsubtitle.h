@@ -49,11 +49,12 @@ typedef struct _GstSubtitleRegion GstSubtitleRegion;
  * of both inline text (#GstSubtitleElements) and blocks of text
  * (#GstSubtitleBlocks).
  */
-typedef enum {
-    GST_SUBTITLE_WRITING_MODE_LRTB,
-    GST_SUBTITLE_WRITING_MODE_RLTB,
-    GST_SUBTITLE_WRITING_MODE_TBRL,
-    GST_SUBTITLE_WRITING_MODE_TBLR
+typedef enum
+{
+  GST_SUBTITLE_WRITING_MODE_LRTB,
+  GST_SUBTITLE_WRITING_MODE_RLTB,
+  GST_SUBTITLE_WRITING_MODE_TBRL,
+  GST_SUBTITLE_WRITING_MODE_TBLR
 } GstSubtitleWritingMode;
 
 /**
@@ -69,10 +70,11 @@ typedef enum {
  * which blocks are being stacked. For text that is written left-to-right and
  * top-to-bottom, this corresponds to the vertical alignment of text blocks.
  */
-typedef enum {
-    GST_SUBTITLE_DISPLAY_ALIGN_BEFORE,
-    GST_SUBTITLE_DISPLAY_ALIGN_CENTER,
-    GST_SUBTITLE_DISPLAY_ALIGN_AFTER
+typedef enum
+{
+  GST_SUBTITLE_DISPLAY_ALIGN_BEFORE,
+  GST_SUBTITLE_DISPLAY_ALIGN_CENTER,
+  GST_SUBTITLE_DISPLAY_ALIGN_AFTER
 } GstSubtitleDisplayAlign;
 
 /**
@@ -85,9 +87,10 @@ typedef enum {
  * Defines whether the background rectangle of a region should be visible at
  * all times or only when text is rendered within it.
  */
-typedef enum {
-    GST_SUBTITLE_BACKGROUND_MODE_ALWAYS,
-    GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE
+typedef enum
+{
+  GST_SUBTITLE_BACKGROUND_MODE_ALWAYS,
+  GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE
 } GstSubtitleBackgroundMode;
 
 /**
@@ -101,9 +104,10 @@ typedef enum {
  *
  * Defines what should happen to text that overflows its containing region.
  */
-typedef enum {
-    GST_SUBTITLE_OVERFLOW_MODE_HIDDEN,
-    GST_SUBTITLE_OVERFLOW_MODE_VISIBLE
+typedef enum
+{
+  GST_SUBTITLE_OVERFLOW_MODE_HIDDEN,
+  GST_SUBTITLE_OVERFLOW_MODE_VISIBLE
 } GstSubtitleOverflowMode;
 
 /**
@@ -132,7 +136,8 @@ struct _GstSubtitleColor {
  * http://unicode.org/reports/tr9/ for more details of the unicode
  * bidirectional algorithm).
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_TEXT_DIRECTION_LTR,
   GST_SUBTITLE_TEXT_DIRECTION_RTL
 } GstSubtitleTextDirection;
@@ -159,7 +164,8 @@ typedef enum {
  * Defines how inline text areas within a block should be aligned within the
  * block area.
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_TEXT_ALIGN_START,
   GST_SUBTITLE_TEXT_ALIGN_LEFT,
   GST_SUBTITLE_TEXT_ALIGN_CENTER,
@@ -175,7 +181,8 @@ typedef enum {
  * Defines styling that should be applied to the glyphs of a font used to
  * render text within an inline text element.
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_FONT_STYLE_NORMAL,
   GST_SUBTITLE_FONT_STYLE_ITALIC,
   GST_SUBTITLE_FONT_STYLE_OBLIQUE
@@ -189,7 +196,8 @@ typedef enum {
  * Defines the font weight that should be applied to the glyphs of a font used
  * to render text within an inline text element.
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_FONT_WEIGHT_NORMAL,
   GST_SUBTITLE_FONT_WEIGHT_BOLD
 } GstSubtitleFontWeight;
@@ -202,7 +210,8 @@ typedef enum {
  * Defines the decoration that should be applied to the glyphs of a font used
  * to render text within an inline text element.
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_TEXT_DECORATION_NONE,
   GST_SUBTITLE_TEXT_DECORATION_UNDERLINE
 } GstSubtitleTextDecoration;
@@ -222,7 +231,8 @@ typedef enum {
  * bidirectional algorithm. See http://unicode.org/reports/tr9/ for more
  * details of the Unicode bidirectional algorithm.
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_UNICODE_BIDI_NORMAL,
   GST_SUBTITLE_UNICODE_BIDI_EMBED,
   GST_SUBTITLE_UNICODE_BIDI_OVERRIDE
@@ -238,7 +248,8 @@ typedef enum {
  * Defines how a renderer should treat lines of text that overflow the boundary
  * of the region into which they are being rendered.
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_WRAPPING_ON,
   GST_SUBTITLE_WRAPPING_OFF
 } GstSubtitleWrapping;
@@ -261,7 +272,8 @@ typedef enum {
  * This is based upon the ebutts:multiRowAlign attribute defined in the
  * EBU-TT-D specification.
  */
-typedef enum {
+typedef enum
+{
   GST_SUBTITLE_MULTI_ROW_ALIGN_AUTO,
   GST_SUBTITLE_MULTI_ROW_ALIGN_START,
   GST_SUBTITLE_MULTI_ROW_ALIGN_CENTER,
@@ -370,22 +382,22 @@ typedef enum {
  */
 struct _GstSubtitleStyleSet {
   GstSubtitleTextDirection text_direction;
-  gchar *font_family;
-  timedText::FontSizeLen font_size;  
+  gchar* font_family;
+  timedText::FontSizeLen font_size;
   timedText::LengthExpression line_height;
   GstSubtitleTextAlign text_align;
   GstSubtitleColor color;
   GstSubtitleColor background_color;
   GstSubtitleFontStyle font_style;
-  GstSubtitleFontWeight font_weight;  
+  GstSubtitleFontWeight font_weight;
   timedText::TextDecoration text_decoration;
   GstSubtitleUnicodeBidi unicode_bidi;
   GstSubtitleWrapping wrap_option;
   GstSubtitleMultiRowAlign multi_row_align;
   gdouble line_padding;
-  timedText::PointLen origin;  
-  timedText::PointLen extent;  
-  GstSubtitleDisplayAlign display_align;  
+  timedText::PointLen origin;
+  timedText::PointLen extent;
+  GstSubtitleDisplayAlign display_align;
   timedText::PaddingLen padding;
   GstSubtitleWritingMode writing_mode;
   GstSubtitleBackgroundMode show_background;
@@ -394,10 +406,9 @@ struct _GstSubtitleStyleSet {
   timedText::TextOutline text_outline;
 };
 
-GstSubtitleStyleSet * gst_subtitle_style_set_new ();
+GstSubtitleStyleSet* gst_subtitle_style_set_new ();
 
-void gst_subtitle_style_set_free (GstSubtitleStyleSet * style_set);
-
+void gst_subtitle_style_set_free (GstSubtitleStyleSet* style_set);
 
 /**
  * GstSubtitleElement:
@@ -415,11 +426,10 @@ void gst_subtitle_style_set_free (GstSubtitleStyleSet * style_set);
  * element, an anonymous span (e.g., text within a &lt;p&gt; tag), or a
  * &lt;br&gt; element.
  */
-struct _GstSubtitleElement
-{
+struct _GstSubtitleElement {
   GstMiniObject mini_object;
 
-  GstSubtitleStyleSet *style_set;
+  GstSubtitleStyleSet* style_set;
   guint text_index;
   gboolean suppress_whitespace;
 
@@ -429,7 +439,7 @@ struct _GstSubtitleElement
 
 GType gst_subtitle_element_get_type (void);
 
-GstSubtitleElement * gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
+GstSubtitleElement* gst_subtitle_element_new (GstSubtitleStyleSet* style_set,
     guint text_index, gboolean suppress_whitespace);
 
 /**
@@ -440,11 +450,11 @@ GstSubtitleElement * gst_subtitle_element_new (GstSubtitleStyleSet * style_set,
  *
  * Returns: (transfer full): @element.
  */
-static inline GstSubtitleElement *
-gst_subtitle_element_ref (GstSubtitleElement * element)
+static inline GstSubtitleElement*
+gst_subtitle_element_ref (GstSubtitleElement* element)
 {
-  return (GstSubtitleElement *)
-    gst_mini_object_ref (GST_MINI_OBJECT_CAST (element));
+  return (GstSubtitleElement*)
+      gst_mini_object_ref (GST_MINI_OBJECT_CAST (element));
 }
 
 /**
@@ -455,11 +465,10 @@ gst_subtitle_element_ref (GstSubtitleElement * element)
  * will be freed.
  */
 static inline void
-gst_subtitle_element_unref (GstSubtitleElement * element)
+gst_subtitle_element_unref (GstSubtitleElement* element)
 {
   gst_mini_object_unref (GST_MINI_OBJECT_CAST (element));
 }
-
 
 /**
  * GstSubtitleBlock:
@@ -472,29 +481,28 @@ gst_subtitle_element_unref (GstSubtitleElement * element)
  * In TTML this would correspond to the block of text resulting from the inline
  * elements within a single &lt;p&gt;.
  */
-struct _GstSubtitleBlock
-{
+struct _GstSubtitleBlock {
   GstMiniObject mini_object;
 
-  GstSubtitleStyleSet *style_set;
+  GstSubtitleStyleSet* style_set;
 
   /*< private >*/
-  GPtrArray *elements;
+  GPtrArray* elements;
   gpointer _gst_reserved[GST_PADDING];
 };
 
 GType gst_subtitle_block_get_type (void);
 
-GstSubtitleBlock * gst_subtitle_block_new (GstSubtitleStyleSet * style_set);
+GstSubtitleBlock* gst_subtitle_block_new (GstSubtitleStyleSet* style_set);
 
 void gst_subtitle_block_add_element (
-    GstSubtitleBlock * block,
-    GstSubtitleElement * element);
+    GstSubtitleBlock* block,
+    GstSubtitleElement* element);
 
-guint gst_subtitle_block_get_element_count (const GstSubtitleBlock * block);
+guint gst_subtitle_block_get_element_count (const GstSubtitleBlock* block);
 
-const GstSubtitleElement * gst_subtitle_block_get_element (
-    const GstSubtitleBlock * block, guint index);
+const GstSubtitleElement* gst_subtitle_block_get_element (
+    const GstSubtitleBlock* block, guint index);
 
 /**
  * gst_subtitle_block_ref:
@@ -504,11 +512,11 @@ const GstSubtitleElement * gst_subtitle_block_get_element (
  *
  * Returns: (transfer full): @block.
  */
-static inline GstSubtitleBlock *
-gst_subtitle_block_ref (GstSubtitleBlock * block)
+static inline GstSubtitleBlock*
+gst_subtitle_block_ref (GstSubtitleBlock* block)
 {
-  return (GstSubtitleBlock *)
-    gst_mini_object_ref (GST_MINI_OBJECT_CAST (block));
+  return (GstSubtitleBlock*)
+      gst_mini_object_ref (GST_MINI_OBJECT_CAST (block));
 }
 
 /**
@@ -519,11 +527,10 @@ gst_subtitle_block_ref (GstSubtitleBlock * block)
  * be freed.
  */
 static inline void
-gst_subtitle_block_unref (GstSubtitleBlock * block)
+gst_subtitle_block_unref (GstSubtitleBlock* block)
 {
   gst_mini_object_unref (GST_MINI_OBJECT_CAST (block));
 }
-
 
 /**
  * GstSubtitleRegion:
@@ -539,29 +546,28 @@ gst_subtitle_block_unref (GstSubtitleBlock * block)
  * rendered into it, as per the behaviour allowed by TTML regions whose
  * tts:showBackground style attribute is set to "always".
  */
-struct _GstSubtitleRegion
-{
+struct _GstSubtitleRegion {
   GstMiniObject mini_object;
 
-  GstSubtitleStyleSet *style_set;
+  GstSubtitleStyleSet* style_set;
 
   /*< private >*/
-  GPtrArray *blocks;
+  GPtrArray* blocks;
   gpointer _gst_reserved[GST_PADDING];
 };
 
 GType gst_subtitle_region_get_type (void);
 
-GstSubtitleRegion * gst_subtitle_region_new (GstSubtitleStyleSet * style_set);
+GstSubtitleRegion* gst_subtitle_region_new (GstSubtitleStyleSet* style_set);
 
 void gst_subtitle_region_add_block (
-    GstSubtitleRegion * region,
-    GstSubtitleBlock * block);
+    GstSubtitleRegion* region,
+    GstSubtitleBlock* block);
 
-guint gst_subtitle_region_get_block_count (const GstSubtitleRegion * region);
+guint gst_subtitle_region_get_block_count (const GstSubtitleRegion* region);
 
-const GstSubtitleBlock * gst_subtitle_region_get_block (
-    const GstSubtitleRegion * region, guint index);
+const GstSubtitleBlock* gst_subtitle_region_get_block (
+    const GstSubtitleRegion* region, guint index);
 
 /**
  * gst_subtitle_region_ref:
@@ -571,11 +577,11 @@ const GstSubtitleBlock * gst_subtitle_region_get_block (
  *
  * Returns: (transfer full): @region.
  */
-static inline GstSubtitleRegion *
-gst_subtitle_region_ref (GstSubtitleRegion * region)
+static inline GstSubtitleRegion*
+gst_subtitle_region_ref (GstSubtitleRegion* region)
 {
-  return (GstSubtitleRegion *)
-    gst_mini_object_ref (GST_MINI_OBJECT_CAST (region));
+  return (GstSubtitleRegion*)
+      gst_mini_object_ref (GST_MINI_OBJECT_CAST (region));
 }
 
 /**
@@ -586,7 +592,7 @@ gst_subtitle_region_ref (GstSubtitleRegion * region)
  * be freed.
  */
 static inline void
-gst_subtitle_region_unref (GstSubtitleRegion * region)
+gst_subtitle_region_unref (GstSubtitleRegion* region)
 {
   gst_mini_object_unref (GST_MINI_OBJECT_CAST (region));
 }
