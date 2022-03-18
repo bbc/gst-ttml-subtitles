@@ -1615,11 +1615,30 @@ handle_buffer(GstTtmlParse* self, GstBuffer* buf)
 
         SubtitleParser::Parser ttmlParser;
 
-        ttmlParser.Parse(self->textbuf->str, timedText::SubtitlesFormat::TTML);       
-        for(auto buffer : ttmlParser.getSubtitleList())
-        {
-            self->segment.position = GST_BUFFER_PTS(buffer);
-            ret = gst_pad_push(self->srcpad, buffer);
+        if(ttmlParser.Parse(self->textbuf->str, timedText::SubtitlesFormat::TTML) == CLC_FAIL) {
+             GstEvent* event = gst_event_new_gap(GST_BUFFER_PTS(buf), GST_BUFFER_DURATION(buf));
+             gst_pad_push_event(self->srcpad, event);
+             return GST_FLOW_OK;
+        }
+
+        //? for some reason gst_buffer_new gives buf address for the new buffer in getSubtitleList()
+        //so we store needed buf data here
+        GstClockTime buf_end_time = buf->pts + buf->duration;
+        auto subtitleList = ttmlParser.getSubtitleList();
+        for(int subtitleIndex = 0; subtitleIndex < subtitleList.size(); ++subtitleIndex)
+        {            
+            ret = gst_pad_push(self->srcpad, subtitleList[subtitleIndex]);
+            if(ret == GST_FLOW_OK && subtitleIndex == subtitleList.size() - 1) {
+                //notify that renderer shouldn't expect more subtitle buffers
+                //if the last buffer end time less than end time of the whole subtitle segment(in terms of timedText lib)
+                GstClockTime last_subtitle_end_time = subtitleList[subtitleIndex]->pts + subtitleList[subtitleIndex]->duration;                
+                if(buf_end_time > last_subtitle_end_time) {
+                    GstEvent* event = gst_event_new_gap(last_subtitle_end_time, buf_end_time - last_subtitle_end_time);
+                    gst_pad_push_event(self->srcpad, event);
+                }
+
+                return GST_FLOW_OK;
+            }
 
             if(ret != GST_FLOW_OK)
                 GST_DEBUG_OBJECT(self, "flow: %s", gst_flow_get_name(ret));
