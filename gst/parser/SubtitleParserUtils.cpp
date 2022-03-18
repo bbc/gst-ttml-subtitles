@@ -35,28 +35,10 @@ namespace {
 		{
 			if(tt_style_set.backgroundColorARGB != 0)
 				style_set->background_color = StyleUtils::ARGBColorToGstSubtileColor(tt_style_set.backgroundColorARGB);
+			
+			style_set->origin = tt_style_set.origin;
 
-
-			if(tt_style_set.origin.x.unit == timedText::LengthUnit::percentage)
-			{
-				style_set->origin_x = tt_style_set.origin.x.value / 100.0;
-				style_set->origin_y = tt_style_set.origin.y.value / 100.0;
-			}		
-
-
-			if(tt_style_set.extent.x.unit == timedText::LengthUnit::percentage)
-			{
-				style_set->extent_w = tt_style_set.extent.x.value / 100.0;
-				if((style_set->origin_x + style_set->extent_w) > 1.0) {
-					style_set->extent_w = 1.0 - style_set->origin_x;
-				}
-
-				style_set->extent_h = tt_style_set.extent.y.value / 100.0;
-				if((style_set->origin_y + style_set->extent_h) > 1.0) {
-					style_set->extent_h = 1.0 - style_set->origin_y;
-				}
-			}
-
+			style_set->extent = tt_style_set.extent;
 
 			if(tt_style_set.displayAlign == timedText::DisplayAlign::center)
 				style_set->display_align = GST_SUBTITLE_DISPLAY_ALIGN_CENTER;
@@ -65,23 +47,7 @@ namespace {
 			else
 				style_set->display_align = GST_SUBTITLE_DISPLAY_ALIGN_BEFORE;
 
-
-			if(tt_style_set.padding.left.unit == timedText::LengthUnit::percentage)
-			{
-				style_set->padding_before = tt_style_set.padding.top.value / 100.0;
-				style_set->padding_end = tt_style_set.padding.right.value / 100.0;
-				style_set->padding_after = tt_style_set.padding.bottom.value / 100.0;
-				style_set->padding_start = tt_style_set.padding.left.value / 100.0;
-
-				/* Padding values in TTML files are relative to the region width & height;
-				 * make them relative to the overall display width & height like all other
-				 * dimensions. */
-				style_set->padding_before *= style_set->extent_h;
-				style_set->padding_after *= style_set->extent_h;
-				style_set->padding_end *= style_set->extent_w;
-				style_set->padding_start *= style_set->extent_w;
-			}
-
+			style_set->padding = tt_style_set.padding;
 
 			if(tt_style_set.writingMode == timedText::WritingMode::rl)
 				style_set->writing_mode = GST_SUBTITLE_WRITING_MODE_RLTB;
@@ -93,24 +59,25 @@ namespace {
 			else
 				style_set->writing_mode = GST_SUBTITLE_WRITING_MODE_LRTB;
 
-
 			if(tt_style_set.isBackgroundAlwaysShown)
 				style_set->show_background = GST_SUBTITLE_BACKGROUND_MODE_ALWAYS;
 			else
 				style_set->show_background = GST_SUBTITLE_BACKGROUND_MODE_WHEN_ACTIVE;
 
-
 			if(tt_style_set.isOverflowClipped)
 				style_set->overflow = GST_SUBTITLE_OVERFLOW_MODE_HIDDEN;
 			else
 				style_set->overflow = GST_SUBTITLE_OVERFLOW_MODE_VISIBLE;
+
+			style_set->opacity = tt_style_set.opacity;
 		}
 
+		//<p> tag
 		void updateBlockStyleSet(GstSubtitleStyleSet* style_set, const timedText::PStyle& tt_style_set,
 			uint64_t cellColumns, uint64_t cellRows)
 		{
-			style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;
-
+			//hardcode	
+			/*style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;*/
 			
 			if(tt_style_set.ebuttsMultiRowAlign == timedText::MultiRowAlign::start)
 				style_set->multi_row_align = GST_SUBTITLE_MULTI_ROW_ALIGN_START;
@@ -132,10 +99,7 @@ namespace {
 				style_set->line_padding *= (1.0 / cellColumns);
 			}
 
-
-			if(!(tt_style_set.lineHeight == 0) && tt_style_set.lineHeight.unit == timedText::LengthUnit::percentage)
-				style_set->line_height = tt_style_set.lineHeight.value / 100.0;
-
+			style_set->line_height = tt_style_set.lineHeight;
 
 			if(tt_style_set.textAlign == timedText::TextAlign::left)
 				style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_LEFT;
@@ -149,41 +113,34 @@ namespace {
 				style_set->text_align = GST_SUBTITLE_TEXT_ALIGN_START;
 		}
 
+		//<span> tag
 		void updateElementStyleSet(GstSubtitleStyleSet* style_set, const timedText::SpanStyle& tt_style_set,
 			uint64_t cellColumns, uint64_t cellRows)
 		{
 			//hardcode			
-			style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;
-
+			/*style_set->unicode_bidi = GST_SUBTITLE_UNICODE_BIDI_NORMAL;*/
 
 			if(tt_style_set.fontFamily != "default")
 			{
 				if(tt_style_set.fontFamily.size() <= maxFontFamilyNameLength) {
-					g_free(style_set->font_family); //why?					
+					g_free(style_set->font_family);				
 					style_set->font_family = g_strdup(tt_style_set.fontFamily.c_str());
 				}
 				else {
 					GST_CAT_WARNING(ttmlparse,
 						"Ignoring font family name as it's overly long.");
 				}
-
 			}
-
 
 			if(tt_style_set.backgroundColorARGB != 0)
 				style_set->background_color = StyleUtils::ARGBColorToGstSubtileColor(tt_style_set.backgroundColorARGB);
 
-
-			if(tt_style_set.fontSize.horizontal.unit == timedText::LengthUnit::percentage &&
-				tt_style_set.fontSize.horizontal.value != 0)
-			{
-				style_set->font_size = tt_style_set.fontSize.horizontal.value / 100.0;
-			}
-			style_set->font_size *= (1.0 / cellRows);
-
+			style_set->font_size = tt_style_set.fontSize;
 
 			if(tt_style_set.fontStyle == timedText::FontStyle::italic)
 				style_set->font_style = GST_SUBTITLE_FONT_STYLE_ITALIC;
+			else if(tt_style_set.fontStyle == timedText::FontStyle::oblique)
+				style_set->font_style = GST_SUBTITLE_FONT_STYLE_OBLIQUE;
 			else
 				style_set->font_style = GST_SUBTITLE_FONT_STYLE_NORMAL;
 
@@ -192,19 +149,17 @@ namespace {
 			else
 				style_set->font_weight = GST_SUBTITLE_FONT_WEIGHT_NORMAL;
 
-			if(tt_style_set.textDecoration.isUnderline)
-				style_set->text_decoration = GST_SUBTITLE_TEXT_DECORATION_UNDERLINE;
-			else
-				style_set->text_decoration = GST_SUBTITLE_TEXT_DECORATION_NONE;
+			style_set->text_decoration = tt_style_set.textDecoration;
 
 			if(tt_style_set.isWordWrapped)
 				style_set->wrap_option = GST_SUBTITLE_WRAPPING_ON;
 			else
 				style_set->wrap_option = GST_SUBTITLE_WRAPPING_OFF;
 
-
 			if(tt_style_set.colorARGB != 0xffffffff)
 				style_set->color = StyleUtils::ARGBColorToGstSubtileColor(tt_style_set.colorARGB);
+
+			style_set->text_outline = tt_style_set.textOutline;
 		}
 	}
 }
@@ -261,7 +216,6 @@ GstSubtitleBlock* Scene::createBlock(const timedText::Subtitle::const_shared_ptr
 		GstSubtitleElement* currElement = createElement(span, cue->cellColumns, cue->cellRows);
 		//add element to block
 		gst_subtitle_block_add_element(block, currElement);
-
 	}
 
 	return block;

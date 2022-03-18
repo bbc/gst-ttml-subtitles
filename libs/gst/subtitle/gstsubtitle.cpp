@@ -47,15 +47,9 @@ gst_subtitle_style_set_new ()
   GstSubtitleColor transparent = { 0, 0, 0, 0 };
 
   ret->font_family = g_strdup ("default");
-  ret->font_size = 1.0;
-  ret->line_height = 1.25;
   ret->color = white;
   ret->background_color = transparent;
   ret->line_padding = 0.0;
-  ret->origin_x = ret->origin_y = 0.0;
-  ret->extent_w = ret->extent_h = 0.0;
-  ret->padding_start = ret->padding_end
-    = ret->padding_before = ret->padding_after = 0.0;
 
   return ret;
 }

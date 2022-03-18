@@ -24,6 +24,7 @@
 #include <glib.h>
 #include <gst/gst.h>
 #include <gst/gstminiobject.h>
+#include <SubtitlesParserFactory.h>
 
 G_BEGIN_DECLS
 
@@ -176,7 +177,8 @@ typedef enum {
  */
 typedef enum {
   GST_SUBTITLE_FONT_STYLE_NORMAL,
-  GST_SUBTITLE_FONT_STYLE_ITALIC
+  GST_SUBTITLE_FONT_STYLE_ITALIC,
+  GST_SUBTITLE_FONT_STYLE_OBLIQUE
 } GstSubtitleFontStyle;
 
 /**
@@ -369,25 +371,27 @@ typedef enum {
 struct _GstSubtitleStyleSet {
   GstSubtitleTextDirection text_direction;
   gchar *font_family;
-  gdouble font_size;
-  gdouble line_height;
+  timedText::FontSizeLen font_size;  
+  timedText::LengthExpression line_height;
   GstSubtitleTextAlign text_align;
   GstSubtitleColor color;
   GstSubtitleColor background_color;
   GstSubtitleFontStyle font_style;
-  GstSubtitleFontWeight font_weight;
-  GstSubtitleTextDecoration text_decoration;
+  GstSubtitleFontWeight font_weight;  
+  timedText::TextDecoration text_decoration;
   GstSubtitleUnicodeBidi unicode_bidi;
   GstSubtitleWrapping wrap_option;
   GstSubtitleMultiRowAlign multi_row_align;
   gdouble line_padding;
-  gdouble origin_x, origin_y;
-  gdouble extent_w, extent_h;
-  GstSubtitleDisplayAlign display_align;
-  gdouble padding_start, padding_end, padding_before, padding_after;
+  timedText::PointLen origin;  
+  timedText::PointLen extent;  
+  GstSubtitleDisplayAlign display_align;  
+  timedText::PaddingLen padding;
   GstSubtitleWritingMode writing_mode;
   GstSubtitleBackgroundMode show_background;
   GstSubtitleOverflowMode overflow;
+  gdouble opacity;
+  timedText::TextOutline text_outline;
 };
 
 GstSubtitleStyleSet * gst_subtitle_style_set_new ();
