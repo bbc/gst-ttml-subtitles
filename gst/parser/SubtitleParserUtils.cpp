@@ -215,7 +215,8 @@ GstSubtitleBlock* Scene::createBlock(const timedText::Subtitle::const_shared_ptr
 	{
 		GstSubtitleElement* currElement = createElement(span, cue->cellColumns, cue->cellRows);
 		//add element to block
-		gst_subtitle_block_add_element(block, currElement);
+		if(currElement != NULL)
+			gst_subtitle_block_add_element(block, currElement);
 	}
 
 	return block;
@@ -231,16 +232,32 @@ GstSubtitleElement* Scene::createElement(const timedText::TextSpan& span, uint64
 	StyleUtils::updateElementStyleSet(element_style, span.style,
 		cellColumns, cellRows);
 
-	if(!span.newLine)
-		buffer_index = addTextToBuffer(span.text.c_str());
-	else
+	auto addTextToBufferWrapper = [&](const std::string& text, bool newLine = false) -> guint 
 	{
-		std::ostringstream ssTextWithNewLine;
-		ssTextWithNewLine << span.text << std::endl;
-		buffer_index = addTextToBuffer(ssTextWithNewLine.str().c_str());
-	}
+		if (newLine) 
+		{
+			std::ostringstream ssTextWithNewLine;
+			ssTextWithNewLine << text << std::endl;
+			return addTextToBuffer(ssTextWithNewLine.str().c_str());
+		} 
+		else
+			return addTextToBuffer(text.c_str());
+	};
+	
+	//optimization to reduce amount of memory blocks in GstBuffer
+	//since it has limited amount of memory blocks
+	if (span.newLine && span.text == "") //<br>		
+	{ 
+		if (this->currBrTextIndexInGstBuffer == -1) 
+			this->currBrTextIndexInGstBuffer = buffer_index = addTextToBufferWrapper(span.text, span.newLine);
+		else
+			buffer_index = this->currBrTextIndexInGstBuffer;			
+	} 
+	else
+		buffer_index = addTextToBufferWrapper(span.text, span.newLine);
 
-	element = gst_subtitle_element_new(element_style, buffer_index, false);
+	if(buffer_index != -1)
+		element = gst_subtitle_element_new(element_style, buffer_index, false);
 
 	return element;
 }
@@ -250,6 +267,12 @@ guint Scene::addTextToBuffer(const gchar* text)
 	GstMemory* mem;
 	GstMapInfo map;
 	guint ret;
+
+	//limitation:
+	//limit of GSTBuffer memory blocks is exceeded
+	//ignore current text(including the whole current span)
+	if(gst_buffer_n_memory(this->buf) == gst_buffer_get_max_memory())
+		return -1;
 
 	mem = gst_allocator_alloc(NULL, strlen(text) + 1, NULL);
 	if(!gst_memory_map(mem, &map, GST_MAP_WRITE))
@@ -269,7 +292,7 @@ GstBuffer* Scene::attachMetadata(const std::map<std::string, GstSubtitleRegion*>
 {
 	GstSubtitleMeta* meta;
 
-	if(buf != nullptr && !regionsMap.empty())
+	if(this->buf != nullptr && !regionsMap.empty())
 	{
 		meta = (GstSubtitleMeta*)gst_buffer_add_meta(this->buf,
 			GST_SUBTITLE_META_INFO, NULL);

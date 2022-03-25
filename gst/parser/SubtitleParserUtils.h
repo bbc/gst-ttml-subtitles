@@ -47,6 +47,7 @@ namespace SubtitleParserUtils
 		//timed text cues
 		SubtitleConstList subtitleCues;
 		GstBuffer* buf = nullptr;
+		guint currBrTextIndexInGstBuffer = -1;
 	};
 
 	class ScenesHandler
