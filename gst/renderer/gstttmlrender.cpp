@@ -1198,7 +1198,8 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender* render,
       continue;
     }
 
-    buf_text = g_strndup ((const gchar*) map.data, map.size);
+    char* buf_text_raw = g_strndup ((const gchar*) map.data, map.size);
+    buf_text = g_markup_escape_text(buf_text_raw, strlen(buf_text_raw));
     if (!g_utf8_validate (buf_text, -1, NULL)) {
       GST_CAT_ERROR (ttmlrender, "Text in buffer us not valid UTF-8");
       gst_memory_unmap (mem, &map);
@@ -1268,7 +1269,7 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender* render,
         ">", buf_text, "</span>", NULL);
     GST_CAT_DEBUG (ttmlrender, "Joined text is now: %s", joined_text);
 
-    total_text_length += strlen (buf_text);
+    total_text_length += strlen(buf_text_raw);
     range->last_char = total_text_length - 1;
     GST_CAT_DEBUG (ttmlrender,
         "First character index: %u; last character  "
@@ -1278,6 +1279,7 @@ gst_ttml_render_generate_marked_up_string (GstTtmlRender* render,
 
     g_free (old_text);
     g_free (buf_text);
+    g_free (buf_text_raw);
     g_free (fgcolor);
     g_free (font_size);
     gst_memory_unmap (mem, &map);
@@ -1760,7 +1762,7 @@ gst_ttml_render_color_is_transparent (GstSubtitleColor* color)
 
 /* Render the background rectangles to be placed behind each element. */
 static GstTtmlRenderRenderedImage*
-gst_ttml_render_render_element_backgrounds (const GstSubtitleBlock* block,
+gst_ttml_render_render_element_backgrounds (GstTtmlRender* render, const GstSubtitleBlock* block,
     GPtrArray* char_ranges, PangoLayout* layout, guint origin_x,
     guint origin_y, guint line_height, guint line_padding, guint horiz_offset)
 {
@@ -2009,7 +2011,7 @@ gst_ttml_render_render_text_block (GstTtmlRender* render,
   //composition with region opacity
   block->style_set->background_color.a *= opacity;
   /* Render background rectangles, if any. */
-  backgrounds = gst_ttml_render_render_element_backgrounds (block, char_ranges,
+  backgrounds = gst_ttml_render_render_element_backgrounds (render, block, char_ranges,
       rendered_text->layout, text_offset - line_padding, 0,
       //(guint) (block->style_set->line_height * max_font_size),
       line_height,
