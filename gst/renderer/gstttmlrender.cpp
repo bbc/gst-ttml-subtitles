@@ -1854,15 +1854,19 @@ gst_ttml_render_render_element_backgrounds (GstTtmlRender* render, const GstSubt
       }
 
       rect_width = (area_end - area_start);
+      
+      timedText::PointPx screenSize(render->width, render->height);
+      //ignore font width
+      gint font_size = element->style_set->font_size.vertical.toPixel(screenSize);
 
       if (rect_width > 0) { /* <br>s will result in zero-width rectangle */
         GstTtmlRenderRenderedImage *image, *tmp;
-        rectangle = gst_ttml_render_draw_rectangle (rect_width, line_height,
+        rectangle = gst_ttml_render_draw_rectangle (rect_width, font_size,
             element->style_set->background_color);
         image = gst_ttml_render_rendered_image_new (rectangle,
             origin_x + area_start,
             origin_y + (cur_line * line_height), rect_width,
-            line_height);
+            font_size);
         tmp = ret;
         ret = gst_ttml_render_rendered_image_combine (ret, image);
         if (tmp)
