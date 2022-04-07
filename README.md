@@ -1,3 +1,5 @@
+**Please note: This code was incorporated into the GStreamer gst-plugins-bad plugin set in 2016 and, therefore, this repository is not in active development**
+
 ## GStreamer TTML subtitling package
 
 **The elements and library in this project provide a means for GStreamer pipelines to parse and render [TTML](http://www.w3.org/TR/ttaf1-dfxp/) subtitles. More specifically, the code handles the [EBU-TT-D](https://tech.ebu.ch/ebu-tt) profile of TTML designed for the distribution of subtitles over IP.**
